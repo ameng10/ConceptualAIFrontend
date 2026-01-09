@@ -1,0 +1,175 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
+
+const emit = defineEmits<{
+  (e: 'submit', description: string, name: string): void
+}>()
+
+const description = ref('')
+const name = ref('')
+const isSubmitting = ref(false)
+
+const handleSubmit = () => {
+  if (!description.value || !name.value) return
+  isSubmitting.value = true
+  emit('submit', description.value, name.value)
+}
+</script>
+
+<template>
+  <div class="stacked-input-container fade-in">
+    <div class="input-card glass">
+      <!-- Project Name Section -->
+      <div class="input-group">
+        <label class="group-label">
+          <Type :size="14" /> Project Name
+        </label>
+        <input
+          v-model="name"
+          type="text"
+          class="ghost-input"
+          placeholder="Give your app a name..."
+          :disabled="isSubmitting"
+        />
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Description Section -->
+      <div class="input-group">
+        <label class="group-label">
+          <MessageSquare :size="14" /> Requirements
+        </label>
+        <textarea
+          v-model="description"
+          class="ghost-textarea"
+          placeholder="Describe what you want to build... (e.g., A blog with comments and likes)"
+          :disabled="isSubmitting"
+          @keydown.enter.prevent.exact="handleSubmit"
+        ></textarea>
+      </div>
+
+      <div class="input-footer">
+        <p class="hint">Shift + Enter for new line</p>
+        <button
+          class="btn btn-primary"
+          @click="handleSubmit"
+          :disabled="!description || !name || isSubmitting"
+        >
+          <span v-if="!isSubmitting">Generate Backend</span>
+          <ArrowRight v-if="!isSubmitting" :size="18" />
+          <div v-else class="mini-loader"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.stacked-input-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.input-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--neon-teal);
+  text-shadow: 0 0 10px rgba(45, 212, 191, 0.2);
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 1.5rem 0;
+}
+
+.ghost-input {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ghost-textarea {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1.0625rem;
+  min-height: 100px;
+  resize: none;
+  line-height: 1.6;
+}
+
+.ghost-input:focus, .ghost-textarea:focus {
+  outline: none;
+}
+
+.ghost-input::placeholder, .ghost-textarea::placeholder {
+  color: var(--text-dim);
+  opacity: 0.3;
+}
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.btn-primary {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.15);
+}
+
+.mini-loader {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
