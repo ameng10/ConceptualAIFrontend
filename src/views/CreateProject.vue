@@ -1,32 +1,84 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { v7 as uuidv7 } from 'uuid'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
-import { projectApi } from '@/services/api'
-import { Sparkles, Zap } from 'lucide-vue-next'
+import AuthModal from '@/components/AuthModal.vue'
+import { projectApi, authApi, authState } from '@/services/api'
+import { Sparkles, Zap, User as UserIcon, LogOut } from 'lucide-vue-next'
 
 const router = useRouter()
 const showClarification = ref(false)
+const showAuthModal = ref(false)
+const authModalMode = ref<'login' | 'register'>('login')
 const questions = ref<string[]>([])
+
+const openAuthModal = (mode: 'login' | 'register') => {
+  authModalMode.value = mode
+  showAuthModal.value = true
+}
 const currentProjectId = ref('')
+const currentUser = ref(null as any) // Simple reactive user state
+
+const syncAuthFromStorage = () => {
+  currentUser.value = authState.get()
+}
+
+// Check auth on mount
+onMounted(() => {
+  syncAuthFromStorage()
+  // auth-storage dispatches a 'storage' event on login/register/logout to notify same-tab listeners.
+  window.addEventListener('storage', syncAuthFromStorage)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', syncAuthFromStorage)
+})
+
+const handleAuthSuccess = (user: any) => {
+  currentUser.value = user
+  // Refresh authState just in case
+  console.log('Logged in as:', user.name)
+}
+
+const handleLogout = async () => {
+    await authApi.logout()
+    currentUser.value = null
+}
 
 const handleProjectSubmit = async (description: string, name: string) => {
   try {
-    const result = await projectApi.create(name, description)
-    currentProjectId.value = result.projectId
+    // 1. Ensure User is Authenticated (Auto-Guest if NOT logged in)
+    let userId = authState.getUserId()
 
-    if (result.status === 'awaiting_input' && result.questions) {
-      questions.value = result.questions
-      showClarification.value = true
-    } else {
-      router.push(`/project/${result.projectId}`)
+    // If we want to force login for real users, we could prompt showAuthModal here.
+    // But for now, we stick to the Plan: "Auto-Guest" if not logged in, but use Real Account if logged in.
+    if (!userId) {
+      const guestId = uuidv7().slice(0, 8)
+      const guestUser = {
+        email: `guest_${guestId}@temp.com`,
+        password: `pass_${guestId}`,
+        username: `guest_${guestId}`,
+        name: 'Guest User'
+      }
+      const auth = await authApi.register(guestUser.email, guestUser.password, guestUser.username, guestUser.name)
+      userId = auth.user
     }
+
+    // 2. Generate Project ID
+    const projectId = uuidv7()
+    currentProjectId.value = projectId
+
+    // 3. Create Project
+    await projectApi.create(userId, projectId, name, description)
+
+    // 4. Navigate to Status
+    router.push(`/project/${projectId}`)
+
   } catch (error) {
     console.error('Failed to create project:', error)
-    // alert('Failed to start project. Is the backend running?')
-    // For demo purposes, we can navigate anyway or show a more subtle error
-    // router.push(`/project/demo-id`)
+    alert('Failed to start project. Please check if the backend is running.')
   }
 }
 
@@ -44,6 +96,18 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 <template>
   <div class="create-view">
     <div class="header-banner fade-in">
+  <div v-if="currentUser" class="user-badge" title="Signed in">
+     <UserIcon :size="14" /> {{ currentUser.user_metadata?.name || currentUser.username || 'User' }}
+      </div>
+      <div v-else class="auth-buttons">
+        <button class="btn-ghost" @click="openAuthModal('login')">
+          Sign In
+        </button>
+        <button class="btn-primary-sm" @click="openAuthModal('register')">
+          Sign Up
+        </button>
+      </div>
+
       <div class="badge">
         <Zap :size="12" /> Powered by Concepts
       </div>
@@ -69,6 +133,13 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       :questions="questions"
       @submit="handleClarificationSubmit"
     />
+
+    <AuthModal
+        :show="showAuthModal"
+        :initial-mode="authModalMode"
+        @close="showAuthModal = false"
+        @success="handleAuthSuccess"
+    />
   </div>
 </template>
 
@@ -84,6 +155,47 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
   position: fixed;
   top: 1.5rem;
   right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 100;
+}
+
+.btn-ghost {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 0.5rem 1rem;
+}
+
+.btn-ghost:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-badge:hover {
+    background: rgba(239, 68, 68, 0.1); /* Red hint for logout */
+    border-color: rgba(239, 68, 68, 0.2);
 }
 
 .badge {
@@ -97,6 +209,27 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent);
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-primary-sm {
+    background: var(--primary);
+    color: black;
+    border: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.btn-primary-sm:hover {
+    box-shadow: 0 0 15px rgba(45, 212, 191, 0.4);
 }
 
 .container {

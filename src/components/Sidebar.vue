@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon } from 'lucide-vue-next'
+import { computed, ref, onMounted } from 'vue'
+import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut } from 'lucide-vue-next'
+import { authApi, authState } from '@/services/api'
 
 const navItems = [
   { label: 'Create App', icon: PlusCircle, path: '/' },
@@ -10,6 +11,35 @@ const navItems = [
 ]
 
 const theme = ref('dark')
+
+// Lightweight reactive auth snapshot for sidebar.
+// We also listen for storage events so changes in other components reflect here.
+const authSnapshot = ref(authState.get())
+
+const refreshAuth = () => {
+  authSnapshot.value = authState.get()
+}
+
+const userDisplayName = computed(() => {
+  // We only reliably store user id on this frontend today.
+  // Prefer username if present in the stored object (future), else fallback.
+  const u: any = authSnapshot.value
+  return u?.username || u?.name || u?.user_metadata?.name || (u ? 'User' : 'Not signed in')
+})
+
+const userInitials = computed(() => {
+  const name = (userDisplayName.value || '').trim()
+  if (!name) return 'U'
+  const parts = name.split(/\s+/).filter(Boolean)
+  const first = parts[0]?.[0] ?? 'U'
+  const second = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) ?? ''
+  return (first + second).toUpperCase()
+})
+
+const handleLogout = async () => {
+  await authApi.logout()
+  refreshAuth()
+}
 
 const toggleTheme = () => {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
@@ -21,6 +51,9 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('theme') || 'dark'
   theme.value = savedTheme
   document.documentElement.setAttribute('data-theme', savedTheme)
+
+  refreshAuth()
+  window.addEventListener('storage', refreshAuth)
 })
 </script>
 
@@ -56,11 +89,22 @@ onMounted(() => {
       </button>
 
       <div class="user-profile">
-        <div class="avatar">AM</div>
+        <div class="avatar" aria-label="User avatar">{{ userInitials }}</div>
         <div class="user-info">
-          <span class="user-name">Anthony Meng</span>
-          <span class="user-plan">Pro Plan</span>
+          <span class="user-name">{{ userDisplayName }}</span>
+          <span class="user-plan" v-if="authSnapshot">Signed in</span>
+          <span class="user-plan" v-else>Not signed in</span>
         </div>
+
+        <button
+          v-if="authSnapshot"
+          class="logout-btn"
+          type="button"
+          @click="handleLogout"
+          title="Log out"
+        >
+          <LogOut :size="16" />
+        </button>
       </div>
     </div>
   </aside>
@@ -203,5 +247,25 @@ onMounted(() => {
 .user-plan {
   font-size: 0.6875rem;
   color: var(--text-dim);
+}
+
+.logout-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.logout-btn:hover {
+  filter: brightness(1.1);
+  border-color: var(--primary);
 }
 </style>

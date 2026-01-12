@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { projectApi, type Project } from '@/services/api'
+import { projectApi, authState, type Project } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import { ArrowLeft, Share2 } from 'lucide-vue-next'
 
@@ -12,14 +12,28 @@ let pollInterval: number | null = null
 
 const fetchProject = async () => {
   try {
-    project.value = await projectApi.getStatus(projectId)
+    const userId = authState.getUserId()
+    if (!userId) {
+      console.warn('No user ID found for polling')
+      return
+    }
 
-    // Stop polling if complete or error
-    if (project.value.status === 'complete' || project.value.status === 'error') {
-      if (pollInterval) {
-        clearInterval(pollInterval)
-        pollInterval = null
+    // The API only supports getting all projects for a user currently
+    const projects = await projectApi.getProjects(userId)
+    const foundProject = projects.find(p => p._id === projectId || (p as any).id === projectId) // Handle both _id and potential id for safety
+
+    if (foundProject) {
+      project.value = foundProject
+
+      // Stop polling if complete or error
+      if (foundProject.status === 'complete' || foundProject.status === 'error') {
+        if (pollInterval) {
+          clearInterval(pollInterval)
+          pollInterval = null
+        }
       }
+    } else {
+      console.warn('Project not found in user list', projectId)
     }
   } catch (error) {
     console.error('Failed to fetch project status:', error)
