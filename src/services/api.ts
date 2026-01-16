@@ -92,40 +92,112 @@ export const authApi = {
 }
 
 export const projectApi = {
-    async create(owner: string, projectId: string, name: string, description: string) {
-        // Concept: ProjectLedger on Port 8000
-    const response = await api.post<{ project: string }>('/api/ProjectLedger/create', {
-            owner,
-            project: projectId,
-            name,
-            description
-        })
+    async create(owner: string, name: string, description: string) {
+        // API.md: POST /projects (auth required)
+    const response = await api.post<any>(
+            '/api/projects',
+            { name, description },
+        )
+
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+
+        // Backend response shapes have varied over time. Accept a few common ones:
+        // - { project: string, status, plan }
+        // - { projectId: string, status, plan }
+        // - { planning: { project: string, status, plan } }
+        // - { status, plan, ... } (no project id)  <-- we fall back to listing
+        let pid: string | undefined =
+            response.data?.projectId ||
+            response.data?.project ||
+            response.data?.planning?.project ||
+            response.data?.planning?.projectId
+
+        // If the create response didn't include the project id, fall back to finding it via list.
+        // This is slower, but avoids breaking the flow.
+        if (!pid) {
+            try {
+                const list = await api.get<{ projects: Project[] }>('/api/projects')
+                const projects = list.data?.projects ?? []
+                const match = projects.find((p) => p.name === name && p.description === description)
+                pid = match?._id
+            } catch {
+                // ignore
+            }
+        }
+
+        if (!pid) {
+            throw new Error(
+                'Create project did not return a project id (and fallback lookup failed). ' +
+                    'Backend should include { project: "..." } or { projectId: "..." } in POST /api/projects response.',
+            )
+        }
+
+        // Normalize planning payload for the UI.
+        const planning = response.data?.planning ?? response.data
+        return { project: pid, planning }
+    },
+
+    async getProject(projectId: string) {
+    // API.md: GET /projects/:projectId
+    const response = await api.get<{ project: Project }>(`/api/projects/${projectId}`)
+    if (!response.data?.project) throw new Error('Project not found')
+    return response.data.project
+    },
+
+    async getPlanningStatus(projectId: string) {
+    // API.md doesn't define a status-only endpoint.
+    // We derive status from GET /projects/:projectId/plan when available.
+    const plan = await this.getPlan(projectId)
+    return plan ? 'planning_complete' : null
+    },
+
+    async getPlan(projectId: string) {
+    // API.md: GET /projects/:projectId/plan
+    const response = await api.get<{ plan: any }>(`/api/projects/${projectId}/plan`)
+    return response.data?.plan ?? null
+    },
+
+    async modifyPlan(projectId: string, feedback: string) {
+        // API.md: PUT /projects/:projectId/plan
+        const response = await api.put<{ status: string; plan?: any; error?: string; message?: string }>(
+            `/api/projects/${projectId}/plan`,
+            { feedback },
+        )
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        if (!response.data?.plan) {
+            throw new Error('Plan modification did not return an updated plan')
+        }
         return response.data
     },
 
     async getProjects(owner: string) {
-        // Concept: ProjectLedger on Port 8000
-    const response = await api.post<ProjectListResponse[]>('/api/ProjectLedger/_getProjects', { owner })
-        return response.data.map(item => item.projects)
+    // API.md: GET /projects
+    const response = await api.get<{ projects: Project[] }>('/api/projects')
+    return response.data?.projects ?? []
     },
 
     async updateStatus(projectId: string, status: string) {
-        // Concept: ProjectLedger on Port 8000
-    const response = await api.post('/api/ProjectLedger/updateStatus', {
-            project: projectId,
-            status
-        })
-        return response.data
+    // Not defined in API.md (status is managed server-side). Keep as no-op for now.
+    console.warn('updateStatus is not exposed in API.md; ignoring', projectId, status)
+    return { ok: true }
     },
 
     // Legacy support or if needed for specific extensions
     // Ideally we transition fully to the new endpoints
     async provideClarification(projectId: string, answers: Record<string, string>) {
-        // This might need a new endpoint or be handled differently in the new architecture
-        // For now keeping it compatible if the backend still supports it or if we mock it
-        console.warn('provideClarification not fully specified in new API docs', projectId, answers)
-        // Placeholder return
-        return { success: true }
+        // API.md: POST /projects/:projectId/clarify
+        const response = await api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
+            `/api/projects/${projectId}/clarify`,
+            { answers },
+        )
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
     }
 }
 

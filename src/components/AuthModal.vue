@@ -46,14 +46,19 @@ const handleSubmit = async () => {
     emit('close')
   } catch (e: any) {
     console.error('Auth Error:', e)
+    const status = e.response?.status
+    const data = e.response?.data
+    const serverHint = data ? JSON.stringify(data) : (e.code || e.message || 'No response from server')
+
     // Try to extract the most useful error message
-    const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Authentication failed'
-    // If the message is vague, append the raw data for debugging
-    if (msg === 'password failed' || !e.response?.data?.message) {
-         error.value = `${msg} (Server: ${JSON.stringify(e.response?.data || 'No Data')})`
-    } else {
-        error.value = msg
-    }
+    const msg =
+      data?.message ||
+      data?.error ||
+      e.message ||
+      (e.code ? `${e.code}: Network error` : 'Authentication failed')
+
+    // Always include backend hint; it helps when backend returns 200 with {error} or 504 timeouts.
+    error.value = status ? `${msg} (HTTP ${status}: ${serverHint})` : `${msg} (Server: ${serverHint})`
   } finally {
     isLoading.value = false
   }

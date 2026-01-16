@@ -37,12 +37,13 @@ const processQueue = (error: any, token: string | null = null) => {
  * - /api -> http://localhost:3001 (legacy)
  * - /auth -> http://localhost:8000 with rewrite to ''
  *
- * We set baseURL to '/auth' so requests reach the concept server at 8000,
+ * We set baseURL to '/auth' so requests reach the backend via the /auth proxy,
  * while still allowing calling '/api/...' paths.
  */
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: '/auth',
-  timeout: 10000,
+  baseURL: '/',
+  // Planning can take a while (LLM + tool calls). Disable the axios timeout so we wait for the backend.
+  timeout: 0,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -62,14 +63,8 @@ apiClient.interceptors.request.use(
       delete (config.headers as any)['Content-Type']
     }
 
-    // Skip token injection for auth endpoints that don't require it
-    if (
-      config.url === '/auth/register' ||
-      config.url === '/auth/login' ||
-      config.url === '/auth/refresh'
-    ) {
-      return config
-    }
+  // Skip token injection for auth endpoints that don't require it
+  if (config.url === '/auth/register' || config.url === '/auth/login' || config.url === '/auth/refresh') return config
 
     // Do not override explicit Authorization headers
     if ((config.headers as any)?.Authorization) return config

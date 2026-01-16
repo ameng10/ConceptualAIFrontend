@@ -49,11 +49,8 @@ const handleLogout = async () => {
 
 const handleProjectSubmit = async (description: string, name: string) => {
   try {
-    // 1. Ensure User is Authenticated (Auto-Guest if NOT logged in)
+    // Ensure User is Authenticated (Auto-Guest if NOT logged in)
     let userId = authState.getUserId()
-
-    // If we want to force login for real users, we could prompt showAuthModal here.
-    // But for now, we stick to the Plan: "Auto-Guest" if not logged in, but use Real Account if logged in.
     if (!userId) {
       const guestId = uuidv7().slice(0, 8)
       const guestUser = {
@@ -66,19 +63,27 @@ const handleProjectSubmit = async (description: string, name: string) => {
       userId = auth.user
     }
 
-    // 2. Generate Project ID
-    const projectId = uuidv7()
-    currentProjectId.value = projectId
+    // Important: the backend generates the canonical project id.
+    // If we invent a client id and route with it, subsequent GETs (plan/project) will 404.
+    const created = await projectApi.create(userId, name, description)
+    const pid = created.project
+    currentProjectId.value = pid
 
-    // 3. Create Project
-    await projectApi.create(userId, projectId, name, description)
-
-    // 4. Navigate to Status
-    router.push(`/project/${projectId}`)
+    // Navigate to the workspace/status page with the *real* project id.
+    router.push({
+      path: `/project/${pid}`,
+      query: {
+        projectName: encodeURIComponent(name),
+        planningStatus: created?.planning?.status ? String(created.planning.status) : 'planning',
+        plan: created?.planning?.plan ? encodeURIComponent(JSON.stringify(created.planning.plan)) : undefined,
+        questions: created?.planning?.questions ? encodeURIComponent(JSON.stringify(created.planning.questions)) : undefined,
+      },
+    })
 
   } catch (error) {
     console.error('Failed to create project:', error)
-    alert('Failed to start project. Please check if the backend is running.')
+    const msg = error instanceof Error ? error.message : String(error)
+    alert(msg || 'Failed to start project. Please check if the backend is running.')
   }
 }
 

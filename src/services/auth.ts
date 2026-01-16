@@ -27,14 +27,13 @@ export interface AuthError {
   message?: string
 }
 
-// These routes assume your backend exposes classic /auth/* endpoints.
-// If your backend only supports concept routes, we fall back to /api/User* concepts.
-const USE_CLASSIC_AUTH_ROUTES = false
+// Use API.md REST endpoints (/auth/*).
+const USE_CLASSIC_AUTH_ROUTES = true
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   try {
     if (USE_CLASSIC_AUTH_ROUTES) {
-      const response = await api.post<LoginResponse>('/auth/login', { email, password })
+  const response = await api.post<LoginResponse>('/api/auth/login', { email, password })
       return response.data
     }
 
@@ -72,7 +71,7 @@ export async function register(
       const body: any = { email, password }
       if (name) body.name = name
       if (username) body.username = username
-      const response = await api.post<RegisterResponse>('/auth/register', body)
+  const response = await api.post<RegisterResponse>('/api/auth/register', body)
       return response.data
     }
 
@@ -116,7 +115,7 @@ export async function register(
 export async function refreshTokens(refreshToken: string): Promise<RefreshResponse> {
   try {
     if (USE_CLASSIC_AUTH_ROUTES) {
-      const response = await api.post<RefreshResponse>('/auth/refresh', { refreshToken })
+  const response = await api.post<RefreshResponse>('/api/auth/refresh', { refreshToken })
       return response.data
     }
 
@@ -142,7 +141,7 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshRespon
 export async function logout(accessToken: string): Promise<void> {
   try {
     if (USE_CLASSIC_AUTH_ROUTES) {
-      await api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${accessToken}` } })
+  await api.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${accessToken}` } })
       return
     }
 
@@ -157,7 +156,7 @@ export async function getUserFromToken(accessToken: string): Promise<string> {
   try {
     if (USE_CLASSIC_AUTH_ROUTES) {
       const response = await api.post<{ user: string }>(
-        '/auth/_getUser',
+  '/api/auth/_getUser',
         {},
         { headers: { Authorization: `Bearer ${accessToken}` } },
       )
