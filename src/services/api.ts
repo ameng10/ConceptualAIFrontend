@@ -29,7 +29,18 @@ export interface Project {
     _id: string
     name: string
     description: string
-    status: 'planning' | 'designing' | 'implementing' | 'syncing' | 'assembling' | 'complete' | 'error' | 'awaiting_clarification' | 'awaiting_input'
+    status:
+        | 'planning'
+    | 'planning_complete'
+        | 'designing'
+        | 'design_complete'
+        | 'implementing'
+        | 'syncing'
+        | 'assembling'
+        | 'complete'
+        | 'error'
+        | 'awaiting_clarification'
+        | 'awaiting_input'
     createdAt?: string
     updatedAt?: string
 }
@@ -120,8 +131,14 @@ export const projectApi = {
             try {
                 const list = await api.get<{ projects: Project[] }>('/api/projects')
                 const projects = list.data?.projects ?? []
-                const match = projects.find((p) => p.name === name && p.description === description)
-                pid = match?._id
+                // If there are multiple, pick the newest (best effort based on createdAt).
+                const matches = projects.filter((p) => p.name === name && p.description === description)
+                matches.sort((a, b) => {
+                    const at = a.createdAt ? Date.parse(a.createdAt) : 0
+                    const bt = b.createdAt ? Date.parse(b.createdAt) : 0
+                    return bt - at
+                })
+                pid = matches[0]?._id
             } catch {
                 // ignore
             }
@@ -139,11 +156,30 @@ export const projectApi = {
         return { project: pid, planning }
     },
 
+    async startDesign(projectId: string, plan: any) {
+        // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
+        // Expected to return status/progress payload.
+        const response = await api.post<any>(`/api/projects/${projectId}/design`, { plan })
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
     async getProject(projectId: string) {
     // API.md: GET /projects/:projectId
     const response = await api.get<{ project: Project }>(`/api/projects/${projectId}`)
     if (!response.data?.project) throw new Error('Project not found')
     return response.data.project
+    },
+
+    async deleteProject(projectId: string) {
+        // API.md: DELETE /projects/:projectId
+        const response = await api.delete<{ status?: string; error?: string; message?: string }>(`/api/projects/${projectId}`)
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
     },
 
     async getPlanningStatus(projectId: string) {
@@ -157,6 +193,13 @@ export const projectApi = {
     // API.md: GET /projects/:projectId/plan
     const response = await api.get<{ plan: any }>(`/api/projects/${projectId}/plan`)
     return response.data?.plan ?? null
+    },
+
+    async getDesign(projectId: string) {
+        // Not documented in API.md yet; provides the finished design doc.
+        // Support a few possible shapes: { design }, { result }, or the raw payload.
+        const response = await api.get<any>(`/api/projects/${projectId}/design`)
+        return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 
     async modifyPlan(projectId: string, feedback: string) {

@@ -5,11 +5,13 @@ import { CheckCircle2, Circle, Loader2, AlertCircle, Download } from 'lucide-vue
 const props = defineProps<{
   status: string
   projectName: string
+  holdPlanningActive?: boolean
+  planAccepted?: boolean
 }>()
 
 const steps = [
   { id: 'planning', label: 'Planning' },
-  { id: 'designing', label: 'Architecting' },
+  { id: 'designing', label: 'Designing' },
   { id: 'implementing', label: 'Implementing' },
   { id: 'syncing', label: 'Generating Syncs' },
   { id: 'assembling', label: 'Assembling' },
@@ -19,11 +21,16 @@ const steps = [
 const currentStepIndex = computed(() => {
   if (props.status === 'error') return -1
   if (props.status === 'awaiting_clarification' || props.status === 'awaiting_input') return 0
+  if (props.holdPlanningActive) return 0
   return steps.findIndex(s => s.id === props.status)
 })
 
 const getStepStatus = (index: number) => {
   if (props.status === 'error') return 'error'
+  // Special: if user accepted the plan, Planning is complete.
+  if (props.planAccepted && index === 0) return 'complete'
+  // Special: if user accepted the plan, we should be in designing stage now.
+  if (props.planAccepted && index === 1) return 'active'
   if (index < currentStepIndex.value) return 'complete'
   if (index === currentStepIndex.value) return 'active'
   return 'pending'
@@ -31,7 +38,7 @@ const getStepStatus = (index: number) => {
 </script>
 
 <template>
-  <div class="status-card glass fade-in">
+  <div class="status-card glass fade-in" :data-hold-planning="holdPlanningActive ? 'true' : 'false'">
     <div class="card-header">
       <h2>{{ projectName }}</h2>
       <div v-if="status === 'complete'" class="badge badge-success">
@@ -141,6 +148,13 @@ const getStepStatus = (index: number) => {
   border-color: var(--primary);
   color: white;
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+}
+
+/* Special mode: keep Planning active/spinning until the user accepts the plan */
+.status-card[data-hold-planning='true'] .step.active .step-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.45);
 }
 
 .step-label {

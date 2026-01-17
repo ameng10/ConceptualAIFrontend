@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const answers = ref<Record<string, string>>({})
+const submitting = ref(false)
 
 watch(() => props.questions, (newQuestions) => {
   newQuestions.forEach(q => {
@@ -21,9 +22,26 @@ watch(() => props.questions, (newQuestions) => {
   })
 }, { immediate: true })
 
-const handleSubmit = () => {
-  emit('submit', answers.value)
+const handleSubmit = async () => {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    // Fire-and-forget: keep the button in a loading state while the parent
+    // handles clarification + waiting for the plan, then closes the dialog.
+    emit('submit', answers.value)
+  } finally {
+    // Intentionally do not reset `submitting` here.
+    // The dialog will be hidden by the parent once planning continues,
+    // keeping the UI in a waiting state in the meantime.
+  }
 }
+
+watch(
+  () => props.show,
+  (isOpen) => {
+    if (!isOpen) submitting.value = false
+  }
+)
 </script>
 
 <template>
@@ -54,10 +72,11 @@ const handleSubmit = () => {
         <button
           class="btn btn-primary"
           @click="handleSubmit"
-          :disabled="questions.some(q => !answers[q])"
+          :disabled="submitting || questions.some(q => !answers[q])"
         >
-          <CheckCircle2 :size="18" />
-          Continue Planning
+          <span v-if="submitting" class="spinner" aria-hidden="true"></span>
+          <CheckCircle2 v-else :size="18" />
+          <span>{{ submitting ? 'Submitting…' : 'Continue Planning' }}</span>
         </button>
       </div>
     </div>
@@ -87,6 +106,8 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
 }
 
 .modal-header {
@@ -113,6 +134,9 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.25rem;
 }
 
 .question-field {
@@ -130,5 +154,37 @@ label {
   display: flex;
   justify-content: flex-end;
   margin-top: 1rem;
+  flex: 0 0 auto;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  display: inline-block;
+  animation: spin 0.75s linear infinite;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .modal {
+    padding: 1.25rem;
+    max-height: calc(100vh - 1.5rem);
+  }
 }
 </style>

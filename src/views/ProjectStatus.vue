@@ -19,6 +19,32 @@ const feedback = ref('')
 const isModifying = ref(false)
 const modifyError = ref('')
 const accepted = ref(false)
+const designStatus = ref<'idle' | 'starting' | 'started' | 'error'>('idle')
+const designError = ref('')
+const designDoc = ref<any | null>(null)
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const pollDesignUntilReady = async () => {
+  // Polling is only used for the explicit "designing" state.
+  // Keep it gentle to avoid hammering the backend.
+  const maxWaitMs = 15 * 60 * 1000 // 15 minutes
+  const startedAt = Date.now()
+  let delayMs = 2000
+  for (;;) {
+    try {
+      const design = await projectApi.getDesign(projectId)
+      if (design) return design
+    } catch {
+      // ignore transient errors during generation
+    }
+    if (Date.now() - startedAt > maxWaitMs) break
+    await sleep(delayMs)
+    // Exponential backoff up to 10s
+    delayMs = Math.min(10000, Math.round(delayMs * 1.25))
+  }
+  return null
+}
 
 const tryHydrateFromQuery = () => {
   const planQ = route.query?.plan
@@ -80,8 +106,22 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
   try {
     await projectApi.provideClarification(projectId, answers)
     showClarification.value = false
-  // Clarification response should navigate/refresh with a plan payload; we avoid polling GETs here.
-  await fetchPlanAfterItExists()
+    // After clarifications, planning resumes on the backend.
+    // We show a lightweight waiting state and then fetch the plan so the user sees it.
+    if (!planDoc.value?.plan) {
+      planDoc.value = { status: 'processing' }
+    }
+    planningStatus.value = 'planning'
+
+    try {
+      const plan = await projectApi.getPlan(projectId)
+      if (plan) {
+        planDoc.value = { status: 'complete', plan }
+        planningStatus.value = 'planning_complete'
+      }
+    } catch (e) {
+      console.error('Failed to fetch project plan after clarification:', e)
+    }
   } catch (error) {
     console.error('Failed to submit clarifications:', error)
   }
@@ -89,13 +129,102 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 
 onMounted(() => {
   tryHydrateFromQuery()
-  // Do not fetch anything until we actually have a plan.
-  fetchPlanAfterItExists()
+  // View Details behavior:
+  // - If design exists: show design phase and render it.
+  // - Else if plan exists: show planning phase and render it.
+  ;(async () => {
+    const statusFromQuery = planningStatus.value
+    const shouldPreferPlan = statusFromQuery === 'planning_complete'
+
+    // If we're explicitly in designing, show a loading screen and wait for the design.
+    if (statusFromQuery === 'designing') {
+      accepted.value = true
+      designStatus.value = 'starting'
+      designError.value = ''
+      designDoc.value = null
+
+      const design = await pollDesignUntilReady()
+      if (design) {
+        designDoc.value = design
+        designStatus.value = 'started'
+      } else {
+        designStatus.value = 'error'
+        designError.value = 'Design is taking longer than expected. Please try again in a moment.'
+      }
+      return
+    }
+
+    // If planning is complete, fetch/show the plan first.
+    // (Avoid calling getDesign in this case; user explicitly wants getPlan.)
+    if (shouldPreferPlan) {
+      if (!planDoc.value?.plan) {
+        try {
+          const plan = await projectApi.getPlan(projectId)
+          if (plan) {
+            planDoc.value = { status: 'complete', plan }
+            planningStatus.value = 'planning_complete'
+          }
+        } catch (e) {
+          console.error('Failed to fetch plan:', e)
+        }
+      } else {
+        // We have a plan already; optionally refresh it.
+        fetchPlanAfterItExists()
+      }
+      return
+    }
+
+    // Otherwise: prefer design
+    try {
+      const design = await projectApi.getDesign(projectId)
+      if (design) {
+        designDoc.value = design
+        accepted.value = true
+        planningStatus.value = 'designing'
+        return
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2) Otherwise show plan (hydrate-first, then fetch if needed)
+    if (!planDoc.value?.plan) {
+      try {
+        const plan = await projectApi.getPlan(projectId)
+        if (plan) {
+          planDoc.value = { status: 'complete', plan }
+          planningStatus.value = planningStatus.value || 'planning_complete'
+        }
+      } catch (e) {
+        console.error('Failed to fetch plan:', e)
+      }
+    } else {
+      // We have a plan already; optionally refresh it.
+      fetchPlanAfterItExists()
+    }
+  })()
 })
 
 const handleAcceptPlan = () => {
-  // API.md doesn't define a server-side accept endpoint. For now, acceptance is client-local.
+  if (!planDoc.value?.plan) return
   accepted.value = true
+  // Hide the plan + kick off design immediately.
+  designStatus.value = 'starting'
+  designError.value = ''
+  designDoc.value = null
+  // Move the progress UI to the designing stage right away.
+  planningStatus.value = 'designing'
+  projectApi
+    .startDesign(projectId, planDoc.value.plan)
+    .then((res) => {
+      designStatus.value = 'started'
+      // Try to capture any design payload the backend returns.
+      designDoc.value = (res as any)?.design ?? (res as any)?.result ?? res
+    })
+    .catch((err) => {
+      designStatus.value = 'error'
+      designError.value = err instanceof Error ? err.message : String(err)
+    })
 }
 
 const handleModifyPlan = async () => {
@@ -140,15 +269,17 @@ const handleModifyPlan = async () => {
       </div>
 
       <ProjectStatusDisplay
-        :status="(planningStatus as any) || 'planning'"
+  :status="((planningStatus as any) || 'planning')"
         :projectName="projectName || 'Project'"
+  :holdPlanningActive="!accepted"
+  :planAccepted="accepted"
       />
 
-      <div v-if="planDoc" class="glass fade-in plan-card">
+      <div v-if="planDoc && !accepted" class="glass fade-in plan-card">
         <h2 class="section-title">Planner</h2>
         <p v-if="planDoc.status === 'processing'" class="muted">Planning agent is working…</p>
+        <p v-else-if="planDoc.status === 'complete'" class="muted">Review the plan, then accept to continue.</p>
         <p v-else-if="planDoc.status === 'needs_clarification'" class="muted">Needs clarification to proceed.</p>
-        <p v-else-if="planDoc.status === 'complete'" class="muted">Plan complete.</p>
         <p v-else-if="planDoc.status === 'error'" class="muted">Planner errored.</p>
 
         <div v-if="planDoc.status === 'complete' && planDoc.plan" class="json">
@@ -183,6 +314,17 @@ const handleModifyPlan = async () => {
             </button>
           </div>
         </div>
+      </div>
+
+      <div v-if="accepted" class="glass fade-in plan-card">
+        <h2 class="section-title">Design</h2>
+        <p v-if="designStatus === 'starting'" class="muted">Sending accepted plan to the design agent…</p>
+        <p v-else-if="designStatus === 'started'" class="muted">Design agent started.</p>
+        <p v-else-if="designStatus === 'error'" class="muted">Failed to start design.</p>
+        <div v-if="designError" class="error-msg">{{ designError }}</div>
+          <div v-if="designDoc" class="json" style="margin-top: 1rem;">
+            <pre>{{ JSON.stringify(designDoc, null, 2) }}</pre>
+          </div>
       </div>
 
       <div v-if="planningStatus !== 'planning_complete' && !planDoc" class="waiting-card glass fade-in">
