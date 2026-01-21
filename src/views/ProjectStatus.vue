@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
+import PlanViewer from '@/components/PlanViewer.vue'
+import DesignViewer from '@/components/DesignViewer.vue'
 import { ArrowLeft, Share2 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -283,7 +285,7 @@ const handleModifyPlan = async () => {
         <p v-else-if="planDoc.status === 'error'" class="muted">Planner errored.</p>
 
         <div v-if="planDoc.status === 'complete' && planDoc.plan" class="json">
-          <pre>{{ JSON.stringify(planDoc.plan, null, 2) }}</pre>
+          <PlanViewer :plan="planDoc.plan" />
         </div>
 
         <div v-if="planDoc.status === 'complete' && planDoc.plan" class="review-actions">
@@ -323,7 +325,7 @@ const handleModifyPlan = async () => {
         <p v-else-if="designStatus === 'error'" class="muted">Failed to start design.</p>
         <div v-if="designError" class="error-msg">{{ designError }}</div>
           <div v-if="designDoc" class="json" style="margin-top: 1rem;">
-            <pre>{{ JSON.stringify(designDoc, null, 2) }}</pre>
+            <DesignViewer :design="designDoc" />
           </div>
       </div>
 
@@ -436,7 +438,7 @@ h1 {
   margin-top: 1rem;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
+  background: transparent;
   overflow: auto;
 }
 
