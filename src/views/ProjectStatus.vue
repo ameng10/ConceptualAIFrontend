@@ -25,6 +25,11 @@ const designStatus = ref<'idle' | 'starting' | 'started' | 'error'>('idle')
 const designError = ref('')
 const designDoc = ref<any | null>(null)
 
+// Design review actions
+const designFeedback = ref('')
+const isModifyingDesign = ref(false)
+const modifyDesignError = ref('')
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const pollDesignUntilReady = async () => {
@@ -249,6 +254,29 @@ const handleModifyPlan = async () => {
     isModifying.value = false
   }
 }
+
+const handleModifyDesign = async () => {
+  modifyDesignError.value = ''
+  if (!designDoc.value) {
+    modifyDesignError.value = 'No design to modify yet.'
+    return
+  }
+  if (!designFeedback.value.trim()) {
+    modifyDesignError.value = 'Please describe what you want to change.'
+    return
+  }
+
+  isModifyingDesign.value = true
+  try {
+    const res = await projectApi.modifyDesign(projectId, designFeedback.value.trim())
+    designDoc.value = (res as any).design
+    designFeedback.value = ''
+  } catch (err) {
+    modifyDesignError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    isModifyingDesign.value = false
+  }
+}
 </script>
 
 <template>
@@ -327,6 +355,24 @@ const handleModifyPlan = async () => {
           <div v-if="designDoc" class="json" style="margin-top: 1rem;">
             <DesignViewer :design="designDoc" />
           </div>
+
+        <div v-if="designDoc" class="review-actions">
+          <div class="modify-block">
+            <label class="modify-label">Want changes? Describe what to modify in the design:</label>
+            <textarea
+              v-model="designFeedback"
+              class="modify-input"
+              rows="3"
+              placeholder="Example: Use a different concept library and simplify the data model."
+              :disabled="isModifyingDesign"
+            />
+            <div v-if="modifyDesignError" class="error-msg">{{ modifyDesignError }}</div>
+            <button class="btn-secondary" type="button" :disabled="isModifyingDesign" @click="handleModifyDesign">
+              <span v-if="!isModifyingDesign">Modify design</span>
+              <span v-else>Modifying…</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div v-if="planningStatus !== 'planning_complete' && !planDoc" class="waiting-card glass fade-in">

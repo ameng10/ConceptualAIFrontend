@@ -128,32 +128,41 @@ const tryCopy = async () => {
               </span>
 
               <div class="item-title-wrap">
-                <span class="item-title">{{ pull.instanceName || pull.libraryName || 'LibraryPull' }}</span>
+                <span class="item-title">{{ pull.libraryName || pull.instanceName || 'LibraryPull' }}</span>
                 <span v-if="pull.libraryName && pull.instanceName && pull.libraryName !== pull.instanceName" class="sub">
-                  from {{ pull.libraryName }}
+                  instance {{ pull.instanceName }}
                 </span>
               </div>
             </summary>
 
             <div class="item-body">
               <div class="meta">
-                <div class="meta-row">
+                <div class="meta-row" v-if="pull.libraryName">
                   <span class="meta-k">Library</span>
-                  <span class="meta-v monospace">{{ pull.libraryName || '—' }}</span>
+                  <span class="meta-v monospace">{{ pull.libraryName }}</span>
                 </div>
-                <div class="meta-row">
+                <div class="meta-row" v-if="pull.instanceName">
                   <span class="meta-k">Instance</span>
-                  <span class="meta-v monospace">{{ pull.instanceName || '—' }}</span>
+                  <span class="meta-v monospace">{{ pull.instanceName }}</span>
+                </div>
+                <div class="meta-row" v-if="!pull.libraryName && !pull.instanceName">
+                  <span class="meta-k">Info</span>
+                  <span class="meta-v">No library metadata provided.</span>
                 </div>
               </div>
 
-              <div>
+              <div v-if="pull.bindings">
                 <div class="bindings-title">Bindings</div>
-                <div v-if="!pull.bindings || !Object.keys(pull.bindings).length" class="empty">No bindings.</div>
+                <div v-if="!Object.keys(pull.bindings).length" class="empty">No bindings.</div>
                 <ul v-else class="bullets">
                   <li v-for="(b, bIdx) in formatBindings(pull.bindings)" :key="bIdx">{{ b }}</li>
                 </ul>
               </div>
+
+              <details v-if="Object.keys(pull || {}).length" class="subraw">
+                <summary class="subraw-summary">Show pull JSON</summary>
+                <pre class="subraw-pre">{{ JSON.stringify(pull, null, 2) }}</pre>
+              </details>
             </div>
           </details>
         </div>

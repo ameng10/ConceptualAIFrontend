@@ -202,6 +202,21 @@ export const projectApi = {
         return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 
+    async modifyDesign(projectId: string, feedback: string) {
+        // API.md: PUT /projects/:projectId/design
+        const response = await api.put<{ status: string; design?: any; error?: string; message?: string }>(
+            `/api/projects/${projectId}/design`,
+            { feedback },
+        )
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        if (!(response.data as any)?.design) {
+            throw new Error('Design modification did not return an updated design')
+        }
+        return response.data
+    },
+
     async modifyPlan(projectId: string, feedback: string) {
         // API.md: PUT /projects/:projectId/plan
         const response = await api.put<{ status: string; plan?: any; error?: string; message?: string }>(

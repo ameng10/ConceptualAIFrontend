@@ -16,7 +16,7 @@ type PlanEntity = Record<
   string,
   {
     description?: string
-    properties?: string[]
+  properties?: string[] | Record<string, string>
   }
 >
 
@@ -25,10 +25,79 @@ type PlanSection<T> = Array<T>
 export type PlanShape = {
   summary?: string
   entities?: PlanSection<PlanEntity>
-  user_flows?: PlanSection<Record<string, { description?: string; steps?: string[] }>>
-  pages?: PlanSection<Record<string, { description?: string; elements?: string[] }>>
+  // Support both shapes:
+  // 1) [{ "Flow name": { steps: [...] } }]
+  // 2) [{ flow_name: "...", steps: [...] }]
+  user_flows?: PlanSection<any>
+  // Support both shapes:
+  // 1) [{ "Page name": { description, elements } }]
+  // 2) [{ page_name: "...", description, elements }]
+  pages?: PlanSection<any>
   technical_requirements?: string[]
   [k: string]: any
+}
+
+const getSingleKey = (obj: unknown) => {
+  if (!obj || typeof obj !== 'object') return null
+  const keys = Object.keys(obj as Record<string, unknown>)
+  if (keys.length !== 1) return null
+  return keys[0]
+}
+
+const getEntityName = (entityWrapper: unknown) => {
+  const k = getSingleKey(entityWrapper)
+  return k || 'Entity'
+}
+
+const getEntityDetails = (entityWrapper: unknown) => {
+  if (!entityWrapper || typeof entityWrapper !== 'object') return null
+  const key = getSingleKey(entityWrapper)
+  if (!key) return null
+  return (entityWrapper as any)[key] as any
+}
+
+const getFlowName = (flowWrapper: unknown) => {
+  if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).flow_name === 'string') {
+    return (flowWrapper as any).flow_name as string
+  }
+  const k = getSingleKey(flowWrapper)
+  return k || 'Flow'
+}
+
+const getFlowDetails = (flowWrapper: unknown) => {
+  if (flowWrapper && typeof flowWrapper === 'object' && (flowWrapper as any).flow_name) {
+    return flowWrapper as any
+  }
+  const key = getSingleKey(flowWrapper)
+  if (!key) return null
+  return (flowWrapper as any)[key] as any
+}
+
+const getPageName = (pageWrapper: unknown) => {
+  if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).page_name === 'string') {
+    return (pageWrapper as any).page_name as string
+  }
+  const k = getSingleKey(pageWrapper)
+  return k || 'Page'
+}
+
+const getPageDetails = (pageWrapper: unknown) => {
+  if (pageWrapper && typeof pageWrapper === 'object' && (pageWrapper as any).page_name) {
+    return pageWrapper as any
+  }
+  const key = getSingleKey(pageWrapper)
+  if (!key) return null
+  return (pageWrapper as any)[key] as any
+}
+
+const entityPropertiesToLines = (properties: unknown) => {
+  if (Array.isArray(properties)) return properties.map((p) => String(p))
+  if (properties && typeof properties === 'object') {
+    return Object.entries(properties as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${String(v)}`)
+      .sort((a, b) => a.localeCompare(b))
+  }
+  return []
 }
 
 const props = defineProps<{
@@ -123,16 +192,21 @@ const tryCopy = async () => {
                 <ChevronRight class="chev chev-right" :size="16" />
                 <ChevronDown class="chev chev-down" :size="16" />
               </span>
-              <span class="item-title">{{ Object.keys(entityWrapper)[0] || 'Entity' }}</span>
+              <span class="item-title">{{ getEntityName(entityWrapper) }}</span>
             </summary>
 
             <div class="item-body">
-              <p v-if="(Object.values(entityWrapper)[0] as any)?.description" class="item-desc">
-                {{ (Object.values(entityWrapper)[0] as any).description }}
+              <p v-if="getEntityDetails(entityWrapper)?.description" class="item-desc">
+                {{ getEntityDetails(entityWrapper)?.description }}
               </p>
 
-              <ul v-if="Array.isArray((Object.values(entityWrapper)[0] as any)?.properties)" class="bullets">
-                <li v-for="(p, pIdx) in (Object.values(entityWrapper)[0] as any).properties" :key="pIdx">{{ p }}</li>
+              <ul v-if="entityPropertiesToLines(getEntityDetails(entityWrapper)?.properties).length" class="bullets">
+                <li
+                  v-for="(p, pIdx) in entityPropertiesToLines(getEntityDetails(entityWrapper)?.properties)"
+                  :key="pIdx"
+                >
+                  {{ p }}
+                </li>
               </ul>
             </div>
           </details>
@@ -161,15 +235,15 @@ const tryCopy = async () => {
                 <ChevronRight class="chev chev-right" :size="16" />
                 <ChevronDown class="chev chev-down" :size="16" />
               </span>
-              <span class="item-title">{{ Object.keys(flowWrapper)[0] || 'Flow' }}</span>
+              <span class="item-title">{{ getFlowName(flowWrapper) }}</span>
             </summary>
 
             <div class="item-body">
-              <p v-if="(Object.values(flowWrapper)[0] as any)?.description" class="item-desc">
-                {{ (Object.values(flowWrapper)[0] as any).description }}
+              <p v-if="getFlowDetails(flowWrapper)?.description" class="item-desc">
+                {{ getFlowDetails(flowWrapper)?.description }}
               </p>
-              <ol v-if="Array.isArray((Object.values(flowWrapper)[0] as any)?.steps)" class="steps">
-                <li v-for="(s, sIdx) in (Object.values(flowWrapper)[0] as any).steps" :key="sIdx">{{ s }}</li>
+              <ol v-if="Array.isArray(getFlowDetails(flowWrapper)?.steps)" class="steps">
+                <li v-for="(s, sIdx) in getFlowDetails(flowWrapper).steps" :key="sIdx">{{ s }}</li>
               </ol>
             </div>
           </details>
@@ -198,15 +272,15 @@ const tryCopy = async () => {
                 <ChevronRight class="chev chev-right" :size="16" />
                 <ChevronDown class="chev chev-down" :size="16" />
               </span>
-              <span class="item-title">{{ Object.keys(pageWrapper)[0] || 'Page' }}</span>
+              <span class="item-title">{{ getPageName(pageWrapper) }}</span>
             </summary>
 
             <div class="item-body">
-              <p v-if="(Object.values(pageWrapper)[0] as any)?.description" class="item-desc">
-                {{ (Object.values(pageWrapper)[0] as any).description }}
+              <p v-if="getPageDetails(pageWrapper)?.description" class="item-desc">
+                {{ getPageDetails(pageWrapper)?.description }}
               </p>
-              <ul v-if="Array.isArray((Object.values(pageWrapper)[0] as any)?.elements)" class="bullets">
-                <li v-for="(e, eIdx) in (Object.values(pageWrapper)[0] as any).elements" :key="eIdx">{{ e }}</li>
+              <ul v-if="Array.isArray(getPageDetails(pageWrapper)?.elements)" class="bullets">
+                <li v-for="(e, eIdx) in getPageDetails(pageWrapper).elements" :key="eIdx">{{ e }}</li>
               </ul>
             </div>
           </details>
