@@ -57,6 +57,9 @@ const getEntityDetails = (entityWrapper: unknown) => {
 }
 
 const getFlowName = (flowWrapper: unknown) => {
+  if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).name === 'string') {
+    return (flowWrapper as any).name as string
+  }
   if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).flow_name === 'string') {
     return (flowWrapper as any).flow_name as string
   }
@@ -65,6 +68,9 @@ const getFlowName = (flowWrapper: unknown) => {
 }
 
 const getFlowDetails = (flowWrapper: unknown) => {
+  if (flowWrapper && typeof flowWrapper === 'object' && (flowWrapper as any).name) {
+    return flowWrapper as any
+  }
   if (flowWrapper && typeof flowWrapper === 'object' && (flowWrapper as any).flow_name) {
     return flowWrapper as any
   }
@@ -74,6 +80,9 @@ const getFlowDetails = (flowWrapper: unknown) => {
 }
 
 const getPageName = (pageWrapper: unknown) => {
+  if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).name === 'string') {
+    return (pageWrapper as any).name as string
+  }
   if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).page_name === 'string') {
     return (pageWrapper as any).page_name as string
   }
@@ -82,6 +91,9 @@ const getPageName = (pageWrapper: unknown) => {
 }
 
 const getPageDetails = (pageWrapper: unknown) => {
+  if (pageWrapper && typeof pageWrapper === 'object' && (pageWrapper as any).name) {
+    return pageWrapper as any
+  }
   if (pageWrapper && typeof pageWrapper === 'object' && (pageWrapper as any).page_name) {
     return pageWrapper as any
   }
@@ -98,6 +110,25 @@ const entityPropertiesToLines = (properties: unknown) => {
       .sort((a, b) => a.localeCompare(b))
   }
   return []
+}
+
+const getEntityNameAny = (entityWrapper: unknown) => {
+  if (entityWrapper && typeof entityWrapper === 'object' && typeof (entityWrapper as any).name === 'string') {
+    return (entityWrapper as any).name as string
+  }
+  return getEntityName(entityWrapper)
+}
+
+const getEntityDetailsAny = (entityWrapper: unknown) => {
+  if (entityWrapper && typeof entityWrapper === 'object' && (entityWrapper as any).name) {
+    return entityWrapper as any
+  }
+  return getEntityDetails(entityWrapper)
+}
+
+const getEntityAttributesAny = (details: any) => {
+  // Some plans use "attributes" instead of "properties".
+  return details?.properties ?? details?.attributes
 }
 
 const props = defineProps<{
@@ -192,17 +223,20 @@ const tryCopy = async () => {
                 <ChevronRight class="chev chev-right" :size="16" />
                 <ChevronDown class="chev chev-down" :size="16" />
               </span>
-              <span class="item-title">{{ getEntityName(entityWrapper) }}</span>
+              <span class="item-title">{{ getEntityNameAny(entityWrapper) }}</span>
             </summary>
 
             <div class="item-body">
-              <p v-if="getEntityDetails(entityWrapper)?.description" class="item-desc">
-                {{ getEntityDetails(entityWrapper)?.description }}
+              <p v-if="getEntityDetailsAny(entityWrapper)?.description" class="item-desc">
+                {{ getEntityDetailsAny(entityWrapper)?.description }}
               </p>
 
-              <ul v-if="entityPropertiesToLines(getEntityDetails(entityWrapper)?.properties).length" class="bullets">
+              <ul
+                v-if="entityPropertiesToLines(getEntityAttributesAny(getEntityDetailsAny(entityWrapper))).length"
+                class="bullets"
+              >
                 <li
-                  v-for="(p, pIdx) in entityPropertiesToLines(getEntityDetails(entityWrapper)?.properties)"
+                  v-for="(p, pIdx) in entityPropertiesToLines(getEntityAttributesAny(getEntityDetailsAny(entityWrapper)))"
                   :key="pIdx"
                 >
                   {{ p }}

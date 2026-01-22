@@ -120,51 +120,27 @@ const tryCopy = async () => {
         <div class="section-body">
           <div v-if="!normalized.libraryPulls.length" class="empty">No library pulls found.</div>
 
-          <details v-for="(pull, idx) in normalized.libraryPulls" :key="idx" class="item" open>
-            <summary class="item-summary">
-              <span class="twisty">
-                <ChevronRight class="chev chev-right" :size="16" />
-                <ChevronDown class="chev chev-down" :size="16" />
-              </span>
-
-              <div class="item-title-wrap">
-                <span class="item-title">{{ pull.libraryName || pull.instanceName || 'LibraryPull' }}</span>
-                <span v-if="pull.libraryName && pull.instanceName && pull.libraryName !== pull.instanceName" class="sub">
+          <ul v-else class="pull-list">
+            <li v-for="(pull, idx) in normalized.libraryPulls" :key="idx" class="pull-row">
+              <div class="pull-main">
+                <span class="pull-name monospace">{{ pull.libraryName || pull.instanceName || 'LibraryPull' }}</span>
+                <span
+                  v-if="pull.libraryName && pull.instanceName && pull.libraryName !== pull.instanceName"
+                  class="pull-sub"
+                >
                   instance {{ pull.instanceName }}
                 </span>
               </div>
-            </summary>
 
-            <div class="item-body">
-              <div class="meta">
-                <div class="meta-row" v-if="pull.libraryName">
-                  <span class="meta-k">Library</span>
-                  <span class="meta-v monospace">{{ pull.libraryName }}</span>
-                </div>
-                <div class="meta-row" v-if="pull.instanceName">
-                  <span class="meta-k">Instance</span>
-                  <span class="meta-v monospace">{{ pull.instanceName }}</span>
-                </div>
-                <div class="meta-row" v-if="!pull.libraryName && !pull.instanceName">
-                  <span class="meta-k">Info</span>
-                  <span class="meta-v">No library metadata provided.</span>
-                </div>
-              </div>
-
-              <div v-if="pull.bindings">
+              <div v-if="pull.bindings" class="pull-bindings">
                 <div class="bindings-title">Bindings</div>
                 <div v-if="!Object.keys(pull.bindings).length" class="empty">No bindings.</div>
                 <ul v-else class="bullets">
                   <li v-for="(b, bIdx) in formatBindings(pull.bindings)" :key="bIdx">{{ b }}</li>
                 </ul>
               </div>
-
-              <details v-if="Object.keys(pull || {}).length" class="subraw">
-                <summary class="subraw-summary">Show pull JSON</summary>
-                <pre class="subraw-pre">{{ JSON.stringify(pull, null, 2) }}</pre>
-              </details>
-            </div>
-          </details>
+            </li>
+          </ul>
         </div>
       </details>
 
@@ -268,6 +244,44 @@ const tryCopy = async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.pull-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pull-row {
+  border: 1px solid var(--border);
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+  border-radius: 14px;
+  padding: 0.75rem;
+  background: transparent;
+  list-style: disc;
+}
+
+.pull-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.pull-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pull-sub {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.pull-bindings {
+  margin-top: 0.6rem;
 }
 
 .section {
