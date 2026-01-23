@@ -20,9 +20,11 @@ const openAuthModal = (mode: 'login' | 'register') => {
 }
 const currentProjectId = ref('')
 const currentUser = ref(null as any) // Simple reactive user state
+const isSignedIn = ref(authState.isSignedIn())
 
 const syncAuthFromStorage = () => {
   currentUser.value = authState.get()
+  isSignedIn.value = authState.isSignedIn()
 }
 
 // Check auth on mount
@@ -101,8 +103,8 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 <template>
   <div class="create-view">
     <div class="header-banner fade-in">
-  <div v-if="currentUser" class="user-badge" title="Signed in">
-     <UserIcon :size="14" /> {{ currentUser.user_metadata?.name || currentUser.username || 'User' }}
+  <div v-if="isSignedIn" class="user-badge" title="Signed in">
+     <UserIcon :size="14" /> {{ currentUser?.user_metadata?.name || currentUser?.username || 'User' }}
       </div>
       <div v-else class="auth-buttons">
         <button class="btn-ghost" @click="openAuthModal('login')">

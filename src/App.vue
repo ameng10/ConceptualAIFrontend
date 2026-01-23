@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Sidebar from '@/components/Sidebar.vue'
+import GradientToastHost from '@/components/GradientToastHost.vue'
 </script>
 
 <template>
@@ -11,6 +12,7 @@ import Sidebar from '@/components/Sidebar.vue'
     </div>
     <Sidebar />
     <main class="main-content">
+  <GradientToastHost />
       <router-view />
     </main>
   </div>

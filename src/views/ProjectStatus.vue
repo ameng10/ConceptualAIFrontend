@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
+import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import { ArrowLeft, Share2 } from 'lucide-vue-next'
+import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
 const route = useRoute()
+const router = useRouter()
 const projectId = route.params.id as string
 const planningStatus = ref<string | null>(null)
 const planDoc = ref<any | null>(null)
@@ -30,7 +33,14 @@ const designFeedback = ref('')
 const isModifyingDesign = ref(false)
 const modifyDesignError = ref('')
 
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// Prevent background polling after leaving this page (e.g., navigating to /implementing)
+const isActive = ref(true)
+onUnmounted(() => {
+  isActive.value = false
+})
 
 const pollDesignUntilReady = async () => {
   // Polling is only used for the explicit "designing" state.
@@ -39,6 +49,7 @@ const pollDesignUntilReady = async () => {
   const startedAt = Date.now()
   let delayMs = 2000
   for (;;) {
+  if (!isActive.value) return null
     try {
       const design = await projectApi.getDesign(projectId)
       if (design) return design
@@ -53,6 +64,10 @@ const pollDesignUntilReady = async () => {
   return null
 }
 
+
+const planToastShown = ref(false)
+const designToastShown = ref(false)
+
 const tryHydrateFromQuery = () => {
   const planQ = route.query?.plan
   if (planQ && typeof planQ === 'string') {
@@ -60,6 +75,10 @@ const tryHydrateFromQuery = () => {
       const decoded = decodeURIComponent(planQ)
       const plan = JSON.parse(decoded)
       planDoc.value = { status: 'complete', plan }
+      if (!planToastShown.value) {
+        toastPlanReady()
+        planToastShown.value = true
+      }
     } catch {
       // ignore
     }
@@ -103,6 +122,10 @@ const fetchPlanAfterItExists = async () => {
     if (plan) {
       planDoc.value = { status: 'complete', plan }
       planningStatus.value = 'planning_complete'
+      if (!planToastShown.value) {
+        toastPlanReady()
+        planToastShown.value = true
+      }
     }
   } catch (error) {
     console.error('Failed to fetch project plan:', error)
@@ -125,6 +148,10 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       if (plan) {
         planDoc.value = { status: 'complete', plan }
         planningStatus.value = 'planning_complete'
+        if (!planToastShown.value) {
+          toastPlanReady()
+          planToastShown.value = true
+        }
       }
     } catch (e) {
       console.error('Failed to fetch project plan after clarification:', e)
@@ -143,6 +170,29 @@ onMounted(() => {
     const statusFromQuery = planningStatus.value
     const shouldPreferPlan = statusFromQuery === 'planning_complete'
 
+    // Only attempt to fetch an existing plan when we have a status that could actually have one.
+    // This prevents noisy/early GET /projects/:id/plan calls during active planning or clarification.
+    const planFetchAllowed =
+      statusFromQuery === 'planning_complete' ||
+      statusFromQuery === 'designing' ||
+      statusFromQuery === 'design_complete' ||
+      statusFromQuery === 'implementing' ||
+      statusFromQuery === 'syncing' ||
+      statusFromQuery === 'assembling' ||
+      statusFromQuery === 'complete' ||
+      statusFromQuery === 'error'
+
+    // Only attempt to fetch an existing design when we have a status that could actually have one.
+    // This prevents noisy/early GET /projects/:id/design calls while we're still awaiting clarification.
+    const designFetchAllowed =
+      statusFromQuery === 'designing' ||
+      statusFromQuery === 'design_complete' ||
+      statusFromQuery === 'implementing' ||
+      statusFromQuery === 'syncing' ||
+      statusFromQuery === 'assembling' ||
+      statusFromQuery === 'complete' ||
+      statusFromQuery === 'error'
+
     // If we're explicitly in designing, show a loading screen and wait for the design.
     if (statusFromQuery === 'designing') {
       accepted.value = true
@@ -154,6 +204,10 @@ onMounted(() => {
       if (design) {
         designDoc.value = design
         designStatus.value = 'started'
+        if (!designToastShown.value) {
+          toastDesignReady()
+          designToastShown.value = true
+        }
       } else {
         designStatus.value = 'error'
         designError.value = 'Design is taking longer than expected. Please try again in a moment.'
@@ -170,6 +224,10 @@ onMounted(() => {
           if (plan) {
             planDoc.value = { status: 'complete', plan }
             planningStatus.value = 'planning_complete'
+            if (!planToastShown.value) {
+              toastPlanReady()
+              planToastShown.value = true
+            }
           }
         } catch (e) {
           console.error('Failed to fetch plan:', e)
@@ -181,29 +239,41 @@ onMounted(() => {
       return
     }
 
-    // Otherwise: prefer design
-    try {
-      const design = await projectApi.getDesign(projectId)
-      if (design) {
-        designDoc.value = design
-        accepted.value = true
-        planningStatus.value = 'designing'
-        return
+    // Otherwise: prefer design (but only if the status can legitimately have it)
+    if (designFetchAllowed) {
+      try {
+        const design = await projectApi.getDesign(projectId)
+        if (design) {
+          designDoc.value = design
+          accepted.value = true
+          planningStatus.value = 'designing'
+          if (!designToastShown.value) {
+            toastDesignReady()
+            designToastShown.value = true
+          }
+          return
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
 
-    // 2) Otherwise show plan (hydrate-first, then fetch if needed)
+    // 2) Otherwise show plan (hydrate-first, then fetch if allowed)
     if (!planDoc.value?.plan) {
-      try {
-        const plan = await projectApi.getPlan(projectId)
-        if (plan) {
-          planDoc.value = { status: 'complete', plan }
-          planningStatus.value = planningStatus.value || 'planning_complete'
+      if (planFetchAllowed) {
+        try {
+          const plan = await projectApi.getPlan(projectId)
+          if (plan) {
+            planDoc.value = { status: 'complete', plan }
+            planningStatus.value = planningStatus.value || 'planning_complete'
+            if (!planToastShown.value) {
+              toastPlanReady()
+              planToastShown.value = true
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch plan:', e)
         }
-      } catch (e) {
-        console.error('Failed to fetch plan:', e)
       }
     } else {
       // We have a plan already; optionally refresh it.
@@ -211,6 +281,19 @@ onMounted(() => {
     }
   })()
 })
+
+const handleAcceptDesign = () => {
+  if (!designDoc.value) return
+
+  // Move the user to the dedicated implementing page (clean waiting experience).
+  // We pass the design payload so the implementing page can kick off the agent.
+  router.push({
+    path: `/project/${projectId}/implementing`,
+    query: {
+      projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+    },
+  })
+}
 
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
@@ -227,6 +310,8 @@ const handleAcceptPlan = () => {
       designStatus.value = 'started'
       // Try to capture any design payload the backend returns.
       designDoc.value = (res as any)?.design ?? (res as any)?.result ?? res
+  toastDesignReady()
+  designToastShown.value = true
     })
     .catch((err) => {
       designStatus.value = 'error'
@@ -248,6 +333,9 @@ const handleModifyPlan = async () => {
     planningStatus.value = 'planning_complete'
     accepted.value = false
     feedback.value = ''
+  toastPlanUpdated()
+  // Allow future "Plan ready" toasts if the plan gets re-fetched later.
+  planToastShown.value = true
   } catch (err) {
     modifyError.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -271,6 +359,8 @@ const handleModifyDesign = async () => {
     const res = await projectApi.modifyDesign(projectId, designFeedback.value.trim())
     designDoc.value = (res as any).design
     designFeedback.value = ''
+  toastDesignUpdated()
+  designToastShown.value = true
   } catch (err) {
     modifyDesignError.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -292,7 +382,7 @@ const handleModifyDesign = async () => {
       </div>
     </div>
 
-    <div class="content container">
+  <div class="content container">
       <div class="status-header fade-in">
         <h1>{{ projectName || 'New Project' }}</h1>
         <p class="subtitle">Workspace</p>
@@ -304,6 +394,10 @@ const handleModifyDesign = async () => {
   :holdPlanningActive="!accepted"
   :planAccepted="accepted"
       />
+
+  <div v-if="planningStatus !== 'complete'" class="play-standalone">
+        <PlayWhileYouWait />
+      </div>
 
       <div v-if="planDoc && !accepted" class="glass fade-in plan-card">
         <h2 class="section-title">Planner</h2>
@@ -344,6 +438,7 @@ const handleModifyDesign = async () => {
             </button>
           </div>
         </div>
+
       </div>
 
       <div v-if="accepted" class="glass fade-in plan-card">
@@ -352,11 +447,27 @@ const handleModifyDesign = async () => {
         <p v-else-if="designStatus === 'started'" class="muted">Design agent started.</p>
         <p v-else-if="designStatus === 'error'" class="muted">Failed to start design.</p>
         <div v-if="designError" class="error-msg">{{ designError }}</div>
+
           <div v-if="designDoc" class="json" style="margin-top: 1rem;">
             <DesignViewer :design="designDoc" />
           </div>
 
         <div v-if="designDoc" class="review-actions">
+          <div class="review-header">
+            <h3 class="review-title">Is this design good?</h3>
+          </div>
+
+          <div class="review-buttons">
+            <button
+              class="btn-primary"
+              type="button"
+              :disabled="false"
+              @click="handleAcceptDesign"
+            >
+              Accept design
+            </button>
+          </div>
+
           <div class="modify-block">
             <label class="modify-label">Want changes? Describe what to modify in the design:</label>
             <textarea
@@ -440,6 +551,16 @@ const handleModifyDesign = async () => {
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
+}
+
+.play-standalone {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.play-standalone :deep(.play) {
+  width: min(520px, 100%);
 }
 
 .status-header {

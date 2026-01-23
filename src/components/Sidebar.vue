@@ -15,9 +15,11 @@ const theme = ref('dark')
 // Lightweight reactive auth snapshot for sidebar.
 // We also listen for storage events so changes in other components reflect here.
 const authSnapshot = ref(authState.get())
+const isSignedIn = ref(authState.isSignedIn())
 
 const refreshAuth = () => {
   authSnapshot.value = authState.get()
+  isSignedIn.value = authState.isSignedIn()
 }
 
 const userDisplayName = computed(() => {
@@ -92,12 +94,12 @@ onMounted(() => {
         <div class="avatar" aria-label="User avatar">{{ userInitials }}</div>
         <div class="user-info">
           <span class="user-name">{{ userDisplayName }}</span>
-          <span class="user-plan" v-if="authSnapshot">Signed in</span>
+          <span class="user-plan" v-if="isSignedIn">Signed in</span>
           <span class="user-plan" v-else>Not signed in</span>
         </div>
 
         <button
-          v-if="authSnapshot"
+          v-if="isSignedIn"
           class="logout-btn"
           type="button"
           @click="handleLogout"

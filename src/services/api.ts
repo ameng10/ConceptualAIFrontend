@@ -35,6 +35,7 @@ export interface Project {
         | 'designing'
         | 'design_complete'
         | 'implementing'
+    | 'implemented'
         | 'syncing'
         | 'assembling'
         | 'complete'
@@ -59,9 +60,14 @@ export const authState = {
         const username = getUsername()
         const accessToken = getAccessToken()
         const refreshToken = getRefreshToken()
-    if (!user) return null
-    // Tokens may be empty depending on backend behavior (e.g., register returns only { user }).
-    return { user, username: username ?? undefined, accessToken: accessToken ?? '', refreshToken: refreshToken ?? '' }
+        if (!user) return null
+        // Tokens may be empty depending on backend behavior (e.g., register returns only { user }).
+        return {
+            user,
+            username: username ?? undefined,
+            accessToken: accessToken ?? '',
+            refreshToken: refreshToken ?? '',
+        }
     },
     set(data: AuthResponse) {
         setUserId(data.user)
@@ -76,6 +82,41 @@ export const authState = {
     getUserId() {
         return getUserId()
     },
+    /**
+     * True only when we have an actual authenticated session (user id + non-empty tokens).
+     * Use this for UI "Signed in" display.
+     */
+    isSignedIn(): boolean {
+        const user = getUserId()
+        const accessToken = getAccessToken()
+        const refreshToken = getRefreshToken()
+        return Boolean(user) && Boolean(accessToken) && Boolean(refreshToken)
+    },
+}
+
+/**
+ * Initialize auth state on app startup.
+ *
+ * Goal: never appear "signed in" unless we actually have a stored user id.
+ * If storage is partially present/corrupt, we clear it so the UI starts signed out.
+ */
+export function initAuthOnStartup() {
+    const user = getUserId()
+    if (!user) {
+        // If there's no user id, make sure we clear any stale tokens/usernames.
+        clearAuthData()
+        return
+    }
+
+    // If a user id exists, keep it. But if tokens exist in a clearly invalid state, clear everything.
+    // We treat explicit empty-string tokens as invalid tokens.
+    const accessToken = getAccessToken()
+    const refreshToken = getRefreshToken()
+    const hasAnyToken = accessToken !== null || refreshToken !== null
+    const hasValidTokens = Boolean(accessToken) && Boolean(refreshToken)
+    if (hasAnyToken && !hasValidTokens) {
+        clearAuthData()
+    }
 }
 
 // API Modules
@@ -159,11 +200,32 @@ export const projectApi = {
     async startDesign(projectId: string, plan: any) {
         // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
         // Expected to return status/progress payload.
-        const response = await api.post<any>(`/api/projects/${projectId}/design`, { plan })
+    const response = await api.post<any>(`/api/projects/${projectId}/design`, { plan })
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
         return response.data
+    },
+
+    /**
+     * Placeholder endpoint: start the implementing agent.
+     * TODO: Replace with real API docs once available.
+     */
+    async startImplementation(projectId: string, design: any) {
+    const response = await api.post<any>(`/api/projects/${projectId}/implement`, { design })
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
+    /**
+      * Fetch implementation results.
+      * API.md: GET /projects/:projectId/implementations
+     */
+    async getImplementation(projectId: string) {
+          const response = await api.get<any>(`/api/projects/${projectId}/implementations`)
+          return (response.data as any)?.implementations ?? (response.data as any)?.implementation ?? (response.data as any)?.result ?? response.data
     },
 
     async getProject(projectId: string) {
@@ -175,7 +237,7 @@ export const projectApi = {
 
     async deleteProject(projectId: string) {
         // API.md: DELETE /projects/:projectId
-        const response = await api.delete<{ status?: string; error?: string; message?: string }>(`/api/projects/${projectId}`)
+    const response = await api.delete<{ status?: string; error?: string; message?: string }>(`/api/projects/${projectId}`)
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
@@ -198,7 +260,7 @@ export const projectApi = {
     async getDesign(projectId: string) {
         // Not documented in API.md yet; provides the finished design doc.
         // Support a few possible shapes: { design }, { result }, or the raw payload.
-        const response = await api.get<any>(`/api/projects/${projectId}/design`)
+    const response = await api.get<any>(`/api/projects/${projectId}/design`)
         return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 

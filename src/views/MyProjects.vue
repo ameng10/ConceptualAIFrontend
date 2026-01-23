@@ -17,17 +17,56 @@ const deleteError = ref('')
 const projectToDelete = ref<Project | null>(null)
 
 const handleViewDetails = async (project: Project) => {
-  // Prefer immediate detail display for the user.
-  // If planning is complete, prefetch the plan and pass it via query hydration.
-  // Otherwise, always navigate immediately and let the details page fetch what exists.
-  if (project.status === 'planning_complete') {
+  // Send the user to the *latest* stage that should have data.
+  // Priority: implementation > design > plan > workspace/clarification.
+
+  const projectNameQ = encodeURIComponent(project.name)
+  const statusQ = project.status === 'design_complete' ? 'designing' : project.status
+
+  const isImplementationStage =
+    project.status === 'implementing' ||
+  project.status === 'implemented' ||
+    project.status === 'syncing' ||
+    project.status === 'assembling' ||
+    project.status === 'complete'
+
+  const isDesignStage = project.status === 'designing' || project.status === 'design_complete'
+
+  const isPlanStage =
+    project.status === 'planning_complete' ||
+    project.status === 'designing' ||
+    project.status === 'design_complete' ||
+    project.status === 'implementing' ||
+  project.status === 'implemented' ||
+    project.status === 'syncing' ||
+    project.status === 'assembling' ||
+    project.status === 'complete'
+
+  if (isImplementationStage) {
+    await router.push({
+      path: `/project/${project._id}/implementing`,
+      query: { projectName: projectNameQ },
+    })
+    return
+  }
+
+  if (isDesignStage) {
+    await router.push({
+      path: `/project/${project._id}`,
+      query: { projectName: projectNameQ, planningStatus: statusQ },
+    })
+    return
+  }
+
+  // For plan stage, we can optionally prefetch and hydrate (fast display).
+  if (isPlanStage) {
     try {
       const plan = await projectApi.getPlan(project._id)
       await router.push({
         path: `/project/${project._id}`,
         query: {
-          projectName: encodeURIComponent(project.name),
-          planningStatus: project.status,
+          projectName: projectNameQ,
+          planningStatus: statusQ,
           ...(plan?.plan ? { plan: encodeURIComponent(String(plan.plan)) } : {}),
         },
       })
@@ -40,8 +79,8 @@ const handleViewDetails = async (project: Project) => {
   await router.push({
     path: `/project/${project._id}`,
     query: {
-      projectName: encodeURIComponent(project.name),
-      planningStatus: project.status === 'design_complete' ? 'designing' : project.status,
+      projectName: projectNameQ,
+      planningStatus: statusQ,
     },
   })
 }
