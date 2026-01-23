@@ -5,7 +5,8 @@ import { projectApi } from '@/services/api'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
-import { ArrowLeft } from 'lucide-vue-next'
+import DesignViewer from '@/components/DesignViewer.vue'
+import { ArrowLeft, ChevronDown } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,7 @@ const projectName = ref<string>('')
 const implementStatus = ref<'starting' | 'started' | 'error'>('starting')
 const implementError = ref('')
 const implementationDoc = ref<any | null>(null)
+const designDoc = ref<any | null>(null)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -77,6 +79,12 @@ const startIfNeeded = async () => {
       const existing = await pollImplementationUntilReady()
       if (existing) {
         implementationDoc.value = existing
+        // Load design for the bottom dropdown (best effort).
+        try {
+          designDoc.value = await projectApi.getDesign(projectId)
+        } catch {
+          // ignore
+        }
         return
       }
       // If we couldn't fetch results yet, fall through and try starting if appropriate.
@@ -98,6 +106,7 @@ const startIfNeeded = async () => {
       // If implementation hasn't started yet, start it.
       const design = await projectApi.getDesign(projectId)
       if (design) {
+  designDoc.value = design
         const res = await projectApi.startImplementation(projectId, design)
         implementStatus.value = 'started'
         const maybe = (res as any)?.implementations ?? (res as any)?.implementation ?? (res as any)?.result ?? null
@@ -117,6 +126,12 @@ const startIfNeeded = async () => {
   const impl = await pollImplementationUntilReady()
   if (impl) {
     implementationDoc.value = impl
+    // Load design for the bottom dropdown (best effort).
+    try {
+      designDoc.value = await projectApi.getDesign(projectId)
+    } catch {
+      // ignore
+    }
   } else {
     implementStatus.value = 'error'
     implementError.value = 'Implementation is taking longer than expected. Please try again in a moment.'
@@ -163,6 +178,16 @@ onMounted(() => {
           <ImplementationExplorer :implementation="implementationDoc" />
         </div>
       </div>
+
+      <details v-if="designDoc" class="glass fade-in design-dropdown">
+        <summary class="design-summary">
+          <span class="design-summary-left">Design</span>
+          <ChevronDown class="design-chev" :size="18" />
+        </summary>
+        <div class="design-body">
+          <DesignViewer :design="designDoc" />
+        </div>
+      </details>
     </div>
   </div>
 </template>
@@ -238,5 +263,41 @@ onMounted(() => {
 .error-msg {
   color: rgba(239, 68, 68, 0.95);
   font-size: 0.8125rem;
+}
+
+.design-dropdown {
+  margin-top: 1.25rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.design-summary {
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.design-summary::-webkit-details-marker {
+  display: none;
+}
+
+.design-chev {
+  color: var(--text-dim);
+  transition: transform 140ms ease;
+}
+
+.design-dropdown[open] .design-chev {
+  transform: rotate(180deg);
+}
+
+.design-body {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--glass-border);
 }
 </style>

@@ -96,12 +96,16 @@ const normalized = computed(() => normalize(props.implementation))
 const openConcepts = ref<Record<string, boolean>>({})
 const openFiles = ref<Record<string, boolean>>({})
 
-const toggleConcept = (conceptName: string) => {
-  openConcepts.value[conceptName] = !openConcepts.value[conceptName]
+const onConceptToggle = (conceptName: string, e: Event) => {
+  const el = e.currentTarget as HTMLDetailsElement | null
+  if (!el) return
+  openConcepts.value[conceptName] = el.open
 }
 
-const toggleFile = (key: string) => {
-  openFiles.value[key] = !openFiles.value[key]
+const onFileToggle = (key: string, e: Event) => {
+  const el = e.currentTarget as HTMLDetailsElement | null
+  if (!el) return
+  openFiles.value[key] = el.open
 }
 
 const fileText = (f: ImplementationFile) => f.contents ?? f.content ?? f.text ?? ''
@@ -124,9 +128,9 @@ const fileText = (f: ImplementationFile) => f.contents ?? f.content ?? f.text ??
         :key="c.name"
         class="concept"
         :open="openConcepts[c.name] ?? true"
-        @toggle.prevent
+  @toggle="onConceptToggle(c.name, $event)"
       >
-        <summary class="concept-summary" @click.prevent="toggleConcept(c.name)">
+  <summary class="concept-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
             <ChevronDown class="chev chev-down" :size="16" />
@@ -144,9 +148,9 @@ const fileText = (f: ImplementationFile) => f.contents ?? f.content ?? f.text ??
             :key="`${c.name}::${f.path}`"
             class="file"
             :open="openFiles[`${c.name}::${f.path}`] ?? false"
-            @toggle.prevent
+            @toggle="onFileToggle(`${c.name}::${f.path}`, $event)"
           >
-            <summary class="file-summary" @click.prevent="toggleFile(`${c.name}::${f.path}`)">
+            <summary class="file-summary">
               <span class="twisty">
                 <ChevronRight class="chev chev-right" :size="16" />
                 <ChevronDown class="chev chev-down" :size="16" />
