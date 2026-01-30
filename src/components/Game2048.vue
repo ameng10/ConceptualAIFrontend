@@ -15,6 +15,7 @@ const board = ref<Cell[][]>([])
 const score = ref(0)
 const best = ref(0)
 const won = ref(false)
+const winDismissed = ref(false)
 const over = ref(false)
 
 const storageKeyBest = 'conceptualai_2048_best'
@@ -101,12 +102,17 @@ function setGameOverFlags(b: Cell[][]) {
 function reset() {
   score.value = 0
   won.value = false
+  winDismissed.value = false
   over.value = false
   const b = emptyBoard()
   spawn(b)
   spawn(b)
   board.value = b
   setGameOverFlags(b)
+}
+
+function continueAfterWin() {
+  winDismissed.value = true
 }
 
 function slideAndMergeLine(line: Cell[]): { out: Cell[]; gained: number; moved: boolean } {
@@ -252,7 +258,11 @@ onBeforeUnmount(() => {
       <div class="hint">Use arrow keys or WASD</div>
     </div>
 
-    <div class="board" :data-over="over ? 'true' : 'false'" :data-won="won ? 'true' : 'false'">
+    <div
+      class="board"
+      :data-over="over ? 'true' : 'false'"
+      :data-won="won && !winDismissed ? 'true' : 'false'"
+    >
       <div v-for="cell in flatCells" :key="cell.id" class="cell" :class="tileClass(cell.value)">
         <span v-if="cell.value !== 0">{{ cell.value }}</span>
       </div>
@@ -262,9 +272,13 @@ onBeforeUnmount(() => {
         <button class="btn" type="button" @click="reset">Try again</button>
       </div>
 
-      <div v-else-if="won" class="overlay" data-variant="win">
+      <div v-else-if="won && !winDismissed" class="overlay" data-variant="win">
         <div class="overlay-title">2048!</div>
         <div class="overlay-sub">Keep going if you want.</div>
+        <div class="overlay-actions">
+          <button class="btn" type="button" @click="continueAfterWin">Continue</button>
+          <button class="btn" type="button" @click="reset">New game</button>
+        </div>
       </div>
     </div>
 
@@ -418,6 +432,14 @@ onBeforeUnmount(() => {
 .overlay-title {
   font-size: 1.05rem;
   font-weight: 900;
+}
+
+.overlay-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .overlay-sub {

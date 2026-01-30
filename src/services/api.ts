@@ -36,6 +36,8 @@ export interface Project {
         | 'design_complete'
         | 'implementing'
     | 'implemented'
+        | 'sync_generating'
+        | 'syncs_generated'
         | 'syncing'
         | 'assembling'
         | 'complete'
@@ -48,6 +50,13 @@ export interface Project {
 
 export interface ProjectListResponse {
     projects: Project
+}
+
+export interface SyncsResponse {
+    syncs?: any[]
+    apiDefinition?: any
+    endpointBundles?: any[]
+    status?: string
 }
 
 /**
@@ -226,6 +235,75 @@ export const projectApi = {
     async getImplementation(projectId: string) {
           const response = await api.get<any>(`/api/projects/${projectId}/implementations`)
           return (response.data as any)?.implementations ?? (response.data as any)?.implementation ?? (response.data as any)?.result ?? response.data
+    },
+
+    /**
+     * API.md: POST /projects/:projectId/syncs
+     */
+    async startSyncGeneration(projectId: string) {
+        const response = await api.post<any>(`/api/projects/${projectId}/syncs`, {})
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
+    /**
+     * API.md: GET /projects/:projectId/syncs
+     */
+    async getSyncs(projectId: string): Promise<SyncsResponse> {
+        const response = await api.get<any>(`/api/projects/${projectId}/syncs`)
+        // API.md: { syncs: [...], apiDefinition: {...}, endpointBundles: [...] }
+        // Keep a few fallbacks for backend shape drift.
+        const data = response.data as any
+        const candidates = [
+            data,
+            data?.result,
+            data?.response,
+            data?.data,
+            data?.payload,
+            data?.syncsResponse,
+        ].filter(Boolean)
+
+        for (const c of candidates) {
+            if ((c as any)?.syncs || (c as any)?.apiDefinition || (c as any)?.endpointBundles) return c
+        }
+
+        return data
+    },
+
+    /**
+     * Placeholder: start the frontend "designing" agent for assembling.
+     * TODO: Replace endpoints/payload with the updated API doc.
+     */
+    async startFrontendAssembling(projectId: string, payload: { openApiYaml: string; plan: any }) {
+        const response = await api.post<any>(`/api/projects/${projectId}/assemble/frontend`, payload)
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
+    /**
+     * Placeholder: start backend repository assembly.
+     * TODO: Replace endpoints/payload with the updated API doc.
+     */
+    async startBackendAssembling(projectId: string, payload: any) {
+        const response = await api.post<any>(`/api/projects/${projectId}/assemble/backend`, payload)
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
+    /**
+     * Placeholder: poll for assembling completion + zip URLs.
+     * Expected shape: { frontend: { status, zipUrl }, backend: { status, zipUrl } }
+     * TODO: Replace endpoint/shape with the updated API doc.
+     */
+    async getAssemblingStatus(projectId: string) {
+        const response = await api.get<any>(`/api/projects/${projectId}/assemble/status`)
+        return response.data
     },
 
     async getProject(projectId: string) {

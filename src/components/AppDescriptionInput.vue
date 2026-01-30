@@ -74,12 +74,30 @@ const handleSubmit = () => {
 }
 
 .input-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
   background: var(--input-bg);
   border: 1px solid var(--border);
   box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Gradient border ring (no interior tint) */
+.input-card::before {
+  content: '';
+  position: absolute;
+  /* Slightly overlap outside edge to avoid antialiasing “white halo” */
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 1;
 }
 
 .input-group {

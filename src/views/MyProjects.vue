@@ -18,17 +18,21 @@ const projectToDelete = ref<Project | null>(null)
 
 const handleViewDetails = async (project: Project) => {
   // Send the user to the *latest* stage that should have data.
-  // Priority: implementation > design > plan > workspace/clarification.
+  // Priority: syncs > implementation > design > plan > workspace/clarification.
 
   const projectNameQ = encodeURIComponent(project.name)
   const statusQ = project.status === 'design_complete' ? 'designing' : project.status
 
-  const isImplementationStage =
-    project.status === 'implementing' ||
-  project.status === 'implemented' ||
+  const isSyncStage =
+    project.status === 'sync_generating' ||
+    project.status === 'syncs_generated' ||
     project.status === 'syncing' ||
     project.status === 'assembling' ||
     project.status === 'complete'
+
+  const isAssemblingStage = project.status === 'assembling' || project.status === 'complete'
+
+  const isImplementationStage = project.status === 'implementing' || project.status === 'implemented'
 
   const isDesignStage = project.status === 'designing' || project.status === 'design_complete'
 
@@ -41,6 +45,22 @@ const handleViewDetails = async (project: Project) => {
     project.status === 'syncing' ||
     project.status === 'assembling' ||
     project.status === 'complete'
+
+  if (isAssemblingStage) {
+    await router.push({
+      path: `/project/${project._id}/assembling`,
+      query: { projectName: projectNameQ, projectStatus: project.status },
+    })
+    return
+  }
+
+  if (isSyncStage) {
+    await router.push({
+      path: `/project/${project._id}/syncing`,
+      query: { projectName: projectNameQ, projectStatus: project.status },
+    })
+    return
+  }
 
   if (isImplementationStage) {
     await router.push({
@@ -162,7 +182,7 @@ onMounted(() => {
       </div>
 
       <div class="controls glass">
-        <div class="search-box">
+  <div class="search-box gradient-outline">
           <Search :size="18" />
           <input v-model="query" type="text" placeholder="Search projects..." />
         </div>
@@ -181,7 +201,7 @@ onMounted(() => {
       </div>
 
       <div class="projects-grid">
-        <div v-for="project in filteredProjects" :key="project._id" class="project-card glass">
+  <div v-for="project in filteredProjects" :key="project._id" class="project-card glass gradient-outline">
           <div class="card-header">
             <History :size="20" class="neon-icon" />
             <span class="date">{{ project.createdAt ? new Date(project.createdAt).toLocaleDateString() : '' }}</span>
@@ -209,29 +229,66 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Delete confirm modal -->
-      <div v-if="showDeleteConfirm" class="modal-backdrop" @click="closeDeleteConfirm">
-        <div class="modal glass" @click.stop>
-          <h3 class="modal-title">Delete project</h3>
-          <p class="modal-text">Are you sure you want to delete this project?</p>
-          <p v-if="projectToDelete" class="modal-project">{{ projectToDelete.name }}</p>
+      <!-- Delete confirm modal (teleported so it's always viewport-centered) -->
+      <teleport to="body">
+        <div v-if="showDeleteConfirm" class="modal-backdrop" @click="closeDeleteConfirm">
+          <div class="modal glass" @click.stop>
+            <h3 class="modal-title">Delete project</h3>
+            <p class="modal-text">Are you sure you want to delete this project?</p>
+            <p v-if="projectToDelete" class="modal-project">{{ projectToDelete.name }}</p>
 
-          <div v-if="deleteError" class="modal-error">{{ deleteError }}</div>
+            <div v-if="deleteError" class="modal-error">{{ deleteError }}</div>
 
-          <div class="modal-actions">
-            <button class="btn-secondary" type="button" :disabled="deleting" @click="closeDeleteConfirm">Cancel</button>
-            <button class="btn-danger" type="button" :disabled="deleting" @click="confirmDelete">
-              <span v-if="!deleting">Yes, delete</span>
-              <span v-else>Deleting…</span>
-            </button>
+            <div class="modal-actions">
+              <button class="btn-secondary" type="button" :disabled="deleting" @click="closeDeleteConfirm">
+                Cancel
+              </button>
+              <button class="btn-danger" type="button" :disabled="deleting" @click="confirmDelete">
+                <span v-if="!deleting">Yes, delete</span>
+                <span v-else>Deleting…</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </teleport>
     </div>
   </div>
 </template>
 
 <style scoped>
+.gradient-outline {
+  position: relative;
+  isolation: isolate;
+}
+
+/* If a base border exists (e.g., from .glass), hide it so the gradient is the true outer edge. */
+.gradient-outline {
+  border-color: transparent;
+}
+
+/* Gradient border ring (no interior tint) */
+.gradient-outline::before {
+  content: '';
+  position: absolute;
+  /* Slight negative inset to fully cover any underlying 1px edge from other styles */
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Keep all card/search content above the ring */
+.gradient-outline > * {
+  position: relative;
+  z-index: 1;
+}
+
 .projects-view {
   flex: 1;
   display: flex;
@@ -270,13 +327,14 @@ h1 {
 }
 
 .search-box {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0 1rem;
   background: var(--input-bg);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: calc(var(--radius) - 4px);
   color: var(--text-dim);
 }
@@ -310,6 +368,7 @@ h1 {
 }
 
 .project-card {
+  position: relative;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -432,6 +491,7 @@ h3 {
 }
 
 .view-link {
+  position: relative;
   font-size: 0.875rem;
   font-weight: 700;
   padding: 0.5rem 0.85rem;
@@ -443,10 +503,33 @@ h3 {
   transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.view-link::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
 .view-link:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.12), 0 0 18px rgba(45, 212, 191, 0.08);
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.15),
+    0 0 18px rgba(45, 212, 191, 0.22),
+    0 0 32px rgba(59, 130, 246, 0.16);
+}
+
+.view-link:hover::before {
+  opacity: 1;
 }
 
 .view-link:active {
@@ -455,17 +538,27 @@ h3 {
 
 .view-link:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25);
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.2),
+    0 0 24px rgba(45, 212, 191, 0.28);
+}
+
+.view-link:focus-visible::before {
+  opacity: 1;
 }
 
 .modal-backdrop {
   position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  place-items: center;
   padding: 1.5rem;
   z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
 }
 
 .modal {

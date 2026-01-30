@@ -123,7 +123,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
     <div class="container fade-in">
       <div class="hero">
         <h1 class="animated-gradient-text">What are you building?</h1>
-        <p class="subtitle">Architect your conceptual backend in seconds.</p>
+        <p class="subtitle">Architect your conceptual backend in minutes.</p>
       </div>
 
       <div class="input-wrapper">

@@ -63,8 +63,11 @@ apiClient.interceptors.request.use(
       delete (config.headers as any)['Content-Type']
     }
 
-  // Skip token injection for auth endpoints that don't require it
-  if (config.url === '/auth/register' || config.url === '/auth/login' || config.url === '/auth/refresh') return config
+    const url = config.url || ''
+
+    // Skip token injection for auth endpoints that don't require it
+    // (support both '/auth/*' and '/api/auth/*' depending on proxy/backend setup)
+    if (url.startsWith('/auth/') || url.startsWith('/api/auth/')) return config
 
     // Do not override explicit Authorization headers
     if ((config.headers as any)?.Authorization) return config
@@ -89,7 +92,8 @@ apiClient.interceptors.response.use(
       !originalRequest._retry
     ) {
       // Skip refresh for auth endpoints (avoid loops)
-      if (originalRequest.url?.startsWith('/auth/')) {
+      const originalUrl = originalRequest.url || ''
+      if (originalUrl.startsWith('/auth/') || originalUrl.startsWith('/api/auth/')) {
         return Promise.reject(error)
       }
 

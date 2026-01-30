@@ -144,6 +144,7 @@ onMounted(() => {
   font-size: 1.125rem;
   letter-spacing: -0.01em;
   background: linear-gradient(135deg, var(--text) 0%, var(--neon-teal) 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -168,20 +169,58 @@ onMounted(() => {
 }
 
 .nav-item-content {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 0.75rem;
   border-radius: 8px;
   color: var(--text-dim);
+  border: 1px solid transparent;
   transition: all 0.2s;
   font-weight: 500;
   font-size: 0.9375rem;
 }
 
+/* Gradient glow ring on hover/focus */
+.nav-item-content::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
 .nav-item-content:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.15),
+    0 0 22px rgba(45, 212, 191, 0.28),
+    0 0 38px rgba(59, 130, 246, 0.18);
+}
+
+.nav-item-content:hover::before {
+  opacity: 1;
+}
+
+.nav-item:focus-visible .nav-item-content {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.22),
+    0 0 26px rgba(45, 212, 191, 0.32);
+}
+
+.nav-item:focus-visible .nav-item-content::before {
+  opacity: 1;
 }
 
 .nav-item-content.active {
@@ -252,6 +291,7 @@ onMounted(() => {
 }
 
 .logout-btn {
+  position: relative;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -266,8 +306,40 @@ onMounted(() => {
   transition: var(--transition);
 }
 
+.logout-btn::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
 .logout-btn:hover {
   filter: brightness(1.1);
-  border-color: var(--primary);
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.15),
+    0 0 18px rgba(45, 212, 191, 0.28),
+    0 0 32px rgba(59, 130, 246, 0.18);
+}
+
+.logout-btn:hover::before {
+  opacity: 1;
+}
+
+.logout-btn:focus-visible {
+  outline: none;
+}
+
+.logout-btn:focus-visible::before {
+  opacity: 1;
 }
 </style>

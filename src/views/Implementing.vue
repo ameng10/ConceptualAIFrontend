@@ -19,6 +19,9 @@ const implementError = ref('')
 const implementationDoc = ref<any | null>(null)
 const designDoc = ref<any | null>(null)
 
+const isGeneratingSyncs = ref(false)
+const generateSyncsError = ref('')
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const pollImplementationUntilReady = async () => {
@@ -141,6 +144,27 @@ const startIfNeeded = async () => {
 onMounted(() => {
   startIfNeeded()
 })
+
+const handleGenerateSyncs = async () => {
+  generateSyncsError.value = ''
+  isGeneratingSyncs.value = true
+
+  // Navigate immediately so the user sees the generating screen + games right away.
+  // The syncing page will poll (and can start generation if needed).
+  const navPromise = router.push({
+    path: `/project/${projectId}/syncing`,
+    query: {
+      projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+    },
+  })
+
+  try {
+    await navPromise
+  } catch (e) {
+    generateSyncsError.value = e instanceof Error ? e.message : String(e)
+    isGeneratingSyncs.value = false
+  }
+}
 </script>
 
 <template>
@@ -176,6 +200,21 @@ onMounted(() => {
 
         <div v-if="implementationDoc" class="json" style="margin-top: 1rem;">
           <ImplementationExplorer :implementation="implementationDoc" />
+        </div>
+
+        <div v-if="implementationDoc" class="review-actions">
+          <div class="review-header">
+            <h3 class="review-title">Ready to continue?</h3>
+          </div>
+
+          <div class="review-buttons">
+            <button class="btn-primary" type="button" :disabled="isGeneratingSyncs" @click="handleGenerateSyncs">
+              <span v-if="!isGeneratingSyncs">Generate syncs</span>
+              <span v-else>Generating…</span>
+            </button>
+          </div>
+
+          <div v-if="generateSyncsError" class="error-msg" style="margin-top: 0.75rem;">{{ generateSyncsError }}</div>
         </div>
       </div>
 
@@ -263,6 +302,62 @@ onMounted(() => {
 .error-msg {
   color: rgba(239, 68, 68, 0.95);
   font-size: 0.8125rem;
+}
+
+.review-actions {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.review-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.review-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Match ProjectStatus.vue accept button styling */
+.btn-primary,
+.btn-secondary {
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+  border: none;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .design-dropdown {

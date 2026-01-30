@@ -56,9 +56,32 @@ const getEntityDetails = (entityWrapper: unknown) => {
   return (entityWrapper as any)[key] as any
 }
 
+const coerceDescriptionObject = (value: unknown) => {
+  if (typeof value === 'string') {
+    return { description: value }
+  }
+  return value
+}
+
+const stringToSteps = (value: string) => {
+  const normalized = value.replace(/\s*→\s*/g, '->')
+  if (!normalized.includes('->')) return null
+  const steps = normalized
+    .split('->')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return steps.length ? steps : null
+}
+
 const getFlowName = (flowWrapper: unknown) => {
   if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).name === 'string') {
     return (flowWrapper as any).name as string
+  }
+  if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).title === 'string') {
+    return (flowWrapper as any).title as string
+  }
+  if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).flow === 'string') {
+    return (flowWrapper as any).flow as string
   }
   if (flowWrapper && typeof flowWrapper === 'object' && typeof (flowWrapper as any).flow_name === 'string') {
     return (flowWrapper as any).flow_name as string
@@ -68,20 +91,52 @@ const getFlowName = (flowWrapper: unknown) => {
 }
 
 const getFlowDetails = (flowWrapper: unknown) => {
-  if (flowWrapper && typeof flowWrapper === 'object' && (flowWrapper as any).name) {
-    return flowWrapper as any
-  }
-  if (flowWrapper && typeof flowWrapper === 'object' && (flowWrapper as any).flow_name) {
-    return flowWrapper as any
+  // If the flow is already in structured form, return it directly.
+  if (flowWrapper && typeof flowWrapper === 'object' && !Array.isArray(flowWrapper)) {
+    const obj = flowWrapper as any
+    if (
+      typeof obj.name === 'string' ||
+      typeof obj.title === 'string' ||
+      typeof obj.flow_name === 'string' ||
+      typeof obj.description === 'string' ||
+      Array.isArray(obj.steps) ||
+      Array.isArray(obj.actions)
+    ) {
+      // Some plans use `actions: string[]` instead of `steps: string[]`.
+      if (!Array.isArray(obj.steps) && Array.isArray(obj.actions)) {
+        return { ...obj, steps: obj.actions }
+      }
+      // Some plans use `actions` as a string with arrow separators.
+      if (!Array.isArray(obj.steps) && typeof obj.actions === 'string') {
+        const steps = stringToSteps(obj.actions)
+        return steps ? { ...obj, steps, description: obj.description ?? obj.actions } : { ...obj, description: obj.description ?? obj.actions }
+      }
+      return obj
+    }
   }
   const key = getSingleKey(flowWrapper)
   if (!key) return null
-  return (flowWrapper as any)[key] as any
+  const raw = (flowWrapper as any)[key] as any
+  if (typeof raw === 'string') {
+    const steps = stringToSteps(raw)
+    return steps ? { description: raw, steps } : { description: raw }
+  }
+  // Wrapper may contain { actions: [...] } instead of { steps: [...] }
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && !Array.isArray((raw as any).steps) && Array.isArray((raw as any).actions)) {
+    return { ...(raw as any), steps: (raw as any).actions }
+  }
+  return raw
 }
 
 const getPageName = (pageWrapper: unknown) => {
   if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).name === 'string') {
     return (pageWrapper as any).name as string
+  }
+  if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).title === 'string') {
+    return (pageWrapper as any).title as string
+  }
+  if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).page === 'string') {
+    return (pageWrapper as any).page as string
   }
   if (pageWrapper && typeof pageWrapper === 'object' && typeof (pageWrapper as any).page_name === 'string') {
     return (pageWrapper as any).page_name as string
@@ -91,19 +146,45 @@ const getPageName = (pageWrapper: unknown) => {
 }
 
 const getPageDetails = (pageWrapper: unknown) => {
-  if (pageWrapper && typeof pageWrapper === 'object' && (pageWrapper as any).name) {
-    return pageWrapper as any
-  }
-  if (pageWrapper && typeof pageWrapper === 'object' && (pageWrapper as any).page_name) {
-    return pageWrapper as any
+  // If the page is already in structured form, return it directly.
+  if (pageWrapper && typeof pageWrapper === 'object' && !Array.isArray(pageWrapper)) {
+    const obj = pageWrapper as any
+    if (
+      typeof obj.name === 'string' ||
+      typeof obj.title === 'string' ||
+      typeof obj.page === 'string' ||
+      typeof obj.page_name === 'string' ||
+      typeof obj.description === 'string' ||
+      Array.isArray(obj.elements) ||
+      Array.isArray(obj.queries)
+    ) {
+      return obj
+    }
   }
   const key = getSingleKey(pageWrapper)
   if (!key) return null
-  return (pageWrapper as any)[key] as any
+  return coerceDescriptionObject((pageWrapper as any)[key] as any)
 }
 
 const entityPropertiesToLines = (properties: unknown) => {
-  if (Array.isArray(properties)) return properties.map((p) => String(p))
+  if (Array.isArray(properties)) {
+    return properties
+      .map((p) => {
+        if (p && typeof p === 'object') {
+          const obj = p as Record<string, unknown>
+          const name = typeof obj.name === 'string' ? obj.name : null
+          const type = typeof obj.type === 'string' ? obj.type : null
+          const desc = typeof obj.description === 'string' ? obj.description : null
+
+          if (name || type || desc) {
+            const head = name && type ? `${name}: ${type}` : name ? name : type ? type : ''
+            return desc ? (head ? `${head} — ${desc}` : desc) : head
+          }
+        }
+        return String(p)
+      })
+      .filter((s) => String(s).trim().length)
+  }
   if (properties && typeof properties === 'object') {
     return Object.entries(properties as Record<string, unknown>)
       .map(([k, v]) => `${k}: ${String(v)}`)
@@ -116,19 +197,34 @@ const getEntityNameAny = (entityWrapper: unknown) => {
   if (entityWrapper && typeof entityWrapper === 'object' && typeof (entityWrapper as any).name === 'string') {
     return (entityWrapper as any).name as string
   }
+  if (entityWrapper && typeof entityWrapper === 'object' && typeof (entityWrapper as any).title === 'string') {
+    return (entityWrapper as any).title as string
+  }
+  if (entityWrapper && typeof entityWrapper === 'object' && typeof (entityWrapper as any).concept === 'string') {
+    return (entityWrapper as any).concept as string
+  }
   return getEntityName(entityWrapper)
 }
 
 const getEntityDetailsAny = (entityWrapper: unknown) => {
-  if (entityWrapper && typeof entityWrapper === 'object' && (entityWrapper as any).name) {
+  if (entityWrapper && typeof entityWrapper === 'object' && ((entityWrapper as any).name || (entityWrapper as any).concept)) {
     return entityWrapper as any
   }
-  return getEntityDetails(entityWrapper)
+  return coerceDescriptionObject(getEntityDetails(entityWrapper))
 }
 
 const getEntityAttributesAny = (details: any) => {
   // Some plans use "attributes" instead of "properties".
-  return details?.properties ?? details?.attributes
+  // Some plans use "state" to describe the stored data instead.
+  const attrs = details?.properties ?? details?.attributes ?? details?.fields ?? details?.state
+  // Some plans use state as a human-readable string (e.g. "Users (username, password)").
+  // Render it as a single bullet line instead of dropping it.
+  if (typeof attrs === 'string') return [attrs]
+  return attrs
+}
+
+const getEntityDescriptionAny = (details: any) => {
+  return details?.description ?? details?.purpose ?? details?.principle
 }
 
 const props = defineProps<{
@@ -140,11 +236,107 @@ const copied = ref(false)
 
 const normalized = computed(() => {
   const plan = props.plan || ({} as PlanShape)
+
+  // Support entities shape where the backend returns:
+  // entities: [ { Concept: "...", ConceptState: "...", ... } ]
+  // by expanding it into the viewer's preferred "one entity per wrapper" form.
+  const normalizeKeyedSection = (
+    section: unknown,
+    valueCoercer: (v: unknown) => unknown = (v) => v,
+    keepObjectPredicate: (obj: Record<string, unknown>) => boolean = () => false,
+  ): any[] => {
+    if (!Array.isArray(section)) return []
+    const expanded: any[] = []
+    for (const entry of section) {
+      if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        const record = entry as Record<string, unknown>
+        // Some sections already use the structured shape (e.g. { name, steps })
+        // and should be kept as-is even though they have multiple keys.
+        if (keepObjectPredicate(record)) {
+          expanded.push(entry)
+          continue
+        }
+        const keys = Object.keys(record)
+        // If it's already a single-key wrapper, keep it.
+        if (keys.length <= 1) {
+          expanded.push(entry)
+          continue
+        }
+        // Multi-key object: expand into individual wrappers.
+        for (const [k, v] of Object.entries(record)) {
+          expanded.push({ [k]: valueCoercer(v) })
+        }
+        continue
+      }
+      expanded.push(entry)
+    }
+    return expanded
+  }
+
+  const isStructuredFlowObject = (obj: Record<string, unknown>) => {
+    return (
+      typeof obj.name === 'string' ||
+      typeof obj.flow === 'string' ||
+      typeof obj.flow_name === 'string' ||
+      typeof obj.title === 'string' ||
+      Array.isArray(obj.steps) ||
+      typeof obj.description === 'string'
+    )
+  }
+
+  const isStructuredPageObject = (obj: Record<string, unknown>) => {
+    return (
+      typeof obj.name === 'string' ||
+      typeof obj.page === 'string' ||
+      typeof obj.page_name === 'string' ||
+      typeof obj.title === 'string' ||
+      Array.isArray(obj.elements) ||
+      Array.isArray(obj.queries) ||
+      typeof obj.description === 'string'
+    )
+  }
+
+  const isStructuredEntityObject = (obj: Record<string, unknown>) => {
+    return (
+      typeof obj.name === 'string' ||
+      typeof obj.title === 'string' ||
+      typeof obj.concept === 'string' ||
+      typeof obj.description === 'string' ||
+      typeof obj.state === 'string' ||
+      Array.isArray(obj.fields) ||
+      Array.isArray(obj.attributes) ||
+      Array.isArray(obj.properties)
+    )
+  }
+
+  const normalizeFlows = (flows: unknown) =>
+    normalizeKeyedSection(
+      flows,
+      (v) => {
+        if (typeof v === 'string') {
+          const steps = stringToSteps(v)
+          return steps ? { description: v, steps } : { description: v }
+        }
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+          const obj = v as any
+          if (!Array.isArray(obj.steps) && Array.isArray(obj.actions)) {
+            return { ...obj, steps: obj.actions }
+          }
+        }
+        return v
+      },
+      isStructuredFlowObject,
+    )
+
   return {
     summary: plan.summary,
-    entities: Array.isArray(plan.entities) ? plan.entities : [],
-    userFlows: Array.isArray(plan.user_flows) ? plan.user_flows : [],
-    pages: Array.isArray(plan.pages) ? plan.pages : [],
+    entities: normalizeKeyedSection(
+      plan.entities,
+      coerceDescriptionObject,
+      isStructuredEntityObject,
+    ),
+    userFlows: normalizeFlows(plan.user_flows),
+    pages: normalizeKeyedSection(plan.pages, coerceDescriptionObject, isStructuredPageObject),
     technical: Array.isArray(plan.technical_requirements) ? plan.technical_requirements : [],
   }
 })
@@ -227,8 +419,8 @@ const tryCopy = async () => {
             </summary>
 
             <div class="item-body">
-              <p v-if="getEntityDetailsAny(entityWrapper)?.description" class="item-desc">
-                {{ getEntityDetailsAny(entityWrapper)?.description }}
+              <p v-if="getEntityDescriptionAny(getEntityDetailsAny(entityWrapper))" class="item-desc">
+                {{ getEntityDescriptionAny(getEntityDetailsAny(entityWrapper)) }}
               </p>
 
               <ul
@@ -315,6 +507,9 @@ const tryCopy = async () => {
               </p>
               <ul v-if="Array.isArray(getPageDetails(pageWrapper)?.elements)" class="bullets">
                 <li v-for="(e, eIdx) in getPageDetails(pageWrapper).elements" :key="eIdx">{{ e }}</li>
+              </ul>
+              <ul v-else-if="Array.isArray(getPageDetails(pageWrapper)?.queries)" class="bullets">
+                <li v-for="(q, qIdx) in getPageDetails(pageWrapper).queries" :key="qIdx">{{ q }}</li>
               </ul>
             </div>
           </details>
