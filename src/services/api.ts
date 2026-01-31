@@ -40,6 +40,7 @@ export interface Project {
         | 'syncs_generated'
         | 'syncing'
         | 'assembling'
+        | 'assembled'
         | 'complete'
         | 'error'
         | 'awaiting_clarification'
@@ -273,37 +274,69 @@ export const projectApi = {
     },
 
     /**
-     * Placeholder: start the frontend "designing" agent for assembling.
-     * TODO: Replace endpoints/payload with the updated API doc.
+     * Start the build process (both backend assembly and frontend generation).
+     * POST /projects/:projectId/build
+     * 
+     * Success response: { status: 'processing', message: 'Build started. Poll /projects/{id}/build/status for completion.' }
      */
-    async startFrontendAssembling(projectId: string, payload: { openApiYaml: string; plan: any }) {
-        const response = await api.post<any>(`/api/projects/${projectId}/assemble/frontend`, payload)
-        if ((response.data as any)?.error || (response.data as any)?.message) {
-            throw new Error((response.data as any).error || (response.data as any).message)
+    async startBuild(projectId: string) {
+        const response = await api.post<any>(`/api/projects/${projectId}/build`, {})
+        // Only treat 'error' field as an error, not 'message' (which is informational)
+        if ((response.data as any)?.error) {
+            throw new Error((response.data as any).error)
         }
         return response.data
     },
 
     /**
-     * Placeholder: start backend repository assembly.
-     * TODO: Replace endpoints/payload with the updated API doc.
+     * Get build status and download URLs.
+     * GET /projects/:projectId/build/status
+     * 
+     * Response shape:
+     * {
+     *   "status": "processing" | "complete" | "error",
+     *   "backend": { "status": "complete" | "processing", "downloadUrl": "/api/downloads/:projectId_backend.zip" },
+     *   "frontend": { "status": "complete" | "processing", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
+     * }
      */
-    async startBackendAssembling(projectId: string, payload: any) {
-        const response = await api.post<any>(`/api/projects/${projectId}/assemble/backend`, payload)
-        if ((response.data as any)?.error || (response.data as any)?.message) {
-            throw new Error((response.data as any).error || (response.data as any).message)
-        }
+    async getBuildStatus(projectId: string): Promise<{
+        status: 'processing' | 'complete' | 'error'
+        backend?: { status?: string; downloadUrl?: string | null }
+        frontend?: { status?: string; downloadUrl?: string | null }
+    }> {
+        const response = await api.get<any>(`/api/projects/${projectId}/build/status`)
         return response.data
     },
 
     /**
-     * Placeholder: poll for assembling completion + zip URLs.
-     * Expected shape: { frontend: { status, zipUrl }, backend: { status, zipUrl } }
-     * TODO: Replace endpoint/shape with the updated API doc.
+     * Download a file with authentication.
+     * Fetches the file as a blob and triggers a browser download.
      */
-    async getAssemblingStatus(projectId: string) {
-        const response = await api.get<any>(`/api/projects/${projectId}/assemble/status`)
-        return response.data
+    async downloadFile(url: string, filename: string): Promise<void> {
+        const token = getAccessToken()
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        })
+
+        if (!response.ok) {
+            throw new Error(`Download failed: ${response.status} ${response.statusText}`)
+        }
+
+        const blob = await response.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl)
     },
 
     async getProject(projectId: string) {

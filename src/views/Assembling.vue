@@ -6,11 +6,12 @@ import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import { ArrowLeft } from 'lucide-vue-next'
 
-type AgentState = 'idle' | 'starting' | 'running' | 'done' | 'error'
+type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
-type AssembleStatus = {
-  frontend?: { status?: string; zipUrl?: string }
-  backend?: { status?: string; zipUrl?: string }
+type BuildStatus = {
+  status: 'processing' | 'complete' | 'error'
+  frontend?: { status?: string; downloadUrl?: string | null }
+  backend?: { status?: string; downloadUrl?: string | null }
 }
 
 const route = useRoute()
@@ -24,81 +25,100 @@ onUnmounted(() => {
   isActive.value = false
 })
 
-const frontendState = ref<AgentState>('idle')
-const backendState = ref<AgentState>('idle')
+const frontendState = ref<AgentState>('loading')
+const backendState = ref<AgentState>('loading')
 
-const frontendZipUrl = ref<string>('')
-const backendZipUrl = ref<string>('')
+const frontendDownloadUrl = ref<string>('')
+const backendDownloadUrl = ref<string>('')
 
-const assembleError = ref('')
+const buildError = ref('')
+const isAlreadyAssembledProject = ref(false)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-const extractOpenApiYaml = (syncPayload: any) => {
-  const apiDef = syncPayload?.apiDefinition
-  if (!apiDef) return ''
-  if (typeof apiDef === 'string') return apiDef
+const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
+const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
+
+const downloadingFrontend = ref(false)
+const downloadingBackend = ref(false)
+
+const downloadFrontend = async () => {
+  if (!frontendDownloadUrl.value || downloadingFrontend.value) return
+  downloadingFrontend.value = true
   try {
-    return JSON.stringify(apiDef, null, 2)
-  } catch {
-    return ''
+    const filename = `${projectName.value || 'project'}_frontend.zip`
+    await projectApi.downloadFile(frontendDownloadUrl.value, filename)
+  } catch (e) {
+    buildError.value = `Frontend download failed: ${e instanceof Error ? e.message : String(e)}`
+  } finally {
+    downloadingFrontend.value = false
   }
 }
 
-const allDone = computed(() => Boolean(frontendZipUrl.value) && Boolean(backendZipUrl.value))
+const downloadBackend = async () => {
+  if (!backendDownloadUrl.value || downloadingBackend.value) return
+  downloadingBackend.value = true
+  try {
+    const filename = `${projectName.value || 'project'}_backend.zip`
+    await projectApi.downloadFile(backendDownloadUrl.value, filename)
+  } catch (e) {
+    buildError.value = `Backend download failed: ${e instanceof Error ? e.message : String(e)}`
+  } finally {
+    downloadingBackend.value = false
+  }
+}
 
-const startAssembling = async () => {
-  assembleError.value = ''
-  frontendZipUrl.value = ''
-  backendZipUrl.value = ''
+const startBuild = async () => {
+  buildError.value = ''
+  frontendDownloadUrl.value = ''
+  backendDownloadUrl.value = ''
 
   frontendState.value = 'starting'
   backendState.value = 'starting'
 
   try {
-    // Inputs required by spec: OpenAPI YAML + design plan.
-    // We fetch them here to avoid passing large payloads through the route.
-    const [plan, syncs] = await Promise.all([projectApi.getPlan(projectId), projectApi.getSyncs(projectId)])
-    const openApiYaml = extractOpenApiYaml(syncs)
-
-    // Start both agents concurrently.
-    // NOTE: Endpoints are placeholders until you provide the updated API doc.
-    await Promise.all([
-      projectApi.startFrontendAssembling(projectId, { openApiYaml, plan }),
-      projectApi.startBackendAssembling(projectId, {}),
-    ])
+    // Single request to start the build process (both frontend and backend)
+    await projectApi.startBuild(projectId)
 
     frontendState.value = 'running'
     backendState.value = 'running'
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
-    assembleError.value = e instanceof Error ? e.message : String(e)
+    buildError.value = e instanceof Error ? e.message : String(e)
     return
   }
 
-  // Poll until both zips are ready.
+  // Poll until both downloads are ready.
   const maxWaitMs = 60 * 60 * 1000 // 60 minutes
   const startedAt = Date.now()
   let delayMs = 5_000
 
   while (isActive.value && Date.now() - startedAt < maxWaitMs) {
     try {
-      const status: AssembleStatus = await projectApi.getAssemblingStatus(projectId)
+      const status: BuildStatus = await projectApi.getBuildStatus(projectId)
 
-      const fUrl = status?.frontend?.zipUrl
-      const bUrl = status?.backend?.zipUrl
-      if (typeof fUrl === 'string' && fUrl) frontendZipUrl.value = fUrl
-      if (typeof bUrl === 'string' && bUrl) backendZipUrl.value = bUrl
+      // Extract download URLs from response
+      const fUrl = status?.frontend?.downloadUrl
+      const bUrl = status?.backend?.downloadUrl
+      if (typeof fUrl === 'string' && fUrl) frontendDownloadUrl.value = fUrl
+      if (typeof bUrl === 'string' && bUrl) backendDownloadUrl.value = bUrl
 
-      // Best-effort state mapping (backend can choose its own status strings).
-      if (frontendZipUrl.value) frontendState.value = 'done'
-      if (backendZipUrl.value) backendState.value = 'done'
+      // Update state based on individual status
+      if (status?.frontend?.status === 'complete') frontendState.value = 'done'
+      else if (status?.frontend?.status === 'processing') frontendState.value = 'running'
+      
+      if (status?.backend?.status === 'complete') backendState.value = 'done'
+      else if (status?.backend?.status === 'processing') backendState.value = 'running'
 
-      if (allDone.value) return
-
-      if (status?.frontend?.status && !frontendZipUrl.value) frontendState.value = 'running'
-      if (status?.backend?.status && !backendZipUrl.value) backendState.value = 'running'
+      // Check if overall build is complete or errored
+      if (status?.status === 'complete') return
+      if (status?.status === 'error') {
+        buildError.value = 'Build failed. Please try again.'
+        if (!frontendDownloadUrl.value) frontendState.value = 'error'
+        if (!backendDownloadUrl.value) backendState.value = 'error'
+        return
+      }
     } catch {
       // ignore transient errors
     }
@@ -108,13 +128,51 @@ const startAssembling = async () => {
   }
 
   if (!allDone.value) {
-    assembleError.value = 'Assembling is taking longer than expected. Please check again in a moment.'
-    if (!frontendZipUrl.value) frontendState.value = 'error'
-    if (!backendZipUrl.value) backendState.value = 'error'
+    buildError.value = 'Build is taking longer than expected. Please check again in a moment.'
+    if (!frontendDownloadUrl.value) frontendState.value = 'error'
+    if (!backendDownloadUrl.value) backendState.value = 'error'
   }
 }
 
-onMounted(() => {
+const fetchExistingDownloads = async (): Promise<boolean> => {
+  // For already-assembled projects, just fetch the download URLs without starting build.
+  // Returns true if at least one download URL was found.
+  frontendState.value = 'loading'
+  backendState.value = 'loading'
+  
+  try {
+    const status: BuildStatus = await projectApi.getBuildStatus(projectId)
+    console.log('Build status response:', status)
+    
+    const fUrl = status?.frontend?.downloadUrl
+    const bUrl = status?.backend?.downloadUrl
+    
+    let foundAny = false
+    if (typeof fUrl === 'string' && fUrl) {
+      frontendDownloadUrl.value = fUrl
+      frontendState.value = 'done'
+      foundAny = true
+    } else {
+      frontendState.value = 'idle'
+    }
+    if (typeof bUrl === 'string' && bUrl) {
+      backendDownloadUrl.value = bUrl
+      backendState.value = 'done'
+      foundAny = true
+    } else {
+      backendState.value = 'idle'
+    }
+    return foundAny
+  } catch (e) {
+    // Don't set error here - we'll try starting build if this fails
+    console.warn('Failed to fetch existing downloads:', e)
+    frontendState.value = 'idle'
+    backendState.value = 'idle'
+    return false
+  }
+}
+
+onMounted(async () => {
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
     try {
@@ -124,8 +182,28 @@ onMounted(() => {
     }
   }
 
-  // Start immediately after arriving from the Syncing page.
-  startAssembling()
+  // Check if project is already assembled (from projectStatus query param).
+  const projectStatus = route.query?.projectStatus
+  const isAlreadyAssembled = projectStatus === 'assembled' || projectStatus === 'complete'
+  isAlreadyAssembledProject.value = isAlreadyAssembled
+
+  if (isAlreadyAssembled) {
+    // Already assembled - just fetch existing download URLs, don't restart build.
+    const foundDownloads = await fetchExistingDownloads()
+    if (!foundDownloads) {
+      // Project marked as assembled but no downloads found - show error
+      buildError.value = 'Project is marked as assembled but download URLs could not be retrieved. The backend may still be processing.'
+    }
+  } else {
+    // First, try to fetch existing downloads in case build already completed.
+    const hasExistingDownloads = await fetchExistingDownloads()
+    if (hasExistingDownloads && allDone.value) {
+      // Both downloads already available - no need to start build.
+      return
+    }
+    // Start build process.
+    startBuild()
+  }
 })
 </script>
 
@@ -140,27 +218,52 @@ onMounted(() => {
     <div class="content container">
       <div class="status-header fade-in">
         <h1>{{ projectName || 'Project' }}</h1>
-        <p class="subtitle">Assembling</p>
+        <p class="subtitle">Building</p>
       </div>
 
-      <ProjectStatusDisplay :status="'assembling'" :projectName="projectName || 'Project'" />
+      <ProjectStatusDisplay 
+        :status="allDone || isAlreadyAssembledProject ? 'complete' : 'assembling'" 
+        :projectName="projectName || 'Project'"
+        :showDownloadButton="false"
+      />
 
-      <div v-if="!allDone" class="play-standalone">
+      <div v-if="!allDone && !isAlreadyAssembledProject" class="play-standalone">
         <PlayWhileYouWait />
       </div>
 
       <div class="glass fade-in plan-card">
-        <h2 class="section-title">Assemble</h2>
+        <h2 class="section-title">{{ allDone || hasAnyDownload ? 'Downloads Ready' : 'Build' }}</h2>
 
-        <p class="muted">Frontend agent: {{ frontendState }}</p>
-        <p class="muted">Backend agent: {{ backendState }}</p>
+        <p v-if="!hasAnyDownload" class="muted">Frontend: {{ frontendState }}</p>
+        <p v-if="!hasAnyDownload" class="muted">Backend: {{ backendState }}</p>
 
-        <div v-if="assembleError" class="error-msg" style="margin-top: 0.75rem;">{{ assembleError }}</div>
+        <div v-if="buildError" class="error-msg" style="margin-top: 0.75rem;">{{ buildError }}</div>
 
-        <div v-if="allDone" class="download-actions" style="margin-top: 1rem;">
-          <a class="btn-primary" :href="frontendZipUrl" target="_blank" rel="noopener noreferrer">Download frontend zip</a>
-          <a class="btn-primary" :href="backendZipUrl" target="_blank" rel="noopener noreferrer">Download backend zip</a>
+        <!-- Show download buttons if any download is available -->
+        <div v-if="hasAnyDownload" class="download-actions" style="margin-top: 1rem;">
+          <button 
+            v-if="frontendDownloadUrl" 
+            class="btn-primary" 
+            type="button"
+            :disabled="downloadingFrontend"
+            @click="downloadFrontend"
+          >
+            {{ downloadingFrontend ? 'Downloading...' : 'Download Frontend' }}
+          </button>
+          <button 
+            v-if="backendDownloadUrl" 
+            class="btn-primary" 
+            type="button"
+            :disabled="downloadingBackend"
+            @click="downloadBackend"
+          >
+            {{ downloadingBackend ? 'Downloading...' : 'Download Backend' }}
+          </button>
         </div>
+        
+        <p v-if="hasAnyDownload && !allDone" class="muted" style="margin-top: 0.75rem;">
+          Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
+        </p>
       </div>
     </div>
   </div>

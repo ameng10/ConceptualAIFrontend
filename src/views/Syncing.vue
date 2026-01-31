@@ -271,7 +271,7 @@ onMounted(() => {
               type="button"
               @click="router.push({ path: `/project/${projectId}/assembling`, query: { projectName: projectName ? encodeURIComponent(projectName) : undefined } })"
             >
-              Assemble
+              Build
             </button>
           </div>
 

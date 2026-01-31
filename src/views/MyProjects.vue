@@ -30,7 +30,7 @@ const handleViewDetails = async (project: Project) => {
     project.status === 'assembling' ||
     project.status === 'complete'
 
-  const isAssemblingStage = project.status === 'assembling' || project.status === 'complete'
+  const isAssemblingStage = project.status === 'assembling' || project.status === 'assembled' || project.status === 'complete'
 
   const isImplementationStage = project.status === 'implementing' || project.status === 'implemented'
 

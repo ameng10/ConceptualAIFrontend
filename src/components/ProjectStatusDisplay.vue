@@ -7,6 +7,13 @@ const props = defineProps<{
   projectName: string
   holdPlanningActive?: boolean
   planAccepted?: boolean
+  showDownloadButton?: boolean
+  downloadDisabled?: boolean
+  downloadLabel?: string
+}>()
+
+const emit = defineEmits<{
+  download: []
 }>()
 
 const steps = [
@@ -66,10 +73,15 @@ const getStepStatus = (index: number) => {
       </div>
     </div>
 
-    <div v-if="status === 'complete'" class="actions">
-      <button class="btn btn-primary">
+    <div v-if="status === 'complete' && showDownloadButton !== false" class="actions">
+      <button 
+        class="btn btn-primary" 
+        type="button"
+        :disabled="downloadDisabled"
+        @click="emit('download')"
+      >
         <Download :size="18" />
-        Download Generated Project
+        {{ downloadLabel || 'Download Generated Project' }}
       </button>
     </div>
 
