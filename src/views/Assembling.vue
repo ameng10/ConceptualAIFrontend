@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -20,11 +20,6 @@ const router = useRouter()
 const projectId = route.params.id as string
 const projectName = ref<string>('')
 
-const isActive = ref(true)
-onUnmounted(() => {
-  isActive.value = false
-})
-
 const frontendState = ref<AgentState>('loading')
 const backendState = ref<AgentState>('loading')
 
@@ -33,8 +28,6 @@ const backendDownloadUrl = ref<string>('')
 
 const buildError = ref('')
 const isAlreadyAssembledProject = ref(false)
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
 const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
@@ -78,59 +71,46 @@ const startBuild = async () => {
 
   try {
     // Single request to start the build process (both frontend and backend)
-    await projectApi.startBuild(projectId)
+    const res: any = await projectApi.startBuild(projectId)
 
-    frontendState.value = 'running'
-    backendState.value = 'running'
+    // No polling: backend is expected to return download URLs when ready.
+    // If the backend returns early (processing), the user can refresh later.
+    const fUrl =
+      res?.frontend?.downloadUrl ??
+      res?.frontendDownloadUrl ??
+      res?.downloads?.frontend ??
+      res?.downloadUrls?.frontend ??
+      ''
+    const bUrl =
+      res?.backend?.downloadUrl ??
+      res?.backendDownloadUrl ??
+      res?.downloads?.backend ??
+      res?.downloadUrls?.backend ??
+      ''
+
+    if (typeof fUrl === 'string' && fUrl) {
+      frontendDownloadUrl.value = fUrl
+      frontendState.value = 'done'
+    } else {
+      frontendState.value = 'running'
+    }
+
+    if (typeof bUrl === 'string' && bUrl) {
+      backendDownloadUrl.value = bUrl
+      backendState.value = 'done'
+    } else {
+      backendState.value = 'running'
+    }
+
+    if (!frontendDownloadUrl.value && !backendDownloadUrl.value) {
+      const msg = res?.message ? String(res.message) : ''
+      buildError.value = msg || 'Build started but download URLs were not returned yet. Refresh later to check downloads.'
+    }
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
     buildError.value = e instanceof Error ? e.message : String(e)
     return
-  }
-
-  // Poll until both downloads are ready.
-  const maxWaitMs = 60 * 60 * 1000 // 60 minutes
-  const startedAt = Date.now()
-  let delayMs = 5_000
-
-  while (isActive.value && Date.now() - startedAt < maxWaitMs) {
-    try {
-      const status: BuildStatus = await projectApi.getBuildStatus(projectId)
-
-      // Extract download URLs from response
-      const fUrl = status?.frontend?.downloadUrl
-      const bUrl = status?.backend?.downloadUrl
-      if (typeof fUrl === 'string' && fUrl) frontendDownloadUrl.value = fUrl
-      if (typeof bUrl === 'string' && bUrl) backendDownloadUrl.value = bUrl
-
-      // Update state based on individual status
-      if (status?.frontend?.status === 'complete') frontendState.value = 'done'
-      else if (status?.frontend?.status === 'processing') frontendState.value = 'running'
-      
-      if (status?.backend?.status === 'complete') backendState.value = 'done'
-      else if (status?.backend?.status === 'processing') backendState.value = 'running'
-
-      // Check if overall build is complete or errored
-      if (status?.status === 'complete') return
-      if (status?.status === 'error') {
-        buildError.value = 'Build failed. Please try again.'
-        if (!frontendDownloadUrl.value) frontendState.value = 'error'
-        if (!backendDownloadUrl.value) backendState.value = 'error'
-        return
-      }
-    } catch {
-      // ignore transient errors
-    }
-
-    await sleep(delayMs)
-    delayMs = Math.min(30_000, Math.round(delayMs * 1.15))
-  }
-
-  if (!allDone.value) {
-    buildError.value = 'Build is taking longer than expected. Please check again in a moment.'
-    if (!frontendDownloadUrl.value) frontendState.value = 'error'
-    if (!backendDownloadUrl.value) backendState.value = 'error'
   }
 }
 
@@ -139,14 +119,14 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
   // Returns true if at least one download URL was found.
   frontendState.value = 'loading'
   backendState.value = 'loading'
-  
+
   try {
     const status: BuildStatus = await projectApi.getBuildStatus(projectId)
     console.log('Build status response:', status)
-    
+
     const fUrl = status?.frontend?.downloadUrl
     const bUrl = status?.backend?.downloadUrl
-    
+
     let foundAny = false
     if (typeof fUrl === 'string' && fUrl) {
       frontendDownloadUrl.value = fUrl
@@ -221,8 +201,8 @@ onMounted(async () => {
         <p class="subtitle">Building</p>
       </div>
 
-      <ProjectStatusDisplay 
-        :status="allDone || isAlreadyAssembledProject ? 'complete' : 'assembling'" 
+      <ProjectStatusDisplay
+        :status="allDone || isAlreadyAssembledProject ? 'complete' : 'assembling'"
         :projectName="projectName || 'Project'"
         :showDownloadButton="false"
       />
@@ -241,18 +221,18 @@ onMounted(async () => {
 
         <!-- Show download buttons if any download is available -->
         <div v-if="hasAnyDownload" class="download-actions" style="margin-top: 1rem;">
-          <button 
-            v-if="frontendDownloadUrl" 
-            class="btn-primary" 
+          <button
+            v-if="frontendDownloadUrl"
+            class="btn-primary"
             type="button"
             :disabled="downloadingFrontend"
             @click="downloadFrontend"
           >
             {{ downloadingFrontend ? 'Downloading...' : 'Download Frontend' }}
           </button>
-          <button 
-            v-if="backendDownloadUrl" 
-            class="btn-primary" 
+          <button
+            v-if="backendDownloadUrl"
+            class="btn-primary"
             type="button"
             :disabled="downloadingBackend"
             @click="downloadBackend"
@@ -260,7 +240,7 @@ onMounted(async () => {
             {{ downloadingBackend ? 'Downloading...' : 'Download Backend' }}
           </button>
         </div>
-        
+
         <p v-if="hasAnyDownload && !allDone" class="muted" style="margin-top: 0.75rem;">
           Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
         </p>

@@ -66,8 +66,6 @@ const tryCopyRawJson = async () => {
 const designDoc = ref<any | null>(null)
 const implementationDoc = ref<any | null>(null)
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
 const isActive = ref(true)
 onUnmounted(() => {
   isActive.value = false
@@ -84,60 +82,7 @@ const unwrapSyncPayload = (raw: any) => {
   return raw
 }
 
-const isSyncGenerationComplete = (status: unknown) => {
-  // Backend uses a dedicated completion state for this stage.
-  return String(status || '') === 'syncs_generated'
-}
-
-const isSyncGenerationInProgress = (status: unknown) => {
-  const s = String(status || '')
-  return s === 'sync_generating' || s === 'syncing'
-}
-
-const pollProjectUntilSyncsGenerated = async () => {
-  // Sync generation can legitimately take a long time.
-  const maxWaitMs = 45 * 60 * 1000 // 45 minutes
-  const startedAt = Date.now()
-  // Keep polling gentle; generation can take ~30 minutes and we don't want to load the backend.
-  let delayMs = 10_000
-  for (;;) {
-    if (!isActive.value) return null
-    try {
-      const project = await projectApi.getProject(projectId)
-      if (isSyncGenerationComplete((project as any)?.status)) return project
-    } catch {
-      // ignore transient errors
-    }
-    if (Date.now() - startedAt > maxWaitMs) break
-    await sleep(delayMs)
-    delayMs = Math.min(60_000, Math.round(delayMs * 1.2))
-  }
-  return null
-}
-
-const pollSyncsUntilReady = async () => {
-  const maxWaitMs = 20 * 60 * 1000 // 20 minutes
-  const startedAt = Date.now()
-  let delayMs = 1000
-  for (;;) {
-    if (!isActive.value) return null
-    try {
-      const raw = await projectApi.getSyncs(projectId)
-      const payload = unwrapSyncPayload(raw)
-      const hasSyncs = Array.isArray((payload as any)?.syncs) && (payload as any).syncs.length > 0
-      const hasApiDefinition = Boolean((payload as any)?.apiDefinition)
-      const hasEndpointBundles =
-        Array.isArray((payload as any)?.endpointBundles) && (payload as any).endpointBundles.length > 0
-      if (hasSyncs || hasApiDefinition || hasEndpointBundles) return payload
-    } catch {
-      // ignore transient errors during generation
-    }
-    if (Date.now() - startedAt > maxWaitMs) break
-    await sleep(delayMs)
-    delayMs = Math.min(5000, Math.round(delayMs * 1.2))
-  }
-  return null
-}
+const isSyncGenerationComplete = (status: unknown) => String(status || '') === 'syncs_generated'
 
 const startIfNeeded = async () => {
   const qName = route.query?.projectName
@@ -177,7 +122,7 @@ const startIfNeeded = async () => {
   })()
 
   // If the project is already in the completion state, fetch sync artifacts once.
-  // This satisfies: "only get the sync response when it finishes generating".
+  // No polling.
   const alreadyComplete = isSyncGenerationComplete(initialProjectStatus.value)
   if (alreadyComplete) {
     try {
@@ -185,45 +130,24 @@ const startIfNeeded = async () => {
       syncDoc.value = unwrapSyncPayload(raw)
       return
     } catch {
-      // Fall through to status-based polling in case the query status was stale.
+      // Fall through to starting generation.
     }
   }
 
-  // Otherwise, start generation (idempotent on backend) and wait for completion.
+  // Otherwise, start generation and rely on the POST response.
+  // No polling: backend is expected to hold the request until results are ready.
   try {
     syncStatus.value = 'starting'
-    // Best-effort: don't spam start if backend already running it.
-    let currentStatus = initialProjectStatus.value
-    if (!currentStatus) {
-      try {
-        const p = await projectApi.getProject(projectId)
-        currentStatus = String((p as any)?.status || '')
-      } catch {
-        // ignore
-      }
-    }
-
-    if (!isSyncGenerationComplete(currentStatus) && !isSyncGenerationInProgress(currentStatus)) {
-      await projectApi.startSyncGeneration(projectId)
-    }
+    const res = await projectApi.startSyncGeneration(projectId)
     syncStatus.value = 'started'
-  } catch (e) {
-    // If start fails, still keep polling in case backend already started.
-    syncStatus.value = 'started'
-    syncError.value = e instanceof Error ? e.message : String(e)
-  }
 
-  const project = await pollProjectUntilSyncsGenerated()
-  if (!project) {
-    syncStatus.value = 'error'
-    syncError.value =
-      syncError.value || 'Sync generation is taking longer than expected. Please try again in a moment.'
-    return
-  }
-
-  try {
-    const raw = await projectApi.getSyncs(projectId)
-    syncDoc.value = unwrapSyncPayload(raw)
+    const payload = unwrapSyncPayload(res)
+    const hasSyncs = Array.isArray((payload as any)?.syncs) && (payload as any).syncs.length > 0
+    const hasApiDefinition = Boolean((payload as any)?.apiDefinition)
+    const hasEndpointBundles = Array.isArray((payload as any)?.endpointBundles) && (payload as any).endpointBundles.length > 0
+    if (hasSyncs || hasApiDefinition || hasEndpointBundles) {
+      syncDoc.value = payload
+    }
   } catch (e) {
     syncStatus.value = 'error'
     syncError.value = e instanceof Error ? e.message : String(e)

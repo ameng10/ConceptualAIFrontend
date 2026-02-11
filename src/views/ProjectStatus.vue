@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -32,38 +32,6 @@ const designDoc = ref<any | null>(null)
 const designFeedback = ref('')
 const isModifyingDesign = ref(false)
 const modifyDesignError = ref('')
-
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-// Prevent background polling after leaving this page (e.g., navigating to /implementing)
-const isActive = ref(true)
-onUnmounted(() => {
-  isActive.value = false
-})
-
-const pollDesignUntilReady = async () => {
-  // Polling is only used for the explicit "designing" state.
-  // Keep it gentle to avoid hammering the backend.
-  const maxWaitMs = 15 * 60 * 1000 // 15 minutes
-  const startedAt = Date.now()
-  let delayMs = 2000
-  for (;;) {
-  if (!isActive.value) return null
-    try {
-      const design = await projectApi.getDesign(projectId)
-      if (design) return design
-    } catch {
-      // ignore transient errors during generation
-    }
-    if (Date.now() - startedAt > maxWaitMs) break
-    await sleep(delayMs)
-    // Exponential backoff up to 10s
-    delayMs = Math.min(10000, Math.round(delayMs * 1.25))
-  }
-  return null
-}
-
 
 const planToastShown = ref(false)
 const designToastShown = ref(false)
@@ -193,24 +161,28 @@ onMounted(() => {
       statusFromQuery === 'complete' ||
       statusFromQuery === 'error'
 
-    // If we're explicitly in designing, show a loading screen and wait for the design.
+    // If we're explicitly in designing, do a single best-effort fetch.
+    // No polling: we rely on the initial POST /design call to hold the connection until ready,
+    // or the user can refresh later if the backend returns immediately.
     if (statusFromQuery === 'designing') {
       accepted.value = true
       designStatus.value = 'starting'
       designError.value = ''
       designDoc.value = null
 
-      const design = await pollDesignUntilReady()
-      if (design) {
-        designDoc.value = design
-        designStatus.value = 'started'
-        if (!designToastShown.value) {
-          toastDesignReady()
-          designToastShown.value = true
+      try {
+        const design = await projectApi.getDesign(projectId)
+        if (design) {
+          designDoc.value = design
+          if (!designToastShown.value) {
+            toastDesignReady()
+            designToastShown.value = true
+          }
         }
-      } else {
-        designStatus.value = 'error'
-        designError.value = 'Design is taking longer than expected. Please try again in a moment.'
+      } catch {
+        // ignore; user can refresh later
+      } finally {
+        designStatus.value = 'started'
       }
       return
     }

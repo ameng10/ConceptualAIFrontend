@@ -22,26 +22,6 @@ const designDoc = ref<any | null>(null)
 const isGeneratingSyncs = ref(false)
 const generateSyncsError = ref('')
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-const pollImplementationUntilReady = async () => {
-  const maxWaitMs = 20 * 60 * 1000 // 20 minutes
-  const startedAt = Date.now()
-  let delayMs = 2500
-  for (;;) {
-    try {
-      const impl = await projectApi.getImplementation(projectId)
-      if (impl) return impl
-    } catch {
-      // ignore transient errors during generation
-    }
-    if (Date.now() - startedAt > maxWaitMs) break
-    await sleep(delayMs)
-    delayMs = Math.min(10000, Math.round(delayMs * 1.25))
-  }
-  return null
-}
-
 const startIfNeeded = async () => {
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
@@ -75,20 +55,23 @@ const startIfNeeded = async () => {
       status === 'complete' ||
       status === 'error'
 
-    // If implementation already exists or is in progress, never show a "not ready" error.
-    // Prefer fetching the existing results.
+    // If implementation already exists or is in progress, do a single best-effort fetch.
     if (implementationFetchAllowed) {
       implementStatus.value = 'started'
-      const existing = await pollImplementationUntilReady()
-      if (existing) {
-        implementationDoc.value = existing
-        // Load design for the bottom dropdown (best effort).
-        try {
-          designDoc.value = await projectApi.getDesign(projectId)
-        } catch {
-          // ignore
+      try {
+        const existing = await projectApi.getImplementation(projectId)
+        if (existing) {
+          implementationDoc.value = existing
+          // Load design for the bottom dropdown (best effort).
+          try {
+            designDoc.value = await projectApi.getDesign(projectId)
+          } catch {
+            // ignore
+          }
+          return
         }
-        return
+      } catch {
+        // ignore; may not exist yet
       }
       // If we couldn't fetch results yet, fall through and try starting if appropriate.
     }
@@ -117,6 +100,8 @@ const startIfNeeded = async () => {
           implementationDoc.value = maybe
           return
         }
+        // No polling: backend is expected to hold the request until results are ready.
+        // If it returns early, the user can refresh later.
       }
     }
   } catch (e) {
@@ -125,20 +110,8 @@ const startIfNeeded = async () => {
     return
   }
 
+  // No polling fallback.
   implementStatus.value = 'started'
-  const impl = await pollImplementationUntilReady()
-  if (impl) {
-    implementationDoc.value = impl
-    // Load design for the bottom dropdown (best effort).
-    try {
-      designDoc.value = await projectApi.getDesign(projectId)
-    } catch {
-      // ignore
-    }
-  } else {
-    implementStatus.value = 'error'
-    implementError.value = 'Implementation is taking longer than expected. Please try again in a moment.'
-  }
 }
 
 onMounted(() => {
