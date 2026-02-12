@@ -41,8 +41,9 @@ const startIfNeeded = async () => {
       status === 'designing' ||
       status === 'design_complete' ||
       status === 'implementing' ||
-  status === 'implemented' ||
+      status === 'implemented' ||
       status === 'syncing' ||
+      status === 'building' ||
       status === 'assembling' ||
       status === 'complete' ||
       status === 'error'
@@ -51,6 +52,7 @@ const startIfNeeded = async () => {
       status === 'implementing' ||
       status === 'implemented' ||
       status === 'syncing' ||
+      status === 'building' ||
       status === 'assembling' ||
       status === 'complete' ||
       status === 'error'
@@ -86,13 +88,14 @@ const startIfNeeded = async () => {
       status !== 'implementing' &&
       status !== 'implemented' &&
       status !== 'syncing' &&
+      status !== 'building' &&
       status !== 'assembling' &&
       status !== 'complete'
     ) {
       // If implementation hasn't started yet, start it.
       const design = await projectApi.getDesign(projectId)
       if (design) {
-  designDoc.value = design
+        designDoc.value = design
         const res = await projectApi.startImplementation(projectId, design)
         implementStatus.value = 'started'
         const maybe = (res as any)?.implementations ?? (res as any)?.implementation ?? (res as any)?.result ?? null

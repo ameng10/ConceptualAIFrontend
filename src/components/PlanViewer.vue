@@ -516,7 +516,8 @@ const tryCopy = async () => {
         </div>
       </details>
 
-      <details class="section" open>
+      <!-- Only show Technical Requirements section if there are any -->
+      <details v-if="normalized.technical.length" class="section" open>
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -530,9 +531,7 @@ const tryCopy = async () => {
         </summary>
 
         <div class="section-body">
-          <div v-if="!normalized.technical.length" class="empty">No requirements found.</div>
-
-          <ul v-else class="bullets">
+          <ul class="bullets">
             <li v-for="(r, idx) in normalized.technical" :key="idx">{{ r }}</li>
           </ul>
         </div>

@@ -26,14 +26,20 @@ const steps = [
 ]
 
 const currentStepIndex = computed(() => {
-  if (props.status === 'error') return -1
-  if (props.status === 'awaiting_clarification' || props.status === 'awaiting_input') return 0
+  const normalizedStatus = props.status === 'building' ? 'assembling' : props.status
+  if (normalizedStatus === 'error') return -1
+  if (normalizedStatus === 'awaiting_clarification' || normalizedStatus === 'awaiting_input') return 0
   if (props.holdPlanningActive) return 0
-  return steps.findIndex(s => s.id === props.status)
+  return steps.findIndex(s => s.id === normalizedStatus)
 })
 
 const getStepStatus = (index: number) => {
-  if (props.status === 'error') return 'error'
+  const normalizedStatus = props.status === 'building' ? 'assembling' : props.status
+  if (normalizedStatus === 'error') return 'error'
+  // When fully complete, every prior step including "Complete" should render as complete.
+  if (normalizedStatus === 'complete') {
+    return index <= currentStepIndex.value ? 'complete' : 'pending'
+  }
   // Special: if user accepted the plan, Planning is complete.
   if (props.planAccepted && index === 0) return 'complete'
   // Special: if user accepted the plan, we should be in designing stage now.

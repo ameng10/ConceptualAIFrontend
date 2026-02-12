@@ -39,6 +39,7 @@ export interface Project {
         | 'sync_generating'
         | 'syncs_generated'
         | 'syncing'
+        | 'building'
         | 'assembling'
         | 'assembled'
         | 'complete'
@@ -276,16 +277,21 @@ export const projectApi = {
     /**
      * Start the build process (both backend assembly and frontend generation).
      * POST /projects/:projectId/build
-     * 
-     * Success response: { status: 'processing', message: 'Build started. Poll /projects/{id}/build/status for completion.' }
+     *
+     * API.md success shape:
+     * {
+     *   "status": "complete",
+     *   "backend": { "status": "complete", "downloadUrl": "/api/downloads/:projectId_backend.zip" },
+     *   "frontend": { "status": "complete", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
+     * }
      */
     async startBuild(projectId: string) {
         const response = await api.post<any>(`/api/projects/${projectId}/build`, {})
-        // Only treat 'error' field as an error, not 'message' (which is informational)
-        if ((response.data as any)?.error) {
-            throw new Error((response.data as any).error)
+        const data = response.data as any
+        if (data?.error || data?.status === 'error') {
+            throw new Error(data?.error || data?.message || 'Build failed')
         }
-        return response.data
+        return data
     },
 
     /**
@@ -295,8 +301,8 @@ export const projectApi = {
      * Response shape:
      * {
      *   "status": "processing" | "complete" | "error",
-     *   "backend": { "status": "complete" | "processing", "downloadUrl": "/api/downloads/:projectId_backend.zip" },
-     *   "frontend": { "status": "complete" | "processing", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
+     *   "backend": { "status": "complete" | "processing" | "error", "downloadUrl": "/api/downloads/:projectId_backend.zip" },
+     *   "frontend": { "status": "complete" | "processing" | "error", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
      * }
      */
     async getBuildStatus(projectId: string): Promise<{
@@ -313,19 +319,9 @@ export const projectApi = {
      * Fetches the file as a blob and triggers a browser download.
      */
     async downloadFile(url: string, filename: string): Promise<void> {
-        const token = getAccessToken()
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-        })
-
-        if (!response.ok) {
-            throw new Error(`Download failed: ${response.status} ${response.statusText}`)
-        }
-
-        const blob = await response.blob()
+        // Use the shared axios client so 401 responses can leverage token refresh.
+        const response = await api.get<Blob>(url, { responseType: 'blob' })
+        const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
         const blobUrl = window.URL.createObjectURL(blob)
         
         const link = document.createElement('a')

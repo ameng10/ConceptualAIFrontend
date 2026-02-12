@@ -27,10 +27,15 @@ const handleViewDetails = async (project: Project) => {
     project.status === 'sync_generating' ||
     project.status === 'syncs_generated' ||
     project.status === 'syncing' ||
+    project.status === 'building' ||
     project.status === 'assembling' ||
     project.status === 'complete'
 
-  const isAssemblingStage = project.status === 'assembling' || project.status === 'assembled' || project.status === 'complete'
+  const isAssemblingStage =
+    project.status === 'building' ||
+    project.status === 'assembling' ||
+    project.status === 'assembled' ||
+    project.status === 'complete'
 
   const isImplementationStage = project.status === 'implementing' || project.status === 'implemented'
 
@@ -41,8 +46,9 @@ const handleViewDetails = async (project: Project) => {
     project.status === 'designing' ||
     project.status === 'design_complete' ||
     project.status === 'implementing' ||
-  project.status === 'implemented' ||
+    project.status === 'implemented' ||
     project.status === 'syncing' ||
+    project.status === 'building' ||
     project.status === 'assembling' ||
     project.status === 'complete'
 

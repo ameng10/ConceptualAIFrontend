@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowLeft } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
 type BuildStatus = {
   status: 'processing' | 'complete' | 'error'
-  frontend?: { status?: string; downloadUrl?: string | null }
-  backend?: { status?: string; downloadUrl?: string | null }
+  frontend?: { status?: 'processing' | 'complete' | 'error' | string; downloadUrl?: string | null }
+  backend?: { status?: 'processing' | 'complete' | 'error' | string; downloadUrl?: string | null }
+  message?: string
 }
 
 const route = useRoute()
@@ -27,13 +28,17 @@ const frontendDownloadUrl = ref<string>('')
 const backendDownloadUrl = ref<string>('')
 
 const buildError = ref('')
-const isAlreadyAssembledProject = ref(false)
+const buildInfo = ref('')
 
 const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
 const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
+const BUILD_STATUS_POLL_INTERVAL_MS = 3000
+
+let isStatusPolling = false
+let statusPollTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const downloadFrontend = async () => {
   if (!frontendDownloadUrl.value || downloadingFrontend.value) return
@@ -61,86 +66,199 @@ const downloadBackend = async () => {
   }
 }
 
+const normalizeDownloadUrl = (raw: unknown): string => {
+  if (typeof raw === 'string') return raw.trim()
+  if (raw && typeof raw === 'object') {
+    const maybeNested =
+      (raw as any).downloadUrl ??
+      (raw as any).url ??
+      (raw as any).href ??
+      ''
+    return typeof maybeNested === 'string' ? maybeNested.trim() : ''
+  }
+  return ''
+}
+
+const extractDownloadUrls = (payload: any) => {
+  const frontendUrl =
+    payload?.frontend?.downloadUrl ??
+    payload?.frontendDownloadUrl ??
+    payload?.downloads?.frontend ??
+    payload?.downloadUrls?.frontend ??
+    ''
+  const backendUrl =
+    payload?.backend?.downloadUrl ??
+    payload?.backendDownloadUrl ??
+    payload?.downloads?.backend ??
+    payload?.downloadUrls?.backend ??
+    ''
+
+  return {
+    frontendUrl: normalizeDownloadUrl(frontendUrl),
+    backendUrl: normalizeDownloadUrl(backendUrl),
+  }
+}
+
+const isPayloadProcessing = (payload: BuildStatus | any): boolean => {
+  const overallStatus = String(payload?.status ?? '').toLowerCase()
+  const frontendStatus = String(payload?.frontend?.status ?? '').toLowerCase()
+  const backendStatus = String(payload?.backend?.status ?? '').toLowerCase()
+  return overallStatus === 'processing' || frontendStatus === 'processing' || backendStatus === 'processing'
+}
+
+const applyBuildPayload = (payload: BuildStatus | any): boolean => {
+  const { frontendUrl, backendUrl } = extractDownloadUrls(payload)
+  const overallStatus = String(payload?.status ?? '').toLowerCase()
+  const frontendStatus = String(payload?.frontend?.status ?? '').toLowerCase()
+  const backendStatus = String(payload?.backend?.status ?? '').toLowerCase()
+
+  if (frontendUrl) {
+    frontendDownloadUrl.value = frontendUrl
+    frontendState.value = 'done'
+  } else if (frontendStatus === 'error') {
+    frontendState.value = 'error'
+  } else if (frontendStatus === 'processing' || overallStatus === 'processing') {
+    frontendState.value = 'running'
+  } else if (frontendState.value === 'loading' || frontendState.value === 'starting') {
+    frontendState.value = 'idle'
+  }
+
+  if (backendUrl) {
+    backendDownloadUrl.value = backendUrl
+    backendState.value = 'done'
+  } else if (backendStatus === 'error') {
+    backendState.value = 'error'
+  } else if (backendStatus === 'processing' || overallStatus === 'processing') {
+    backendState.value = 'running'
+  } else if (backendState.value === 'loading' || backendState.value === 'starting') {
+    backendState.value = 'idle'
+  }
+
+  if ((overallStatus === 'error' || frontendStatus === 'error' || backendStatus === 'error') && !buildError.value) {
+    const message =
+      (typeof payload?.error === 'string' && payload.error) ||
+      (typeof payload?.message === 'string' && payload.message) ||
+      'Build failed in the containerized session.'
+    buildError.value = message
+  }
+
+  return Boolean(frontendUrl || backendUrl)
+}
+
+const clearStatusPollTimer = () => {
+  if (statusPollTimer !== null) {
+    window.clearTimeout(statusPollTimer)
+    statusPollTimer = null
+  }
+}
+
+const stopStatusPolling = () => {
+  isStatusPolling = false
+  clearStatusPollTimer()
+}
+
+const scheduleStatusPoll = () => {
+  if (!isStatusPolling) return
+  clearStatusPollTimer()
+  statusPollTimer = window.setTimeout(() => {
+    void pollBuildStatus()
+  }, BUILD_STATUS_POLL_INTERVAL_MS)
+}
+
+const pollBuildStatus = async () => {
+  if (!isStatusPolling) return
+
+  try {
+    const status: BuildStatus = await projectApi.getBuildStatus(projectId)
+    const foundAny = applyBuildPayload(status)
+
+    if (allDone.value || buildError.value) {
+      stopStatusPolling()
+      return
+    }
+
+    if (foundAny && !buildInfo.value) {
+      buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
+    } else if (!foundAny) {
+      buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
+    }
+
+    // Keep checking until both artifacts are available or an error is returned.
+    if (isPayloadProcessing(status) || !allDone.value) {
+      scheduleStatusPoll()
+      return
+    }
+
+    stopStatusPolling()
+  } catch (e) {
+    if (!isStatusPolling) return
+    console.warn('Failed to poll build status:', e)
+    // Token refresh can race with status polling; keep trying.
+    buildInfo.value = 'Re-checking build status…'
+    scheduleStatusPoll()
+  }
+}
+
+const beginStatusPolling = () => {
+  if (isStatusPolling || allDone.value || buildError.value) return
+  isStatusPolling = true
+  if (!buildInfo.value) {
+    buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
+  }
+  void pollBuildStatus()
+}
+
 const startBuild = async () => {
   buildError.value = ''
+  buildInfo.value = ''
   frontendDownloadUrl.value = ''
   backendDownloadUrl.value = ''
+  stopStatusPolling()
 
   frontendState.value = 'starting'
   backendState.value = 'starting'
 
   try {
-    // Single request to start the build process (both frontend and backend)
-    const res: any = await projectApi.startBuild(projectId)
-
-    // No polling: backend is expected to return download URLs when ready.
-    // If the backend returns early (processing), the user can refresh later.
-    const fUrl =
-      res?.frontend?.downloadUrl ??
-      res?.frontendDownloadUrl ??
-      res?.downloads?.frontend ??
-      res?.downloadUrls?.frontend ??
-      ''
-    const bUrl =
-      res?.backend?.downloadUrl ??
-      res?.backendDownloadUrl ??
-      res?.downloads?.backend ??
-      res?.downloadUrls?.backend ??
-      ''
-
-    if (typeof fUrl === 'string' && fUrl) {
-      frontendDownloadUrl.value = fUrl
-      frontendState.value = 'done'
+    // Containerized build path: backend may hold this request until artifacts are ready.
+    const res: BuildStatus = await projectApi.startBuild(projectId)
+    const foundAnyDownloads = applyBuildPayload(res)
+    if (!foundAnyDownloads && !buildError.value) {
+      buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
+      beginStatusPolling()
+    } else if (!allDone.value && !buildError.value) {
+      buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
+      beginStatusPolling()
     } else {
-      frontendState.value = 'running'
-    }
-
-    if (typeof bUrl === 'string' && bUrl) {
-      backendDownloadUrl.value = bUrl
-      backendState.value = 'done'
-    } else {
-      backendState.value = 'running'
-    }
-
-    if (!frontendDownloadUrl.value && !backendDownloadUrl.value) {
-      const msg = res?.message ? String(res.message) : ''
-      buildError.value = msg || 'Build started but download URLs were not returned yet. Refresh later to check downloads.'
+      stopStatusPolling()
     }
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
+    buildInfo.value = ''
     buildError.value = e instanceof Error ? e.message : String(e)
+    stopStatusPolling()
     return
   }
 }
 
 const fetchExistingDownloads = async (): Promise<boolean> => {
-  // For already-assembled projects, just fetch the download URLs without starting build.
   // Returns true if at least one download URL was found.
+  buildInfo.value = ''
   frontendState.value = 'loading'
   backendState.value = 'loading'
 
   try {
     const status: BuildStatus = await projectApi.getBuildStatus(projectId)
-    console.log('Build status response:', status)
-
-    const fUrl = status?.frontend?.downloadUrl
-    const bUrl = status?.backend?.downloadUrl
-
-    let foundAny = false
-    if (typeof fUrl === 'string' && fUrl) {
-      frontendDownloadUrl.value = fUrl
-      frontendState.value = 'done'
-      foundAny = true
-    } else {
-      frontendState.value = 'idle'
-    }
-    if (typeof bUrl === 'string' && bUrl) {
-      backendDownloadUrl.value = bUrl
-      backendState.value = 'done'
-      foundAny = true
-    } else {
-      backendState.value = 'idle'
+    const foundAny = applyBuildPayload(status)
+    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !buildError.value) {
+      if (!foundAny) {
+        buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
+      } else if (!allDone.value) {
+        buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
+      }
+      beginStatusPolling()
+    } else if (allDone.value) {
+      stopStatusPolling()
     }
     return foundAny
   } catch (e) {
@@ -164,26 +282,36 @@ onMounted(async () => {
 
   // Check if project is already assembled (from projectStatus query param).
   const projectStatus = route.query?.projectStatus
+  const isAlreadyBuilding = projectStatus === 'building'
   const isAlreadyAssembled = projectStatus === 'assembled' || projectStatus === 'complete'
-  isAlreadyAssembledProject.value = isAlreadyAssembled
 
-  if (isAlreadyAssembled) {
-    // Already assembled - just fetch existing download URLs, don't restart build.
+  if (isAlreadyAssembled || isAlreadyBuilding) {
+    // Existing build lifecycle state: fetch current URLs/status, don't restart build.
     const foundDownloads = await fetchExistingDownloads()
-    if (!foundDownloads) {
-      // Project marked as assembled but no downloads found - show error
-      buildError.value = 'Project is marked as assembled but download URLs could not be retrieved. The backend may still be processing.'
+    if (isAlreadyAssembled && !foundDownloads && !buildError.value) {
+      buildInfo.value = 'Build artifacts are not available yet. Re-checking automatically…'
+      beginStatusPolling()
     }
-  } else {
-    // First, try to fetch existing downloads in case build already completed.
-    const hasExistingDownloads = await fetchExistingDownloads()
-    if (hasExistingDownloads && allDone.value) {
-      // Both downloads already available - no need to start build.
-      return
+    if (isAlreadyBuilding && !foundDownloads && !buildError.value && !buildInfo.value) {
+      buildInfo.value = 'Build is currently running in the containerized session. Download links will appear automatically.'
+      beginStatusPolling()
     }
-    // Start build process.
-    startBuild()
+    return
   }
+
+  // First, try to fetch existing downloads in case build already completed.
+  const hasExistingDownloads = await fetchExistingDownloads()
+  if (hasExistingDownloads) {
+    return
+  }
+
+  // No artifacts found from status precheck -> trigger build explicitly.
+  // This prevents a "status says processing" response from suppressing POST /build.
+  await startBuild()
+})
+
+onUnmounted(() => {
+  stopStatusPolling()
 })
 </script>
 
@@ -202,12 +330,12 @@ onMounted(async () => {
       </div>
 
       <ProjectStatusDisplay
-        :status="allDone || isAlreadyAssembledProject ? 'complete' : 'assembling'"
+        :status="allDone ? 'complete' : 'assembling'"
         :projectName="projectName || 'Project'"
         :showDownloadButton="false"
       />
 
-      <div v-if="!allDone && !isAlreadyAssembledProject" class="play-standalone">
+      <div v-if="!allDone" class="play-standalone">
         <PlayWhileYouWait />
       </div>
 
@@ -218,26 +346,33 @@ onMounted(async () => {
         <p v-if="!hasAnyDownload" class="muted">Backend: {{ backendState }}</p>
 
         <div v-if="buildError" class="error-msg" style="margin-top: 0.75rem;">{{ buildError }}</div>
+        <p v-else-if="buildInfo" class="muted" style="margin-top: 0.75rem;">{{ buildInfo }}</p>
 
         <!-- Show download buttons if any download is available -->
         <div v-if="hasAnyDownload" class="download-actions" style="margin-top: 1rem;">
           <button
             v-if="frontendDownloadUrl"
-            class="btn-primary"
+            class="download-btn frontend-btn"
             type="button"
             :disabled="downloadingFrontend"
             @click="downloadFrontend"
           >
-            {{ downloadingFrontend ? 'Downloading...' : 'Download Frontend' }}
+            <span class="download-icon-wrap">
+              <ArrowDownToLine :size="16" />
+            </span>
+            {{ downloadingFrontend ? 'Downloading Frontend…' : 'Download Frontend ZIP' }}
           </button>
           <button
             v-if="backendDownloadUrl"
-            class="btn-primary"
+            class="download-btn backend-btn"
             type="button"
             :disabled="downloadingBackend"
             @click="downloadBackend"
           >
-            {{ downloadingBackend ? 'Downloading...' : 'Download Backend' }}
+            <span class="download-icon-wrap">
+              <ArrowDownToLine :size="16" />
+            </span>
+            {{ downloadingBackend ? 'Downloading Backend…' : 'Download Backend ZIP' }}
           </button>
         </div>
 
@@ -318,5 +453,68 @@ onMounted(async () => {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.92));
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, filter 0.16s ease;
+}
+
+.download-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.download-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.download-icon-wrap {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.frontend-btn {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.12);
+}
+
+.frontend-btn .download-icon-wrap {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.17);
+}
+
+.frontend-btn:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(56, 189, 248, 0.2);
+}
+
+.backend-btn {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 8px 24px rgba(45, 212, 191, 0.12);
+}
+
+.backend-btn .download-icon-wrap {
+  color: var(--accent);
+  background: rgba(45, 212, 191, 0.18);
+}
+
+.backend-btn:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(45, 212, 191, 0.22);
 }
 </style>

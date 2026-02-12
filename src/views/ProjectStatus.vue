@@ -146,6 +146,7 @@ onMounted(() => {
       statusFromQuery === 'design_complete' ||
       statusFromQuery === 'implementing' ||
       statusFromQuery === 'syncing' ||
+      statusFromQuery === 'building' ||
       statusFromQuery === 'assembling' ||
       statusFromQuery === 'complete' ||
       statusFromQuery === 'error'
@@ -157,6 +158,7 @@ onMounted(() => {
       statusFromQuery === 'design_complete' ||
       statusFromQuery === 'implementing' ||
       statusFromQuery === 'syncing' ||
+      statusFromQuery === 'building' ||
       statusFromQuery === 'assembling' ||
       statusFromQuery === 'complete' ||
       statusFromQuery === 'error'
