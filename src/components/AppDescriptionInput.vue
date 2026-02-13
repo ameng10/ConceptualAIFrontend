@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
 
 const emit = defineEmits<{
-  (e: 'submit', description: string, name: string): void
+  (e: 'submit', description: string, name: string, done: (ok: boolean, errorMessage?: string) => void): void
 }>()
 
 const description = ref('')
@@ -13,7 +13,13 @@ const isSubmitting = ref(false)
 const handleSubmit = () => {
   if (!description.value || !name.value) return
   isSubmitting.value = true
-  emit('submit', description.value, name.value)
+  emit('submit', description.value, name.value, (ok, errorMessage) => {
+    isSubmitting.value = false
+    // If parent reports error, keep inputs intact so the user can retry.
+    // (Error presentation is handled by the parent view.)
+    void errorMessage
+    void ok
+  })
 }
 </script>
 

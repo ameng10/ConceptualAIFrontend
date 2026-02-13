@@ -11,6 +11,7 @@ import {
     setUsername,
 } from './auth-storage'
 import * as authFns from './auth'
+import { getGeminiHeadersOrThrow } from './gemini-credentials'
 
 // Types
 export interface User {
@@ -160,6 +161,7 @@ export const projectApi = {
     const response = await api.post<any>(
             '/api/projects',
             { name, description },
+            { headers: getGeminiHeadersOrThrow() },
         )
 
         if ((response.data as any)?.error || (response.data as any)?.message) {
@@ -211,7 +213,11 @@ export const projectApi = {
     async startDesign(projectId: string, plan: any) {
         // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
         // Expected to return status/progress payload.
-    const response = await api.post<any>(`/api/projects/${projectId}/design`, { plan })
+    const response = await api.post<any>(
+            `/api/projects/${projectId}/design`,
+            { plan },
+            { headers: getGeminiHeadersOrThrow() },
+        )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
@@ -223,7 +229,11 @@ export const projectApi = {
      * TODO: Replace with real API docs once available.
      */
     async startImplementation(projectId: string, design: any) {
-    const response = await api.post<any>(`/api/projects/${projectId}/implement`, { design })
+    const response = await api.post<any>(
+            `/api/projects/${projectId}/implement`,
+            { design },
+            { headers: getGeminiHeadersOrThrow() },
+        )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
@@ -243,7 +253,11 @@ export const projectApi = {
      * API.md: POST /projects/:projectId/syncs
      */
     async startSyncGeneration(projectId: string) {
-        const response = await api.post<any>(`/api/projects/${projectId}/syncs`, {})
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/syncs`,
+            {},
+            { headers: getGeminiHeadersOrThrow() },
+        )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
@@ -286,7 +300,11 @@ export const projectApi = {
      * }
      */
     async startBuild(projectId: string) {
-        const response = await api.post<any>(`/api/projects/${projectId}/build`, {})
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/build`,
+            {},
+            { headers: getGeminiHeadersOrThrow() },
+        )
         const data = response.data as any
         if (data?.error || data?.status === 'error') {
             throw new Error(data?.error || data?.message || 'Build failed')
@@ -297,7 +315,7 @@ export const projectApi = {
     /**
      * Get build status and download URLs.
      * GET /projects/:projectId/build/status
-     * 
+     *
      * Response shape:
      * {
      *   "status": "processing" | "complete" | "error",
@@ -323,14 +341,14 @@ export const projectApi = {
         const response = await api.get<Blob>(url, { responseType: 'blob' })
         const blob = response.data instanceof Blob ? response.data : new Blob([response.data])
         const blobUrl = window.URL.createObjectURL(blob)
-        
+
         const link = document.createElement('a')
         link.href = blobUrl
         link.download = filename
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        
+
         // Clean up the blob URL
         window.URL.revokeObjectURL(blobUrl)
     },
@@ -376,6 +394,7 @@ export const projectApi = {
         const response = await api.put<{ status: string; design?: any; error?: string; message?: string }>(
             `/api/projects/${projectId}/design`,
             { feedback },
+            { headers: getGeminiHeadersOrThrow() },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -391,6 +410,7 @@ export const projectApi = {
         const response = await api.put<{ status: string; plan?: any; error?: string; message?: string }>(
             `/api/projects/${projectId}/plan`,
             { feedback },
+            { headers: getGeminiHeadersOrThrow() },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -420,6 +440,7 @@ export const projectApi = {
         const response = await api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
             `/api/projects/${projectId}/clarify`,
             { answers },
+            { headers: getGeminiHeadersOrThrow() },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)

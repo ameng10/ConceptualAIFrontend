@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { Settings, User, Bell, Shield, Zap } from 'lucide-vue-next'
+import { useGeminiCredentials } from '@/services/gemini-credentials'
+
+const { apiKey: geminiApiKey, tier: geminiTier } = useGeminiCredentials()
 </script>
 
 <template>
@@ -35,6 +38,28 @@ import { Settings, User, Bell, Shield, Zap } from 'lucide-vue-next'
           <section class="settings-section">
             <h3>Appearance</h3>
             <p>Theme settings are available in the sidebar footer.</p>
+          </section>
+
+          <section class="settings-section">
+            <h3>Gemini credentials</h3>
+            <p class="muted">Used for pipeline triggers. Not persisted (clears on refresh).</p>
+
+            <div class="field-group">
+              <label>API Key</label>
+              <input v-model="geminiApiKey" type="password" class="input" placeholder="Paste your Gemini API key" autocomplete="off" />
+            </div>
+
+            <div class="field-group">
+              <label>Tier</label>
+              <div class="select-wrap">
+                <select v-model="geminiTier" class="input tier-select">
+                  <option value="0">0 (unsupported)</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </div>
+            </div>
           </section>
         </main>
       </div>
@@ -136,5 +161,37 @@ h1 {
 
 .btn-primary {
   align-self: flex-start;
+}
+
+.muted {
+  color: var(--text-dim);
+  margin-top: -0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.tier-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-dim);
+  border-bottom: 2px solid var(--text-dim);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+  opacity: 0.9;
 }
 </style>

@@ -6,6 +6,7 @@ import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import { projectApi, authApi, authState } from '@/services/api'
+import { useGeminiCredentials } from '@/services/gemini-credentials'
 import { Sparkles, Zap, User as UserIcon, LogOut } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -21,6 +22,14 @@ const openAuthModal = (mode: 'login' | 'register') => {
 const currentProjectId = ref('')
 const currentUser = ref(null as any) // Simple reactive user state
 const isSignedIn = ref(authState.isSignedIn())
+
+const {
+  apiKey: geminiApiKey,
+  tier: geminiTier,
+  isValid: isGeminiValid,
+  isTierSupported: isGeminiTierSupported,
+} = useGeminiCredentials()
+const geminiError = ref('')
 
 const syncAuthFromStorage = () => {
   currentUser.value = authState.get()
@@ -49,8 +58,23 @@ const handleLogout = async () => {
     currentUser.value = null
 }
 
-const handleProjectSubmit = async (description: string, name: string) => {
+const handleProjectSubmit = async (
+  description: string,
+  name: string,
+  done: (ok: boolean, errorMessage?: string) => void,
+) => {
   try {
+    geminiError.value = ''
+    if (!isGeminiValid.value) {
+      geminiError.value = !geminiApiKey.value.trim()
+        ? 'Missing Gemini API Key.'
+        : !isGeminiTierSupported.value
+          ? 'Tier 0 is unsupported. Select tier 1, 2, or 3.'
+          : 'Invalid Gemini credentials.'
+      done(false, geminiError.value)
+      return
+    }
+
     // Ensure User is Authenticated (Auto-Guest if NOT logged in)
     let userId = authState.getUserId()
     if (!userId) {
@@ -82,10 +106,28 @@ const handleProjectSubmit = async (description: string, name: string) => {
       },
     })
 
+    done(true)
+
   } catch (error) {
     console.error('Failed to create project:', error)
-    const msg = error instanceof Error ? error.message : String(error)
+    const anyErr = error as any
+    const status = anyErr?.response?.status as number | undefined
+    const data = anyErr?.response?.data as any
+
+    const serverMsg =
+      typeof data === 'string'
+        ? data
+        : data?.error || data?.message || (data ? JSON.stringify(data) : '')
+
+    const msg =
+      status && serverMsg
+        ? `Request failed (${status}): ${serverMsg}`
+        : error instanceof Error
+          ? error.message
+          : String(error)
+
     alert(msg || 'Failed to start project. Please check if the backend is running.')
+    done(false, msg || 'Failed to start project.')
   }
 }
 
@@ -124,6 +166,38 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       <div class="hero">
         <h1 class="animated-gradient-text">What are you building?</h1>
         <p class="subtitle">Architect your conceptual backend in minutes.</p>
+      </div>
+
+      <div class="glass byok-card fade-in">
+        <h2 class="byok-title">Gemini credentials</h2>
+        <p class="byok-subtitle">Required for pipeline triggers. Not persisted (clears on refresh).</p>
+
+        <div class="byok-grid">
+          <div class="field">
+            <label class="label">API Key</label>
+            <input
+              v-model="geminiApiKey"
+              type="password"
+              class="input"
+              placeholder="Paste your Gemini API key"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field">
+            <label class="label">Tier</label>
+            <div class="select-wrap">
+              <select v-model="geminiTier" class="input tier-select">
+                <option value="0">0 (unsupported)</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="geminiError" class="error-msg">{{ geminiError }}</div>
       </div>
 
       <div class="input-wrapper">
@@ -269,5 +343,81 @@ h1 {
   font-size: 0.875rem;
   color: var(--text-dim);
   opacity: 0.7;
+}
+
+.error-msg {
+  color: rgba(239, 68, 68, 0.95);
+  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+}
+
+.byok-card {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.byok-title {
+  font-size: 1.125rem;
+  margin: 0;
+}
+
+.byok-subtitle {
+  margin-top: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.byok-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 1rem;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.tier-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-dim);
+  border-bottom: 2px solid var(--text-dim);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+@media (max-width: 640px) {
+  .byok-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
