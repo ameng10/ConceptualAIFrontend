@@ -6,6 +6,7 @@ import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
+import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { ArrowLeft, ChevronDown } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -153,6 +154,9 @@ const handleGenerateSyncs = async () => {
       >
   <ArrowLeft :size="18" /> Back to Projects
       </button>
+      <div class="actions">
+        <GeminiCredentialsForm class="header-gemini" />
+      </div>
     </div>
 
     <div class="content container">
@@ -219,6 +223,16 @@ const handleGenerateSyncs = async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.header-nav .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-nav .header-gemini {
+  max-width: 480px;
 }
 
 .back-link {

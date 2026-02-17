@@ -7,6 +7,7 @@ import DesignViewer from '@/components/DesignViewer.vue'
 import SyncExplorer from '@/components/SyncExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
+import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { ArrowLeft, ChevronDown, Clipboard, ClipboardCheck } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -165,6 +166,9 @@ onMounted(() => {
       <button type="button" class="back-link" @click="router.push({ path: '/projects' })">
         <ArrowLeft :size="18" /> Back to Projects
       </button>
+      <div class="actions">
+        <GeminiCredentialsForm class="header-gemini" />
+      </div>
     </div>
 
     <div class="content container">
@@ -264,6 +268,16 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.header-nav .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-nav .header-gemini {
+  max-width: 480px;
 }
 
 .back-link {

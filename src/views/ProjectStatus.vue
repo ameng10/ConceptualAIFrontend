@@ -7,6 +7,7 @@ import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
+import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { ArrowLeft, Share2 } from 'lucide-vue-next'
 import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
@@ -350,6 +351,7 @@ const handleModifyDesign = async () => {
         <ArrowLeft :size="18" /> Back to Generator
       </router-link>
       <div class="actions">
+        <GeminiCredentialsForm v-if="planningStatus !== 'complete'" class="header-gemini" />
         <button class="btn-icon">
           <Share2 :size="18" />
         </button>
@@ -460,7 +462,10 @@ const handleModifyDesign = async () => {
         </div>
       </div>
 
-      <div v-if="planningStatus !== 'planning_complete' && !planDoc" class="waiting-card glass fade-in">
+      <div
+        v-if="planningStatus !== 'planning_complete' && !planDoc && !designDoc"
+        class="waiting-card glass fade-in"
+      >
         <div class="loader-beam"></div>
         <p>Planning your backend…</p>
       </div>
@@ -486,6 +491,16 @@ const handleModifyDesign = async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.header-nav .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-nav .header-gemini {
+  max-width: 480px;
 }
 
 .back-link {
