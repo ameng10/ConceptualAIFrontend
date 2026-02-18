@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
@@ -27,6 +27,13 @@ const syncAuthFromStorage = () => {
   currentUser.value = authState.get()
   isSignedIn.value = authState.isSignedIn()
 }
+
+const userBadgeLabel = computed(() => {
+  const u: any = currentUser.value
+  if (u?.username) return u.username
+  if (u?.name) return u.name
+  return isSignedIn.value ? 'Signed in' : 'User'
+})
 
 // Check auth on mount
 onMounted(() => {
@@ -120,7 +127,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
   <div class="create-view">
     <div class="header-banner fade-in">
       <div class="user-badge" title="Signed in">
-        <UserIcon :size="14" /> {{ currentUser?.username || currentUser?.user || 'User' }}
+        <UserIcon :size="14" /> {{ userBadgeLabel }}
       </div>
       <div class="badge">
         <Zap :size="12" /> Powered by Concepts

@@ -1,53 +1,134 @@
 <script setup lang="ts">
-import { LayoutGrid, BookOpen, Star, Sparkles } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { marked } from 'marked'
 
-const categories = [
-  { name: 'Identity & Auth', count: 12, icon: Sparkles },
-  { name: 'E-commerce Central', count: 8, icon: Star },
-  { name: 'Social Dynamics', count: 15, icon: BookOpen },
+type DocItem = {
+  fileName: string
+  title: string
+  content: string
+}
+
+const docsByPath = import.meta.glob('../../documentation/*.md', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
+
+const docOrder = [
+  'README.md',
+  'getting-started-beginner.md',
+  'get-gemini-api-key.md',
+  'get-mongodb-atlas-url.md',
+  'run-generated-app-locally.md',
+  'deploy-with-railway.md',
+  'concepts-and-syncs.md',
+  'design-phase-advanced.md',
+  'troubleshooting.md',
 ]
 
-const recentConcepts = [
-  { name: 'RBAC Access Control', category: 'Identity', difficulty: 'Intermediate' },
-  { name: 'Inventory Ledger', category: 'E-commerce', difficulty: 'Advanced' },
-  { name: 'Feed Aggregator', category: 'Social', difficulty: 'Beginner' },
-]
+const prettyFallbackTitle = (fileName: string) =>
+  fileName
+    .replace(/\.md$/i, '')
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+
+const extractTitle = (content: string, fileName: string) => {
+  const firstHeading = content.match(/^#\s+(.+)$/m)?.[1]?.trim()
+  return firstHeading || prettyFallbackTitle(fileName)
+}
+
+const discoveredDocs: DocItem[] = Object.entries(docsByPath).map(([path, content]) => {
+  const fileName = path.split('/').pop() || path.split('\\').pop() || path
+  return {
+    fileName,
+    title: extractTitle(content, fileName),
+    content,
+  }
+})
+
+const docs = computed(() => {
+  const ordered = docOrder
+    .map((fileName) => discoveredDocs.find((doc) => doc.fileName === fileName))
+    .filter((doc): doc is DocItem => Boolean(doc))
+
+  const remaining = discoveredDocs
+    .filter((doc) => !docOrder.includes(doc.fileName))
+    .sort((a, b) => a.title.localeCompare(b.title))
+
+  return [...ordered, ...remaining]
+})
+
+const selectedDocFile = ref('README.md')
+
+const selectedDoc = computed(
+  () => docs.value.find((doc) => doc.fileName === selectedDocFile.value) || docs.value[0],
+)
+
+const renderedMarkdown = computed(() => {
+  if (!selectedDoc.value) return '<p>No documentation found.</p>'
+  return marked.parse(selectedDoc.value.content) as string
+})
+
+const selectDoc = (fileName: string) => {
+  selectedDocFile.value = fileName
+}
+
+const onMarkdownClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null
+  if (!target) return
+
+  const link = target.closest('a') as HTMLAnchorElement | null
+  if (!link) return
+
+  const href = link.getAttribute('href') || ''
+  if (!href || href.startsWith('#')) return
+
+  const isInternalDocLink = href.endsWith('.md') || href.includes('.md#')
+  if (isInternalDocLink) {
+    event.preventDefault()
+    const cleanHref = href.replace('./', '')
+    const [fileName] = cleanHref.split('#')
+    if (!fileName) return
+    if (docs.value.some((doc) => doc.fileName === fileName)) {
+      selectDoc(fileName)
+    }
+    return
+  }
+
+  if (href.startsWith('http://') || href.startsWith('https://')) {
+    link.setAttribute('target', '_blank')
+    link.setAttribute('rel', 'noopener noreferrer')
+  }
+}
 </script>
 
 <template>
   <div class="library-view">
     <div class="container fade-in">
       <div class="header">
-        <h1 class="animated-gradient-text">Concept Library</h1>
-        <p class="subtitle">Explore and reuse established conceptual patterns.</p>
+        <h1 class="animated-gradient-text">Documentation</h1>
+        <p class="subtitle">Browse all product guides from the new docs folder.</p>
       </div>
 
-      <div class="categories">
-        <div v-for="cat in categories" :key="cat.name" class="cat-card glass">
-          <component :is="cat.icon" :size="24" class="neon-icon" />
-          <div class="cat-info">
-            <h4>{{ cat.name }}</h4>
-            <span>{{ cat.count }} Concepts</span>
-          </div>
-        </div>
-      </div>
+      <div class="docs-layout">
+        <aside class="docs-nav glass">
+          <h3>Documents</h3>
+          <button
+            v-for="doc in docs"
+            :key="doc.fileName"
+            class="doc-link"
+            :class="{ active: selectedDoc?.fileName === doc.fileName }"
+            @click="selectDoc(doc.fileName)"
+            type="button"
+          >
+            {{ doc.title }}
+          </button>
+        </aside>
 
-      <div class="section">
-        <h3>Featured Concepts</h3>
-        <div class="concepts-list glass">
-          <div v-for="concept in recentConcepts" :key="concept.name" class="concept-item">
-            <div class="item-main">
-              <span class="name">{{ concept.name }}</span>
-              <span class="tag">{{ concept.category }}</span>
-            </div>
-            <div class="item-meta">
-              <span class="difficulty">{{ concept.difficulty }}</span>
-              <button class="btn-icon">
-                <PlusCircle :size="18" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <section class="docs-content glass" @click="onMarkdownClick">
+          <article class="markdown-body" v-html="renderedMarkdown" />
+        </section>
       </div>
     </div>
   </div>
@@ -58,127 +139,127 @@ const recentConcepts = [
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 4rem 1rem;
+  padding: 2rem 1rem;
 }
 
 .container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1.5rem;
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: var(--text-dim);
 }
 
-.categories {
+.docs-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 70vh;
 }
 
-.cat-card {
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
+.docs-nav {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.docs-nav h3 {
+  margin-bottom: 0.75rem;
+}
+
+.doc-link {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.4rem;
   cursor: pointer;
+  transition: var(--transition);
 }
 
-.cat-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--primary);
-}
-
-.cat-info h4 {
-  margin-bottom: 0.25rem;
+.doc-link:hover {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text);
 }
 
-.cat-info span {
-  font-size: 0.8125rem;
-  color: var(--text-dim);
+.doc-link.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(6, 182, 212, 0.12);
 }
 
-.neon-icon {
+.docs-content {
+  padding: 1.25rem 1.5rem;
+  overflow: auto;
+}
+
+:deep(.markdown-body h1),
+:deep(.markdown-body h2),
+:deep(.markdown-body h3),
+:deep(.markdown-body h4) {
+  margin-top: 1.25rem;
+  margin-bottom: 0.65rem;
+}
+
+:deep(.markdown-body h1) {
+  margin-top: 0;
+}
+
+:deep(.markdown-body p),
+:deep(.markdown-body li) {
+  line-height: 1.6;
+  color: var(--text);
+}
+
+:deep(.markdown-body ul),
+:deep(.markdown-body ol) {
+  padding-left: 1.25rem;
+}
+
+:deep(.markdown-body code) {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+}
+
+:deep(.markdown-body pre) {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  overflow-x: auto;
+}
+
+:deep(.markdown-body pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+:deep(.markdown-body a) {
   color: var(--neon-teal);
 }
 
-.section h3 {
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
+@media (max-width: 960px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+  }
 
-.concepts-list {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.concept-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.2s;
-}
-
-.concept-item:last-child {
-  border-bottom: none;
-}
-
-.concept-item:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.item-main {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.name {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.tag {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  background: var(--border);
-  border-radius: 4px;
-  color: var(--text-dim);
-}
-
-.item-meta {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.difficulty {
-  font-size: 0.8125rem;
-  color: var(--text-dim);
-}
-
-.btn-icon {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.btn-icon:hover {
-  color: var(--primary);
+  .docs-nav {
+    max-height: 260px;
+  }
 }
 </style>

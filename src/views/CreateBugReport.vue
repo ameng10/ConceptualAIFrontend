@@ -35,13 +35,13 @@ const handleCancel = () => router.push('/posts')
       </button>
 
       <div class="form-card glass">
-        <h1>Report a Bug</h1>
-        <p class="subtitle">Describe the issue you encountered. Be as specific as possible.</p>
+        <h1>Create Community Post</h1>
+        <p class="subtitle">Share a bug report, feature request, or app discussion topic.</p>
 
         <form @submit.prevent="handleSubmit" class="post-form">
           <textarea
             v-model="text"
-            placeholder="e.g. Search crashes when I open a folder with more than 1000 files..."
+            placeholder="e.g. Feature request: add post tags for bug/feature/discussion..."
             rows="6"
             class="post-input"
             required
@@ -56,7 +56,7 @@ const handleCancel = () => router.push('/posts')
               class="btn btn-primary"
               :disabled="!text.trim() || loading"
             >
-              {{ loading ? 'Posting...' : 'Post Report' }}
+              {{ loading ? 'Posting...' : 'Publish Post' }}
             </button>
           </div>
         </form>

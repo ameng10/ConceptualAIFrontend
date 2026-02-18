@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { User } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { User, BookOpen } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { authState } from '@/services/api'
 
 const router = useRouter()
+const route = useRoute()
 const username = ref('')
 const displayName = ref('')
 const bio = ref('')
 const loading = ref(false)
 const error = ref('')
+const showLibraryPrompt = ref(route.query.welcomeDocs === '1')
 
 const handleSubmit = async () => {
   const u = username.value.trim()
@@ -31,6 +33,14 @@ const handleSubmit = async () => {
   }
 }
 
+const openLibrary = () => {
+  router.push('/library')
+}
+
+const dismissLibraryPrompt = () => {
+  showLibraryPrompt.value = false
+}
+
 onMounted(async () => {
   if (!authState.isSignedIn()) {
     router.replace('/login')
@@ -49,11 +59,22 @@ onMounted(async () => {
   <div class="onboarding-view">
     <div class="container fade-in">
       <div class="form-card glass">
+        <div v-if="showLibraryPrompt" class="library-prompt">
+          <div class="prompt-content">
+            <BookOpen :size="16" />
+            <span>New here? Check out the Library docs for a quick start.</span>
+          </div>
+          <div class="prompt-actions">
+            <button type="button" class="btn btn-primary btn-small" @click="openLibrary">Open Library</button>
+            <button type="button" class="btn-dismiss" @click="dismissLibraryPrompt">Maybe later</button>
+          </div>
+        </div>
+
         <div class="icon-wrap">
           <User :size="32" />
         </div>
         <h1>Create Your Profile</h1>
-        <p class="subtitle">Set up your profile to post bug reports and interact with the thread.</p>
+        <p class="subtitle">Set up your profile to post bugs, feature requests, and app discussions.</p>
 
         <form @submit.prevent="handleSubmit" class="profile-form">
           <div class="field">
@@ -96,6 +117,50 @@ onMounted(async () => {
   padding: 2.5rem;
   border-radius: var(--radius);
   text-align: center;
+}
+
+.library-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(45, 212, 191, 0.45);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-small {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.btn-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.btn-dismiss:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 .icon-wrap {

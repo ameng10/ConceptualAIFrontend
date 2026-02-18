@@ -58,12 +58,12 @@ onMounted(loadPost)
       </div>
 
       <div v-else class="form-card glass">
-        <h1>Edit Bug Report</h1>
+        <h1>Edit Community Post</h1>
 
         <form @submit.prevent="handleSubmit" class="post-form">
           <textarea
             v-model="text"
-            placeholder="Describe the issue..."
+            placeholder="Update your bug report, feature request, or discussion..."
             rows="6"
             class="post-input"
             required

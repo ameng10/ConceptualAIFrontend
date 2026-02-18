@@ -17,7 +17,7 @@ const handleSubmit = async () => {
   isLoading.value = true
   try {
     await authApi.register(email.value, password.value, username.value, name.value)
-    router.replace('/onboarding')
+    router.replace({ path: '/onboarding', query: { welcomeDocs: '1' } })
   } catch (e: any) {
     const data = e.response?.data
     error.value =

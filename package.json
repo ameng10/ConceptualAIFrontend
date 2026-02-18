@@ -12,6 +12,7 @@
     "@types/uuid": "^10.0.0",
     "axios": "^1.6.8",
     "lucide-vue-next": "^0.363.0",
+    "marked": "^17.0.3",
     "uuid": "^13.0.0",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"

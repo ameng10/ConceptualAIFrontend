@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut, LogIn, Bug } from 'lucide-vue-next'
+import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut, LogIn, MessageCircle } from 'lucide-vue-next'
 import { authApi, authState } from '@/services/api'
 
 const navItems = [
   { label: 'Create App', icon: PlusCircle, path: '/' },
   { label: 'My Projects', icon: History, path: '/projects' },
-  { label: 'Bug Reports', icon: Bug, path: '/posts' },
+  { label: 'Community', icon: MessageCircle, path: '/posts' },
   { label: 'Library', icon: LayoutGrid, path: '/library' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]
@@ -31,7 +31,7 @@ const userDisplayName = computed(() => {
   // We only reliably store user id on this frontend today.
   // Prefer username if present in the stored object (future), else fallback.
   const u: any = authSnapshot.value
-  return u?.username || u?.name || u?.user_metadata?.name || (u ? 'User' : 'Not signed in')
+  return u?.username || u?.name || u?.user_metadata?.name || (u ? 'Signed in' : 'Not signed in')
 })
 
 const userInitials = computed(() => {

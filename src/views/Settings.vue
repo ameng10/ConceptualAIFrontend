@@ -1,77 +1,158 @@
 <script setup lang="ts">
-import { Settings, User, Bell, Shield, Zap } from 'lucide-vue-next'
-import { useGeminiCredentials } from '@/services/gemini-credentials'
+import { onMounted, ref } from 'vue'
+import { User } from 'lucide-vue-next'
+import { socialApi } from '@/services/social-api'
+import { setUsername } from '@/services/auth-storage'
 
-const { apiKey: geminiApiKey, tier: geminiTier } = useGeminiCredentials()
+const loading = ref(true)
+const saving = ref(false)
+const error = ref('')
+const success = ref('')
+
+const username = ref('')
+const displayName = ref('')
+const bio = ref('')
+
+const loadProfile = async () => {
+  loading.value = true
+  error.value = ''
+  success.value = ''
+  try {
+    const profile = await socialApi.getMyProfile()
+    username.value = profile?.username ?? ''
+    displayName.value = profile?.displayName ?? ''
+    bio.value = profile?.bio ?? ''
+  } catch (e: any) {
+    const status = e?.response?.status
+    if (status === 404) {
+      // Keep empty values; user can create profile from this form.
+      return
+    }
+    error.value = e?.response?.data?.error || e?.message || 'Failed to load profile.'
+  } finally {
+    loading.value = false
+  }
+}
+
+const saveProfile = async () => {
+  const nextUsername = username.value.trim()
+  const nextDisplayName = displayName.value.trim()
+  const nextBio = bio.value.trim()
+
+  if (!nextUsername || !nextDisplayName) {
+    error.value = 'Username and display name are required.'
+    success.value = ''
+    return
+  }
+
+  saving.value = true
+  error.value = ''
+  success.value = ''
+  try {
+    const profile = await socialApi.updateProfile({
+      username: nextUsername,
+      displayName: nextDisplayName,
+      bio: nextBio || undefined,
+    })
+
+    // Keep auth display in sync for sidebar/header labels.
+    if (profile?.username) setUsername(profile.username)
+
+    username.value = profile?.username ?? nextUsername
+    displayName.value = profile?.displayName ?? nextDisplayName
+    bio.value = profile?.bio ?? nextBio
+    success.value = 'Profile updated.'
+  } catch (e: any) {
+    const status = e?.response?.status
+    // If profile does not exist yet, create it from current form values.
+    if (status === 404) {
+      try {
+        const created = await socialApi.createProfile({
+          username: nextUsername,
+          displayName: nextDisplayName,
+          bio: nextBio || undefined,
+        })
+        if (created?.username) setUsername(created.username)
+        username.value = created?.username ?? nextUsername
+        displayName.value = created?.displayName ?? nextDisplayName
+        bio.value = created?.bio ?? nextBio
+        success.value = 'Profile created.'
+        return
+      } catch (createErr: any) {
+        error.value =
+          createErr?.response?.data?.error || createErr?.message || 'Failed to create profile.'
+        return
+      }
+    }
+    error.value = e?.response?.data?.error || e?.message || 'Failed to save profile.'
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(loadProfile)
 </script>
 
 <template>
   <div class="settings-view">
     <div class="container fade-in">
       <div class="header">
-        <h1 class="animated-gradient-text">Settings</h1>
-        <p class="subtitle">Personalize your experience and manage account preferences.</p>
+        <h1 class="animated-gradient-text">Profile Settings</h1>
+        <p class="subtitle">Update your public profile details.</p>
       </div>
 
-      <div class="settings-grid">
-        <aside class="settings-nav glass">
-          <button class="nav-link active"><User :size="18" /> Profile</button>
-          <button class="nav-link"><Bell :size="18" /> Notifications</button>
-          <button class="nav-link"><Shield :size="18" /> Security</button>
-          <button class="nav-link"><Zap :size="18" /> Billing</button>
-        </aside>
+      <main class="settings-content glass">
+        <div class="section-title">
+          <User :size="18" />
+          <h3>Your Profile</h3>
+        </div>
 
-        <main class="settings-content glass">
-          <section class="settings-section">
-            <h3>Profile Settings</h3>
-            <div class="field-group">
-              <label>Full Name</label>
-              <input type="text" class="input" value="Anthony Meng" />
-            </div>
-            <div class="field-group">
-              <label>Email Address</label>
-              <input type="email" class="input" value="anthony@example.com" />
-            </div>
-            <button class="btn btn-primary">Save Changes</button>
-          </section>
+        <div v-if="loading" class="muted">Loading your profile...</div>
 
-          <section class="settings-section">
-            <h3>Appearance</h3>
-            <p>Theme settings are available in the sidebar footer.</p>
-          </section>
+        <form v-else class="profile-form" @submit.prevent="saveProfile">
+          <div class="field-group">
+            <label for="profile-username">Username</label>
+            <input
+              id="profile-username"
+              v-model="username"
+              type="text"
+              class="input"
+              autocomplete="username"
+              required
+            />
+          </div>
 
-          <section class="settings-section">
-            <h3>Gemini credentials</h3>
-            <p class="muted">Used for pipeline triggers. Not persisted (clears on refresh).</p>
+          <div class="field-group">
+            <label for="profile-display-name">Display Name</label>
+            <input
+              id="profile-display-name"
+              v-model="displayName"
+              type="text"
+              class="input"
+              autocomplete="name"
+              required
+            />
+          </div>
 
-            <div class="field-group">
-              <label>API Key</label>
-              <input
-                v-model="geminiApiKey"
-                type="text"
-                class="input api-key-input"
-                placeholder="Paste your Gemini API key"
-                autocomplete="off"
-                data-1p-ignore
-                data-lpignore="true"
-                data-bwignore="true"
-              />
-            </div>
+          <div class="field-group">
+            <label for="profile-bio">Bio</label>
+            <textarea
+              id="profile-bio"
+              v-model="bio"
+              class="input bio-input"
+              rows="4"
+              placeholder="Tell people a bit about yourself (optional)."
+            />
+          </div>
 
-            <div class="field-group">
-              <label>Tier</label>
-              <div class="select-wrap">
-                <select v-model="geminiTier" class="input tier-select">
-                  <option value="0">0 (unsupported)</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              </div>
-            </div>
-          </section>
-        </main>
-      </div>
+          <p v-if="error" class="error-msg">{{ error }}</p>
+          <p v-if="success" class="success-msg">{{ success }}</p>
+
+          <button class="btn btn-primary" type="submit" :disabled="saving">
+            {{ saving ? 'Saving...' : 'Save Profile' }}
+          </button>
+        </form>
+      </main>
     </div>
   </div>
 </template>
@@ -81,132 +162,82 @@ const { apiKey: geminiApiKey, tier: geminiTier } = useGeminiCredentials()
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 4rem 1rem;
+  padding: 3rem 1rem;
 }
 
 .container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1.5rem;
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: var(--text-dim);
-}
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 2rem;
-  align-items: start;
-}
-
-.settings-nav {
-  display: flex;
-  flex-direction: column;
-  padding: 0.75rem;
-  gap: 0.25rem;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  border-radius: 8px;
-  cursor: pointer;
-  text-align: left;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.nav-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text);
-}
-
-.nav-link.active {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--primary);
 }
 
 .settings-content {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
+  padding: 1.75rem;
 }
 
-.settings-section h3 {
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.section-title h3 {
+  font-size: 1.2rem;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
 }
 
 .field-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  max-width: 400px;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  max-width: 520px;
 }
 
 .field-group label {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-dim);
 }
 
-.btn-primary {
-  align-self: flex-start;
+.bio-input {
+  resize: vertical;
+  min-height: 96px;
 }
 
 .muted {
   color: var(--text-dim);
-  margin-top: -0.75rem;
-  margin-bottom: 1.25rem;
 }
 
-.select-wrap {
-  position: relative;
+.error-msg {
+  color: rgba(239, 68, 68, 0.95);
+  margin-bottom: 0.9rem;
 }
 
-.tier-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding-right: 2.5rem;
-  cursor: pointer;
+.success-msg {
+  color: rgba(16, 185, 129, 0.95);
+  margin-bottom: 0.9rem;
 }
 
-.select-wrap::after {
-  content: '';
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid var(--text-dim);
-  border-bottom: 2px solid var(--text-dim);
-  transform: translateY(-65%) rotate(45deg);
-  pointer-events: none;
-  opacity: 0.9;
-}
-
-/* Mask API key without triggering browser password managers */
-.api-key-input {
-  -webkit-text-security: disc;
-  text-security: disc;
+.btn-primary {
+  align-self: flex-start;
 }
 </style>

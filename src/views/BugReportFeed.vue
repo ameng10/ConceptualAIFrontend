@@ -111,8 +111,8 @@ onMounted(() => {
   <div class="feed-view">
     <div class="container fade-in">
       <div class="header">
-        <h1 class="animated-gradient-text">Bug Reports</h1>
-        <p class="subtitle">Report issues and share feedback with the team.</p>
+        <h1 class="animated-gradient-text">Community Posts</h1>
+        <p class="subtitle">Report bugs, request features, and discuss apps with the community.</p>
       </div>
 
       <div class="toolbar glass">
@@ -129,7 +129,7 @@ onMounted(() => {
           @click="handleCreatePost"
         >
           <PlusCircle :size="18" />
-          New Report
+          New Post
         </button>
         <router-link v-else to="/login" class="btn btn-primary create-btn">
           Sign in to post
@@ -145,10 +145,10 @@ onMounted(() => {
 
       <div v-else-if="posts.length === 0" class="empty-state glass">
         <MessageCircle :size="48" class="empty-icon" />
-        <h3>No bug reports yet</h3>
-        <p>Be the first to report an issue or share feedback.</p>
+        <h3>No posts yet</h3>
+        <p>Be the first to report a bug, suggest a feature, or share an app update.</p>
         <button v-if="canCreatePost" class="btn btn-primary" @click="handleCreatePost">
-          Create Report
+          Create Post
         </button>
       </div>
 

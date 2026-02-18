@@ -158,7 +158,23 @@ export const authApi = {
 
     async login(email: string, password: string) {
     const res = await authFns.login(email, password)
-    authState.set(res)
+    const loginUsername = (res as any)?.username as string | undefined
+    authState.set({ ...res, username: loginUsername })
+
+    // Never block login completion on profile fetch. Enrich username in background only.
+    if (!loginUsername) {
+        void api
+            .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
+            .then((profileRes) => {
+                const candidate = profileRes.data?.profile?.username
+                if (candidate && candidate.trim()) {
+                    setUsername(candidate.trim())
+                }
+            })
+            .catch(() => {
+                // Profile may not exist yet (or endpoint may be unavailable). Ignore.
+            })
+    }
     return res
     },
 
