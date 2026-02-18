@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut, LogIn, Bug } from 'lucide-vue-next'
 import { authApi, authState } from '@/services/api'
 
 const navItems = [
   { label: 'Create App', icon: PlusCircle, path: '/' },
   { label: 'My Projects', icon: History, path: '/projects' },
+  { label: 'Bug Reports', icon: Bug, path: '/posts' },
   { label: 'Library', icon: LayoutGrid, path: '/library' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]
 
+const router = useRouter()
 const theme = ref('dark')
+
+const goToLogin = () => router.push('/login')
 
 // Lightweight reactive auth snapshot for sidebar.
 // We also listen for storage events so changes in other components reflect here.
@@ -106,6 +111,16 @@ onMounted(() => {
           title="Log out"
         >
           <LogOut :size="16" />
+        </button>
+        <button
+          v-else
+          class="login-btn"
+          type="button"
+          @click="goToLogin"
+          title="Sign in"
+        >
+          <LogIn :size="16" />
+          <span>Sign In</span>
         </button>
       </div>
     </div>
@@ -341,5 +356,25 @@ onMounted(() => {
 
 .logout-btn:focus-visible::before {
   opacity: 1;
+}
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--primary);
+  color: black;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.login-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.3);
 }
 </style>

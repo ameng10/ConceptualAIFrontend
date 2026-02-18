@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { v7 as uuidv7 } from 'uuid'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
-import AuthModal from '@/components/AuthModal.vue'
-import { projectApi, authApi, authState } from '@/services/api'
+import { projectApi, authState } from '@/services/api'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { useGeminiCredentials } from '@/services/gemini-credentials'
-import { Sparkles, Zap, User as UserIcon, LogOut } from 'lucide-vue-next'
+import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
 const router = useRouter()
 const showClarification = ref(false)
-const showAuthModal = ref(false)
-const authModalMode = ref<'login' | 'register'>('login')
 const questions = ref<string[]>([])
-
-const openAuthModal = (mode: 'login' | 'register') => {
-  authModalMode.value = mode
-  showAuthModal.value = true
-}
 const currentProjectId = ref('')
 const currentUser = ref(null as any) // Simple reactive user state
 const isSignedIn = ref(authState.isSignedIn())
@@ -48,17 +39,6 @@ onUnmounted(() => {
   window.removeEventListener('storage', syncAuthFromStorage)
 })
 
-const handleAuthSuccess = (user: any) => {
-  currentUser.value = user
-  // Refresh authState just in case
-  console.log('Logged in as:', user.name)
-}
-
-const handleLogout = async () => {
-    await authApi.logout()
-    currentUser.value = null
-}
-
 const handleProjectSubmit = async (
   description: string,
   name: string,
@@ -76,18 +56,11 @@ const handleProjectSubmit = async (
       return
     }
 
-    // Ensure User is Authenticated (Auto-Guest if NOT logged in)
-    let userId = authState.getUserId()
+    // User must be authenticated (enforced by route guard)
+    const userId = authState.getUserId()
     if (!userId) {
-      const guestId = uuidv7().slice(0, 8)
-      const guestUser = {
-        email: `guest_${guestId}@temp.com`,
-        password: `pass_${guestId}`,
-        username: `guest_${guestId}`,
-        name: 'Guest User'
-      }
-      const auth = await authApi.register(guestUser.email, guestUser.password, guestUser.username, guestUser.name)
-      userId = auth.user
+      done(false, 'You must be signed in to create a project.')
+      return
     }
 
     // Important: the backend generates the canonical project id.
@@ -146,18 +119,9 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 <template>
   <div class="create-view">
     <div class="header-banner fade-in">
-  <div v-if="isSignedIn" class="user-badge" title="Signed in">
-     <UserIcon :size="14" /> {{ currentUser?.user_metadata?.name || currentUser?.username || 'User' }}
+      <div class="user-badge" title="Signed in">
+        <UserIcon :size="14" /> {{ currentUser?.username || currentUser?.user || 'User' }}
       </div>
-      <div v-else class="auth-buttons">
-        <button class="btn-ghost" @click="openAuthModal('login')">
-          Sign In
-        </button>
-        <button class="btn-primary-sm" @click="openAuthModal('register')">
-          Sign Up
-        </button>
-      </div>
-
       <div class="badge">
         <Zap :size="12" /> Powered by Concepts
       </div>
@@ -187,13 +151,6 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       :show="showClarification"
       :questions="questions"
       @submit="handleClarificationSubmit"
-    />
-
-    <AuthModal
-        :show="showAuthModal"
-        :initial-mode="authModalMode"
-        @close="showAuthModal = false"
-        @success="handleAuthSuccess"
     />
   </div>
 </template>

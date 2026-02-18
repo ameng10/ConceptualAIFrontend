@@ -30,6 +30,12 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = []
 }
 
+function notifySessionCleared() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth:session-cleared'))
+  }
+}
+
 /**
  * Axios client used by this Vite app.
  *
@@ -116,6 +122,7 @@ apiClient.interceptors.response.use(
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
         clearAuthData()
+        notifySessionCleared()
         processQueue(new Error('No refresh token available'), null)
         isRefreshing = false
         return Promise.reject(error)
@@ -135,6 +142,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest)
       } catch (refreshError) {
         clearAuthData()
+        notifySessionCleared()
         processQueue(refreshError, null)
         isRefreshing = false
         return Promise.reject(refreshError)

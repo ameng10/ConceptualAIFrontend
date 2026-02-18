@@ -14,10 +14,13 @@ const { apiKey: geminiApiKey, tier: geminiTier } = useGeminiCredentials()
         <label class="label">API Key</label>
         <input
           v-model="geminiApiKey"
-          type="password"
-          class="input"
+          type="text"
+          class="input api-key-input"
           placeholder="Paste your Gemini API key"
           autocomplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-bwignore="true"
         />
       </div>
 
@@ -72,6 +75,12 @@ const { apiKey: geminiApiKey, tier: geminiTier } = useGeminiCredentials()
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-dim);
+}
+
+/* Mask API key like password without triggering browser password managers */
+.api-key-input {
+  -webkit-text-security: disc;
+  text-security: disc;
 }
 
 .select-wrap {

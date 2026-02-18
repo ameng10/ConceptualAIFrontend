@@ -107,6 +107,22 @@ export const authState = {
 }
 
 /**
+ * Validate session on app load. If we have a token but it's invalid (401),
+ * clear auth and notify so the UI redirects to login.
+ */
+export async function validateSession(): Promise<void> {
+    const accessToken = getAccessToken()
+    if (!accessToken) return
+
+    try {
+        await authFns.getUserFromToken(accessToken)
+    } catch {
+        clearAuthData()
+        // Route guard will redirect to /login on next navigation
+    }
+}
+
+/**
  * Initialize auth state on app startup.
  *
  * Goal: never appear "signed in" unless we actually have a stored user id.
