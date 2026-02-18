@@ -41,6 +41,10 @@ const designDoc = ref<any | null>(null)
 
 const isGeneratingSyncs = ref(false)
 const generateSyncsError = ref('')
+const toErrorMessage = (err: unknown, fallback: string) => {
+  const anyErr = err as any
+  return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
 
 const startIfNeeded = async () => {
   const qName = route.query?.projectName
@@ -78,7 +82,8 @@ const startIfNeeded = async () => {
       status === 'complete' ||
       status === 'error'
 
-    // If implementation already exists or is in progress, fetch or wait for it.
+    // If implementation already exists or is in progress, fetch via stage-aware getter.
+    // During `implementing`, backend long-polls until implementation is ready.
     if (implementationFetchAllowed) {
       implementStatus.value = 'started'
       try {
@@ -94,26 +99,13 @@ const startIfNeeded = async () => {
           projectStatus.value = 'implemented'
           return
         }
-      } catch {
-        // ignore; may not exist yet
-      }
-      // Implementation in progress but not ready: call startImplementation and await.
-      // Backend holds the request until implementation finishes, then returns the result.
-      if (status === 'implementing') {
-        try {
-          const design = await projectApi.getDesign(projectId)
-          if (design) {
-            designDoc.value = design
-            const res = await projectApi.startImplementation(projectId, design)
-            const maybe = (res as any)?.implementations ?? (res as any)?.implementation ?? (res as any)?.result ?? null
-            if (maybe) {
-              implementationDoc.value = maybe
-              projectStatus.value = 'implemented'
-              return
-            }
-          }
-        } catch {
-          // ignore; user can refresh later
+      } catch (e) {
+        // Backend returns 409 when project is `implementing` but no active sandbox exists.
+        // For later stages, treat missing implementation as non-fatal.
+        if (status === 'implementing') {
+          implementStatus.value = 'error'
+          implementError.value = toErrorMessage(e, 'Failed to fetch implementation.')
+          return
         }
       }
     }
@@ -143,13 +135,12 @@ const startIfNeeded = async () => {
           implementationDoc.value = maybe
           return
         }
-        // No polling: backend is expected to hold the request until results are ready.
-        // If it returns early, the user can refresh later.
+        // Backend is expected to hold this request until implementation is ready.
       }
     }
   } catch (e) {
     implementStatus.value = 'error'
-    implementError.value = e instanceof Error ? e.message : String(e)
+    implementError.value = toErrorMessage(e, 'Failed to start implementation.')
     return
   }
 
@@ -166,7 +157,7 @@ const handleGenerateSyncs = async () => {
   isGeneratingSyncs.value = true
 
   // Navigate immediately so the user sees the generating screen + games right away.
-  // The syncing page will poll (and can start generation if needed).
+  // The syncing page uses stage-aware getter behavior during in-progress sync generation.
   const navPromise = router.push({
     path: `/project/${projectId}/syncing`,
     query: {

@@ -30,6 +30,10 @@ const backendDownloadUrl = ref<string>('')
 
 const buildError = ref('')
 const buildInfo = ref('')
+const toErrorMessage = (err: unknown, fallback: string) => {
+  const anyErr = err as any
+  return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
 
 const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
 const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
@@ -152,20 +156,17 @@ const startBuild = async () => {
   backendState.value = 'starting'
 
   try {
-    // Containerized build path: backend holds this request until artifacts are ready.
+    // Trigger build. Backend should hold this request until build completes.
     const res: BuildStatus = await projectApi.startBuild(projectId)
-    let foundAnyDownloads = applyBuildPayload(res)
-    if ((!foundAnyDownloads || !allDone.value) && !buildError.value) {
-      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
-      const res2: BuildStatus = await projectApi.startBuild(projectId)
-      foundAnyDownloads = applyBuildPayload(res2)
+    applyBuildPayload(res)
+    if (!allDone.value && !buildError.value) {
+      buildInfo.value = 'Build is still running. Waiting for backend to finish...'
     }
-    stopStatusPolling()
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
     buildInfo.value = ''
-    buildError.value = e instanceof Error ? e.message : String(e)
+    buildError.value = toErrorMessage(e, 'Failed to start build.')
     return
   }
 }
@@ -180,33 +181,18 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
     const status: BuildStatus = await projectApi.getBuildStatus(projectId)
     const foundAny = applyBuildPayload(status)
     if (allDone.value) return true
-    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !foundAny && !buildError.value) {
-      // Build in progress: call startBuild and await. Backend holds the request until build finishes.
-      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
-      try {
-        const res: BuildStatus = await projectApi.startBuild(projectId)
-        return applyBuildPayload(res)
-      } catch (e) {
-        buildError.value = e instanceof Error ? e.message : String(e)
-        return false
-      }
-    }
-    if (foundAny && !allDone.value && !buildError.value) {
-      // Partial results: call startBuild and await for the rest. Backend holds until complete.
-      buildInfo.value = 'Build is still running. Waiting for remaining artifacts…'
-      try {
-        const res: BuildStatus = await projectApi.startBuild(projectId)
-        applyBuildPayload(res)
-      } catch (e) {
-        buildError.value = e instanceof Error ? e.message : String(e)
-      }
+    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !buildError.value) {
+      // During `building`, getter is stage-aware and may long-poll until completion.
+      buildInfo.value = foundAny
+        ? 'Build is still running. Waiting for remaining artifacts...'
+        : 'Build is running in the containerized session. Waiting for completion...'
     }
     return foundAny
   } catch (e) {
-    // Don't set error here - we'll try starting build if this fails
-    console.warn('Failed to fetch existing downloads:', e)
+    // Backend returns 409 when project is `building` but no sandbox is active.
     frontendState.value = 'idle'
     backendState.value = 'idle'
+    buildError.value = toErrorMessage(e, 'Failed to fetch build status.')
     return false
   }
 }
@@ -227,28 +213,8 @@ onMounted(async () => {
   const isAlreadyAssembled = projectStatus === 'assembled' || projectStatus === 'complete'
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
-    // Existing build lifecycle state: fetch current URLs/status, or wait for build to finish.
-    const foundDownloads = await fetchExistingDownloads()
-    if (foundDownloads) return
-    if (isAlreadyBuilding && !buildError.value) {
-      // Build in progress: call startBuild and await. Backend holds the request until build finishes.
-      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
-      try {
-        const res: BuildStatus = await projectApi.startBuild(projectId)
-        applyBuildPayload(res)
-      } catch (e) {
-        buildError.value = e instanceof Error ? e.message : String(e)
-      }
-    } else if (isAlreadyAssembled && !buildError.value) {
-      // Assembled but no URLs yet: call startBuild and await. Backend holds until artifacts are ready.
-      buildInfo.value = 'Build artifacts are not available yet. Waiting…'
-      try {
-        const res: BuildStatus = await projectApi.startBuild(projectId)
-        applyBuildPayload(res)
-      } catch (e) {
-        buildError.value = e instanceof Error ? e.message : String(e)
-      }
-    }
+    // Existing lifecycle state: use getter (stage-aware for building).
+    await fetchExistingDownloads()
     return
   }
 

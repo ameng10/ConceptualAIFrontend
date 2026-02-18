@@ -37,6 +37,11 @@ const modifyDesignError = ref('')
 
 const planToastShown = ref(false)
 const designToastShown = ref(false)
+const planningError = ref('')
+const toErrorMessage = (err: unknown, fallback: string) => {
+  const anyErr = err as any
+  return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
 
 // Statuses where design has already started or is in progress - don't allow "Accept plan" to start design again
 const IN_PROGRESS_STATUSES = [
@@ -84,6 +89,11 @@ const canAcceptDesign = computed(() => {
   const status = project.value?.status ?? planningStatus.value
   if (status && PAST_DESIGN_STATUSES.includes(status as any)) return false
   return true
+})
+
+const isPastPlanningStage = computed(() => {
+  const status = project.value?.status ?? planningStatus.value
+  return Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
 })
 
 const tryHydrateFromQuery = () => {
@@ -181,21 +191,24 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 
 onMounted(() => {
   tryHydrateFromQuery()
-  // Fetch project to get authoritative backend status (for disabling start-design when already in progress)
-  projectApi.getProject(projectId).then((p) => {
-    project.value = p
-    if (p.status && !planningStatus.value) {
-      planningStatus.value = p.status === 'design_complete' ? 'designing' : p.status
-    }
-    // If already past planning, treat as accepted so we don't show the Accept plan button
-    if (p.status && PAST_PLANNING_STATUSES.includes(p.status as any)) {
-      accepted.value = true
-    }
-  }).catch(() => { /* ignore */ })
   // View Details behavior:
   // - If design exists: show design phase and render it.
   // - Else if plan exists: show planning phase and render it.
   ;(async () => {
+    // Fetch project first to get authoritative status (needed when navigating without query params)
+    try {
+      const p = await projectApi.getProject(projectId)
+      project.value = p
+      if (p.status) {
+        // Backend status is authoritative. Query params can be stale after paging out/in.
+        planningStatus.value = p.status === 'design_complete' ? 'designing' : p.status
+      }
+      if (p.status && PAST_PLANNING_STATUSES.includes(p.status as any)) {
+        accepted.value = true
+      }
+    } catch {
+      /* ignore */
+    }
     const statusFromQuery = planningStatus.value
     const shouldPreferPlan = statusFromQuery === 'planning_complete'
 
@@ -224,8 +237,29 @@ onMounted(() => {
       statusFromQuery === 'complete' ||
       statusFromQuery === 'error'
 
+    // If we're explicitly in planning, call getPlan and await. Backend holds the request until plan is ready.
+    if (statusFromQuery === 'planning') {
+      planningError.value = ''
+      try {
+        const plan = await projectApi.getPlan(projectId)
+        if (plan) {
+          planDoc.value = { status: 'complete', plan }
+          planningStatus.value = 'planning_complete'
+          if (project.value) project.value = { ...project.value, status: 'planning_complete' }
+          if (!planToastShown.value) {
+            toastPlanReady()
+            planToastShown.value = true
+          }
+        }
+      } catch (e) {
+        planDoc.value = { status: 'error' }
+        planningError.value = toErrorMessage(e, 'Failed to fetch plan.')
+      }
+      return
+    }
+
     // If we're explicitly in designing, fetch or wait for the design.
-    // Backend holds the initial POST /design until ready; when opening mid-design, we call it and await.
+    // During `designing`, GET /design is stage-aware and waits until design is ready.
     if (statusFromQuery === 'designing') {
       accepted.value = true
       designStatus.value = 'starting'
@@ -233,25 +267,24 @@ onMounted(() => {
       designDoc.value = null
 
       try {
-        let design = await projectApi.getDesign(projectId)
-        if (!design) {
-          const plan = await projectApi.getPlan(projectId)
-          if (plan) {
-            const res = await projectApi.startDesign(projectId, plan)
-            design = (res as any)?.design ?? (res as any)?.result ?? res
-          }
-        }
+        const design = await projectApi.getDesign(projectId)
         if (design) {
           designDoc.value = design
+          if (project.value) project.value = { ...project.value, status: 'design_complete' }
+          planningStatus.value = 'design_complete'
           if (!designToastShown.value) {
             toastDesignReady()
             designToastShown.value = true
           }
+          designStatus.value = 'started'
+        } else {
+          designStatus.value = 'error'
+          designError.value = 'Design is not available yet.'
         }
-      } catch {
-        // ignore; user can refresh later
-      } finally {
-        designStatus.value = 'started'
+      } catch (e) {
+        designStatus.value = 'error'
+        designError.value = toErrorMessage(e, 'Failed to fetch design.')
+        return
       }
       return
     }
@@ -441,12 +474,13 @@ const handleModifyDesign = async () => {
         <PlayWhileYouWait />
       </div>
 
-      <div v-if="planDoc && !accepted" class="glass fade-in plan-card">
+      <div v-if="planDoc && !accepted && !isPastPlanningStage" class="glass fade-in plan-card">
         <h2 class="section-title">Planner</h2>
         <p v-if="planDoc.status === 'processing'" class="muted">Planning agent is working…</p>
         <p v-else-if="planDoc.status === 'complete'" class="muted">Review the plan, then accept to continue.</p>
         <p v-else-if="planDoc.status === 'needs_clarification'" class="muted">Needs clarification to proceed.</p>
         <p v-else-if="planDoc.status === 'error'" class="muted">Planner errored.</p>
+        <div v-if="planningError" class="error-msg">{{ planningError }}</div>
 
         <div v-if="planDoc.status === 'complete' && planDoc.plan" class="json">
           <PlanViewer :plan="planDoc.plan" />
@@ -483,7 +517,7 @@ const handleModifyDesign = async () => {
 
       </div>
 
-      <div v-if="accepted" class="glass fade-in plan-card">
+      <div v-if="accepted || isPastPlanningStage" class="glass fade-in plan-card">
         <h2 class="section-title">Design</h2>
         <p v-if="designStatus === 'starting'" class="muted">Sending accepted plan to the design agent…</p>
         <p v-else-if="designStatus === 'started'" class="muted">Design agent started.</p>

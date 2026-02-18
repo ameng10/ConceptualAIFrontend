@@ -36,6 +36,10 @@ const canBuild = computed(() => {
 const syncStatus = ref<'starting' | 'started' | 'error'>('starting')
 const syncError = ref('')
 const syncDoc = ref<any | null>(null)
+const toErrorMessage = (err: unknown, fallback: string) => {
+  const anyErr = err as any
+  return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
 
 const safeStringify = (value: any, space = 2) => {
   const seen = new WeakSet<object>()
@@ -116,18 +120,19 @@ const startIfNeeded = async () => {
     initialProjectStatus.value = qStatus
   }
 
+  // Fetch project first to get authoritative stage and build-button status.
+  let resolvedStatus = initialProjectStatus.value
+  try {
+    const p = await projectApi.getProject(projectId)
+    const apiStatus = p?.status ? String(p.status) : ''
+    if (isActive.value) projectStatus.value = apiStatus || null
+    if (!resolvedStatus && apiStatus) resolvedStatus = apiStatus
+  } catch {
+    // ignore; continue with query fallback
+  }
+
   // Default UI state.
   syncStatus.value = 'started'
-
-  // Fetch project to get authoritative status for Build button
-  ;(async () => {
-    try {
-      const p = await projectApi.getProject(projectId)
-      if (isActive.value) projectStatus.value = p?.status ?? null
-    } catch {
-      // ignore
-    }
-  })()
 
   // Best-effort: load previous stage docs for the bottom dropdowns.
   // Do not block sync visibility on these requests.
@@ -148,21 +153,44 @@ const startIfNeeded = async () => {
     }
   })()
 
-  // If the project is already in the completion state, fetch sync artifacts once.
-  // No polling.
-  const alreadyComplete = isSyncGenerationComplete(initialProjectStatus.value)
-  if (alreadyComplete) {
+  // Active sync generation: getter is stage-aware and long-polls until ready.
+  if (resolvedStatus === 'sync_generating') {
+    syncStatus.value = 'starting'
     try {
       const raw = await projectApi.getSyncs(projectId)
       syncDoc.value = unwrapSyncPayload(raw)
+      projectStatus.value = 'syncs_generated'
+      syncStatus.value = 'started'
       return
-    } catch {
-      // Fall through to starting generation.
+    } catch (e) {
+      syncStatus.value = 'error'
+      syncError.value = toErrorMessage(e, 'Failed to fetch syncs.')
+      return
     }
   }
 
-  // Otherwise, start generation and rely on the POST response.
-  // No polling: backend is expected to hold the request until results are ready.
+  // If generation already completed (or project is in a later stage), fetch artifacts once.
+  const hasSyncArtifactsStage =
+    isSyncGenerationComplete(resolvedStatus) ||
+    resolvedStatus === 'syncing' ||
+    resolvedStatus === 'building' ||
+    resolvedStatus === 'assembling' ||
+    resolvedStatus === 'assembled' ||
+    resolvedStatus === 'complete'
+  if (hasSyncArtifactsStage) {
+    try {
+      const raw = await projectApi.getSyncs(projectId)
+      syncDoc.value = unwrapSyncPayload(raw)
+      projectStatus.value = 'syncs_generated'
+      return
+    } catch (e) {
+      syncStatus.value = 'error'
+      syncError.value = toErrorMessage(e, 'Failed to fetch syncs.')
+      return
+    }
+  }
+
+  // Otherwise trigger sync generation.
   try {
     syncStatus.value = 'starting'
     const res = await projectApi.startSyncGeneration(projectId)
@@ -174,10 +202,11 @@ const startIfNeeded = async () => {
     const hasEndpointBundles = Array.isArray((payload as any)?.endpointBundles) && (payload as any).endpointBundles.length > 0
     if (hasSyncs || hasApiDefinition || hasEndpointBundles) {
       syncDoc.value = payload
+      projectStatus.value = 'syncs_generated'
     }
   } catch (e) {
     syncStatus.value = 'error'
-    syncError.value = e instanceof Error ? e.message : String(e)
+    syncError.value = toErrorMessage(e, 'Failed to generate syncs.')
   }
 }
 
