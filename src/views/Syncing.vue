@@ -16,6 +16,22 @@ const router = useRouter()
 const projectId = route.params.id as string
 const projectName = ref<string>('')
 const initialProjectStatus = ref<string>('')
+const projectStatus = ref<string | null>(null)
+
+// Statuses where build has already started or is complete - don't allow "Build" again
+const PAST_SYNC_STATUSES = [
+  'building',
+  'assembling',
+  'assembled',
+  'complete',
+  'error',
+] as const
+
+const canBuild = computed(() => {
+  const status = projectStatus.value ?? initialProjectStatus.value
+  if (status && PAST_SYNC_STATUSES.includes(status as any)) return false
+  return true
+})
 
 const syncStatus = ref<'starting' | 'started' | 'error'>('starting')
 const syncError = ref('')
@@ -102,6 +118,16 @@ const startIfNeeded = async () => {
 
   // Default UI state.
   syncStatus.value = 'started'
+
+  // Fetch project to get authoritative status for Build button
+  ;(async () => {
+    try {
+      const p = await projectApi.getProject(projectId)
+      if (isActive.value) projectStatus.value = p?.status ?? null
+    } catch {
+      // ignore
+    }
+  })()
 
   // Best-effort: load previous stage docs for the bottom dropdowns.
   // Do not block sync visibility on these requests.
@@ -197,6 +223,7 @@ onMounted(() => {
             <button
               class="btn-primary"
               type="button"
+              :disabled="!canBuild"
               @click="router.push({ path: `/project/${projectId}/assembling`, query: { projectName: projectName ? encodeURIComponent(projectName) : undefined } })"
             >
               Build

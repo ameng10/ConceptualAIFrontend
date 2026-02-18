@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
@@ -14,6 +14,25 @@ const router = useRouter()
 
 const projectId = route.params.id as string
 const projectName = ref<string>('')
+const projectStatus = ref<string | null>(null)
+
+// Statuses where syncs are already generating or past - don't allow "Generate syncs" again
+const PAST_IMPLEMENTING_STATUSES = [
+  'sync_generating',
+  'syncs_generated',
+  'syncing',
+  'building',
+  'assembling',
+  'assembled',
+  'complete',
+  'error',
+] as const
+
+const canGenerateSyncs = computed(() => {
+  const status = projectStatus.value
+  if (status && PAST_IMPLEMENTING_STATUSES.includes(status as any)) return false
+  return true
+})
 
 const implementStatus = ref<'starting' | 'started' | 'error'>('starting')
 const implementError = ref('')
@@ -38,6 +57,7 @@ const startIfNeeded = async () => {
   try {
     const project = await projectApi.getProject(projectId)
     const status = project?.status
+    projectStatus.value = status ?? null
     const designFetchAllowed =
       status === 'designing' ||
       status === 'design_complete' ||
@@ -58,7 +78,7 @@ const startIfNeeded = async () => {
       status === 'complete' ||
       status === 'error'
 
-    // If implementation already exists or is in progress, do a single best-effort fetch.
+    // If implementation already exists or is in progress, fetch or wait for it.
     if (implementationFetchAllowed) {
       implementStatus.value = 'started'
       try {
@@ -71,12 +91,31 @@ const startIfNeeded = async () => {
           } catch {
             // ignore
           }
+          projectStatus.value = 'implemented'
           return
         }
       } catch {
         // ignore; may not exist yet
       }
-      // If we couldn't fetch results yet, fall through and try starting if appropriate.
+      // Implementation in progress but not ready: call startImplementation and await.
+      // Backend holds the request until implementation finishes, then returns the result.
+      if (status === 'implementing') {
+        try {
+          const design = await projectApi.getDesign(projectId)
+          if (design) {
+            designDoc.value = design
+            const res = await projectApi.startImplementation(projectId, design)
+            const maybe = (res as any)?.implementations ?? (res as any)?.implementation ?? (res as any)?.result ?? null
+            if (maybe) {
+              implementationDoc.value = maybe
+              projectStatus.value = 'implemented'
+              return
+            }
+          }
+        } catch {
+          // ignore; user can refresh later
+        }
+      }
     }
 
     if (!designFetchAllowed) {
@@ -188,7 +227,7 @@ const handleGenerateSyncs = async () => {
           </div>
 
           <div class="review-buttons">
-            <button class="btn-primary" type="button" :disabled="isGeneratingSyncs" @click="handleGenerateSyncs">
+            <button class="btn-primary" type="button" :disabled="isGeneratingSyncs || !canGenerateSyncs" @click="handleGenerateSyncs">
               <span v-if="!isGeneratingSyncs">Generate syncs</span>
               <span v-else>Generating…</span>
             </button>

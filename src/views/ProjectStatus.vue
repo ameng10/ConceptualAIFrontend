@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -14,6 +14,7 @@ import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated 
 const route = useRoute()
 const router = useRouter()
 const projectId = route.params.id as string
+const project = ref<Project | null>(null)
 const planningStatus = ref<string | null>(null)
 const planDoc = ref<any | null>(null)
 const showClarification = ref(false)
@@ -36,6 +37,54 @@ const modifyDesignError = ref('')
 
 const planToastShown = ref(false)
 const designToastShown = ref(false)
+
+// Statuses where design has already started or is in progress - don't allow "Accept plan" to start design again
+const IN_PROGRESS_STATUSES = [
+  'planning',
+  'designing',
+  'design_complete',
+  'implementing',
+  'implemented',
+  'sync_generating',
+  'syncs_generated',
+  'syncing',
+  'building',
+  'assembling',
+  'assembled',
+  'complete',
+  'error',
+  'awaiting_clarification',
+  'awaiting_input',
+] as const
+
+// Statuses where we're past planning - design already started or complete
+const PAST_PLANNING_STATUSES = IN_PROGRESS_STATUSES.filter((s) => s !== 'planning')
+
+const canStartDesign = computed(() => {
+  const status = project.value?.status ?? planningStatus.value
+  if (status && IN_PROGRESS_STATUSES.includes(status as any)) return false
+  return true
+})
+
+// Statuses where we're past design - implementing or later; don't allow "Accept design" again
+const PAST_DESIGN_STATUSES = [
+  'implementing',
+  'implemented',
+  'sync_generating',
+  'syncs_generated',
+  'syncing',
+  'building',
+  'assembling',
+  'assembled',
+  'complete',
+  'error',
+] as const
+
+const canAcceptDesign = computed(() => {
+  const status = project.value?.status ?? planningStatus.value
+  if (status && PAST_DESIGN_STATUSES.includes(status as any)) return false
+  return true
+})
 
 const tryHydrateFromQuery = () => {
   const planQ = route.query?.plan
@@ -132,6 +181,17 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 
 onMounted(() => {
   tryHydrateFromQuery()
+  // Fetch project to get authoritative backend status (for disabling start-design when already in progress)
+  projectApi.getProject(projectId).then((p) => {
+    project.value = p
+    if (p.status && !planningStatus.value) {
+      planningStatus.value = p.status === 'design_complete' ? 'designing' : p.status
+    }
+    // If already past planning, treat as accepted so we don't show the Accept plan button
+    if (p.status && PAST_PLANNING_STATUSES.includes(p.status as any)) {
+      accepted.value = true
+    }
+  }).catch(() => { /* ignore */ })
   // View Details behavior:
   // - If design exists: show design phase and render it.
   // - Else if plan exists: show planning phase and render it.
@@ -164,9 +224,8 @@ onMounted(() => {
       statusFromQuery === 'complete' ||
       statusFromQuery === 'error'
 
-    // If we're explicitly in designing, do a single best-effort fetch.
-    // No polling: we rely on the initial POST /design call to hold the connection until ready,
-    // or the user can refresh later if the backend returns immediately.
+    // If we're explicitly in designing, fetch or wait for the design.
+    // Backend holds the initial POST /design until ready; when opening mid-design, we call it and await.
     if (statusFromQuery === 'designing') {
       accepted.value = true
       designStatus.value = 'starting'
@@ -174,7 +233,14 @@ onMounted(() => {
       designDoc.value = null
 
       try {
-        const design = await projectApi.getDesign(projectId)
+        let design = await projectApi.getDesign(projectId)
+        if (!design) {
+          const plan = await projectApi.getPlan(projectId)
+          if (plan) {
+            const res = await projectApi.startDesign(projectId, plan)
+            design = (res as any)?.design ?? (res as any)?.result ?? res
+          }
+        }
         if (design) {
           designDoc.value = design
           if (!designToastShown.value) {
@@ -393,7 +459,7 @@ const handleModifyDesign = async () => {
           </div>
 
           <div class="review-buttons">
-            <button class="btn-primary" type="button" :disabled="accepted" @click="handleAcceptPlan">
+            <button class="btn-primary" type="button" :disabled="accepted || !canStartDesign || designStatus === 'starting'" @click="handleAcceptPlan">
               Accept plan
             </button>
           </div>
@@ -437,7 +503,7 @@ const handleModifyDesign = async () => {
             <button
               class="btn-primary"
               type="button"
-              :disabled="false"
+              :disabled="!canAcceptDesign"
               @click="handleAcceptDesign"
             >
               Accept design

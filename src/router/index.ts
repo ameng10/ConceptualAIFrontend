@@ -15,10 +15,17 @@ import CreateBugReport from '@/views/CreateBugReport.vue'
 import EditBugReport from '@/views/EditBugReport.vue'
 import PublicProfile from '@/views/PublicProfile.vue'
 import Onboarding from '@/views/Onboarding.vue'
-import { authState } from '@/services/api'
+import { authState, validateSession } from '@/services/api'
 
 const LOGIN_PATH = '/login'
 const REGISTER_PATH = '/register'
+
+let sessionValidated = false
+async function ensureSessionValidated() {
+    if (sessionValidated) return
+    await validateSession()
+    sessionValidated = true
+}
 
 const isAuthenticated = () => authState.isSignedIn()
 
@@ -131,9 +138,15 @@ const router = createRouter({
     ]
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
     const requiresAuth = to.matched.some((r) => r.meta?.requiresAuth)
     const isPublic = to.matched.some((r) => r.meta?.public)
+
+    // Validate session before allowing access to protected routes
+    if (requiresAuth) {
+        await ensureSessionValidated()
+    }
+
     const authenticated = isAuthenticated()
 
     if (isPublic && authenticated && (to.path === LOGIN_PATH || to.path === REGISTER_PATH)) {

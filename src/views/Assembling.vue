@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -36,10 +36,6 @@ const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Bool
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
-const BUILD_STATUS_POLL_INTERVAL_MS = 3000
-
-let isStatusPolling = false
-let statusPollTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const downloadFrontend = async () => {
   if (!frontendDownloadUrl.value || downloadingFrontend.value) return
@@ -146,98 +142,30 @@ const applyBuildPayload = (payload: BuildStatus | any): boolean => {
   return Boolean(frontendUrl || backendUrl)
 }
 
-const clearStatusPollTimer = () => {
-  if (statusPollTimer !== null) {
-    window.clearTimeout(statusPollTimer)
-    statusPollTimer = null
-  }
-}
-
-const stopStatusPolling = () => {
-  isStatusPolling = false
-  clearStatusPollTimer()
-}
-
-const scheduleStatusPoll = () => {
-  if (!isStatusPolling) return
-  clearStatusPollTimer()
-  statusPollTimer = window.setTimeout(() => {
-    void pollBuildStatus()
-  }, BUILD_STATUS_POLL_INTERVAL_MS)
-}
-
-const pollBuildStatus = async () => {
-  if (!isStatusPolling) return
-
-  try {
-    const status: BuildStatus = await projectApi.getBuildStatus(projectId)
-    const foundAny = applyBuildPayload(status)
-
-    if (allDone.value || buildError.value) {
-      stopStatusPolling()
-      return
-    }
-
-    if (foundAny && !buildInfo.value) {
-      buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
-    } else if (!foundAny) {
-      buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
-    }
-
-    // Keep checking until both artifacts are available or an error is returned.
-    if (isPayloadProcessing(status) || !allDone.value) {
-      scheduleStatusPoll()
-      return
-    }
-
-    stopStatusPolling()
-  } catch (e) {
-    if (!isStatusPolling) return
-    console.warn('Failed to poll build status:', e)
-    // Token refresh can race with status polling; keep trying.
-    buildInfo.value = 'Re-checking build status…'
-    scheduleStatusPoll()
-  }
-}
-
-const beginStatusPolling = () => {
-  if (isStatusPolling || allDone.value || buildError.value) return
-  isStatusPolling = true
-  if (!buildInfo.value) {
-    buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
-  }
-  void pollBuildStatus()
-}
-
 const startBuild = async () => {
   buildError.value = ''
   buildInfo.value = ''
   frontendDownloadUrl.value = ''
   backendDownloadUrl.value = ''
-  stopStatusPolling()
 
   frontendState.value = 'starting'
   backendState.value = 'starting'
 
   try {
-    // Containerized build path: backend may hold this request until artifacts are ready.
+    // Containerized build path: backend holds this request until artifacts are ready.
     const res: BuildStatus = await projectApi.startBuild(projectId)
-    const foundAnyDownloads = applyBuildPayload(res)
-    if (!foundAnyDownloads && !buildError.value) {
-      buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
-      beginStatusPolling()
-    } else if (!allDone.value && !buildError.value) {
-      buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
-      beginStatusPolling()
-    } else {
-      stopStatusPolling()
+    let foundAnyDownloads = applyBuildPayload(res)
+    if ((!foundAnyDownloads || !allDone.value) && !buildError.value) {
+      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
+      const res2: BuildStatus = await projectApi.startBuild(projectId)
+      foundAnyDownloads = applyBuildPayload(res2)
     }
+    stopStatusPolling()
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
     buildInfo.value = ''
     buildError.value = e instanceof Error ? e.message : String(e)
-    stopStatusPolling()
     return
   }
 }
@@ -251,15 +179,27 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
   try {
     const status: BuildStatus = await projectApi.getBuildStatus(projectId)
     const foundAny = applyBuildPayload(status)
-    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !buildError.value) {
-      if (!foundAny) {
-        buildInfo.value = 'Build is running in the containerized session. Download links will appear automatically.'
-      } else if (!allDone.value) {
-        buildInfo.value = 'Build is still running. Remaining download links will appear automatically.'
+    if (allDone.value) return true
+    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !foundAny && !buildError.value) {
+      // Build in progress: call startBuild and await. Backend holds the request until build finishes.
+      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
+      try {
+        const res: BuildStatus = await projectApi.startBuild(projectId)
+        return applyBuildPayload(res)
+      } catch (e) {
+        buildError.value = e instanceof Error ? e.message : String(e)
+        return false
       }
-      beginStatusPolling()
-    } else if (allDone.value) {
-      stopStatusPolling()
+    }
+    if (foundAny && !allDone.value && !buildError.value) {
+      // Partial results: call startBuild and await for the rest. Backend holds until complete.
+      buildInfo.value = 'Build is still running. Waiting for remaining artifacts…'
+      try {
+        const res: BuildStatus = await projectApi.startBuild(projectId)
+        applyBuildPayload(res)
+      } catch (e) {
+        buildError.value = e instanceof Error ? e.message : String(e)
+      }
     }
     return foundAny
   } catch (e) {
@@ -287,15 +227,27 @@ onMounted(async () => {
   const isAlreadyAssembled = projectStatus === 'assembled' || projectStatus === 'complete'
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
-    // Existing build lifecycle state: fetch current URLs/status, don't restart build.
+    // Existing build lifecycle state: fetch current URLs/status, or wait for build to finish.
     const foundDownloads = await fetchExistingDownloads()
-    if (isAlreadyAssembled && !foundDownloads && !buildError.value) {
-      buildInfo.value = 'Build artifacts are not available yet. Re-checking automatically…'
-      beginStatusPolling()
-    }
-    if (isAlreadyBuilding && !foundDownloads && !buildError.value && !buildInfo.value) {
-      buildInfo.value = 'Build is currently running in the containerized session. Download links will appear automatically.'
-      beginStatusPolling()
+    if (foundDownloads) return
+    if (isAlreadyBuilding && !buildError.value) {
+      // Build in progress: call startBuild and await. Backend holds the request until build finishes.
+      buildInfo.value = 'Build is running in the containerized session. Waiting for completion…'
+      try {
+        const res: BuildStatus = await projectApi.startBuild(projectId)
+        applyBuildPayload(res)
+      } catch (e) {
+        buildError.value = e instanceof Error ? e.message : String(e)
+      }
+    } else if (isAlreadyAssembled && !buildError.value) {
+      // Assembled but no URLs yet: call startBuild and await. Backend holds until artifacts are ready.
+      buildInfo.value = 'Build artifacts are not available yet. Waiting…'
+      try {
+        const res: BuildStatus = await projectApi.startBuild(projectId)
+        applyBuildPayload(res)
+      } catch (e) {
+        buildError.value = e instanceof Error ? e.message : String(e)
+      }
     }
     return
   }
@@ -311,9 +263,6 @@ onMounted(async () => {
   await startBuild()
 })
 
-onUnmounted(() => {
-  stopStatusPolling()
-})
 </script>
 
 <template>

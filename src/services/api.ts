@@ -138,6 +138,9 @@ export async function validateSession(): Promise<void> {
             }
         }
         clearAuthData()
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth:session-cleared'))
+        }
         // Route guard will redirect to /login on next navigation
     }
 }
