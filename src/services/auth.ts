@@ -114,25 +114,48 @@ export async function register(
 
 export async function refreshTokens(refreshToken: string): Promise<RefreshResponse> {
   try {
+    let data: any
+
     if (USE_CLASSIC_AUTH_ROUTES) {
-  const response = await api.post<RefreshResponse>('/api/auth/refresh', { refreshToken })
-      return response.data
+      const response = await api.post<RefreshResponse>('/api/auth/refresh', { refreshToken })
+      data = response.data
+    } else {
+      // Try concept server refresh if implemented (common naming: UserSessioning/refresh)
+      const response = await api.post<RefreshResponse & { error?: string; message?: string }>(
+        '/api/UserSessioning/refresh',
+        { refreshToken },
+      )
+      data = response.data
     }
 
-    // Try concept server refresh if implemented (common naming: UserSessioning/refresh)
-    const response = await api.post<RefreshResponse & { error?: string; message?: string }>(
-      '/api/UserSessioning/refresh',
-      { refreshToken },
-    )
-    if ((response.data as any)?.error || (response.data as any)?.message) {
-      const msg = (response.data as any).error || (response.data as any).message || 'Token refresh failed'
+    // Some endpoints return 200 with an error payload instead of an HTTP error status.
+    if (data?.error || data?.message) {
+      const msg = data.error || data.message || 'Token refresh failed'
       throw new Error(msg)
     }
-    return response.data
+
+    // Validate that the response actually contains usable tokens.
+    // The backend might return fields under different names; try common alternatives.
+    const accessToken: string | undefined =
+      data?.accessToken || data?.access_token || data?.token
+    const newRefreshToken: string | undefined =
+      data?.refreshToken || data?.refresh_token
+
+    if (!accessToken || typeof accessToken !== 'string') {
+      throw new Error('Token refresh did not return a valid access token')
+    }
+    if (!newRefreshToken || typeof newRefreshToken !== 'string') {
+      throw new Error('Token refresh did not return a valid refresh token')
+    }
+
+    return { accessToken, refreshToken: newRefreshToken }
   } catch (error) {
     if (error instanceof AxiosError && error.response?.data) {
       const data = error.response.data as AuthError
       throw new Error(data.error || data.message || 'Token refresh failed')
+    }
+    if (error instanceof Error) {
+      throw error
     }
     throw new Error('Token refresh failed. Please try again.')
   }

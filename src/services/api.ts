@@ -108,7 +108,7 @@ export const authState = {
 
 /**
  * Validate session on app load. If we have a token but it's invalid (401),
- * clear auth and notify so the UI redirects to login.
+ * attempt a refresh first. Only clear auth if the refresh also fails.
  */
 export async function validateSession(): Promise<void> {
     const accessToken = getAccessToken()
@@ -117,6 +117,26 @@ export async function validateSession(): Promise<void> {
     try {
         await authFns.getUserFromToken(accessToken)
     } catch {
+        // Access token invalid/expired – try to refresh before giving up.
+        const refreshToken = getRefreshToken()
+        if (refreshToken) {
+            try {
+                const result = await authFns.refreshTokens(refreshToken)
+                if (result?.accessToken && result?.refreshToken) {
+                    setAccessToken(result.accessToken)
+                    setRefreshToken(result.refreshToken)
+                    // Verify the new token works
+                    try {
+                        await authFns.getUserFromToken(result.accessToken)
+                        return // Session recovered successfully
+                    } catch {
+                        // New token also invalid – fall through to clear
+                    }
+                }
+            } catch {
+                // Refresh failed – fall through to clear
+            }
+        }
         clearAuthData()
         // Route guard will redirect to /login on next navigation
     }

@@ -17,10 +17,13 @@ export type { AxiosError, AxiosRequestConfig, AxiosResponse }
 
 // Prevent multiple simultaneous refresh attempts
 let isRefreshing = false
+let refreshTimeoutId: ReturnType<typeof setTimeout> | null = null
 let failedQueue: Array<{
   resolve: (value?: any) => void
   reject: (error?: any) => void
 }> = []
+
+const REFRESH_TIMEOUT_MS = 30_000 // Safety: reset isRefreshing after 30s
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((p) => {
@@ -34,6 +37,13 @@ function notifySessionCleared() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('auth:session-cleared'))
   }
+}
+
+/** Force-clear auth and notify so the UI redirects to login. */
+function forceSignOut(reason: string) {
+  console.warn('[auth] Forcing sign-out:', reason)
+  clearAuthData()
+  notifySessionCleared()
 }
 
 /**
@@ -92,6 +102,19 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
 
+    // --- Handle 401 on a RETRIED request (refresh already happened but token still rejected) ---
+    if (
+      error.response?.status === 401 &&
+      originalRequest?._retry
+    ) {
+      const originalUrl = originalRequest.url || ''
+      if (!originalUrl.startsWith('/auth/') && !originalUrl.startsWith('/api/auth/')) {
+        // The refreshed token was still rejected – session is irrecoverable.
+        forceSignOut('Retried request still returned 401 after token refresh')
+        return Promise.reject(new Error('Session expired. Please sign in again.'))
+      }
+    }
+
     if (
       error.response?.status === 401 &&
       originalRequest &&
@@ -111,6 +134,7 @@ apiClient.interceptors.response.use(
             if (token && originalRequest.headers) {
               ;(originalRequest.headers as any).Authorization = `Bearer ${token}`
             }
+            originalRequest._retry = true
             return apiClient(originalRequest)
           })
           .catch((err) => Promise.reject(err))
@@ -119,33 +143,60 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
+      // Safety timeout: if the refresh never resolves, reset the flag so future
+      // requests aren't permanently queued.
+      if (refreshTimeoutId) clearTimeout(refreshTimeoutId)
+      refreshTimeoutId = setTimeout(() => {
+        if (isRefreshing) {
+          console.warn('[auth] Refresh timed out – resetting isRefreshing flag')
+          isRefreshing = false
+          processQueue(new Error('Token refresh timed out'), null)
+        }
+      }, REFRESH_TIMEOUT_MS)
+
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
-        clearAuthData()
-        notifySessionCleared()
+        forceSignOut('No refresh token available')
         processQueue(new Error('No refresh token available'), null)
         isRefreshing = false
-        return Promise.reject(error)
+        if (refreshTimeoutId) { clearTimeout(refreshTimeoutId); refreshTimeoutId = null }
+        return Promise.reject(new Error('Session expired. Please sign in again.'))
       }
 
       try {
-        const { accessToken, refreshToken: newRefreshToken } = await refreshViaApi(refreshToken)
-        setAccessToken(accessToken)
+        const result = await refreshViaApi(refreshToken)
+        const newAccessToken = result?.accessToken
+        const newRefreshToken = result?.refreshToken
+
+        // Validate that the refresh actually returned usable tokens.
+        if (!newAccessToken || typeof newAccessToken !== 'string') {
+          throw new Error('Token refresh returned an invalid access token')
+        }
+        if (!newRefreshToken || typeof newRefreshToken !== 'string') {
+          throw new Error('Token refresh returned an invalid refresh token')
+        }
+
+        setAccessToken(newAccessToken)
         setRefreshToken(newRefreshToken)
 
         if (originalRequest.headers) {
-          ;(originalRequest.headers as any).Authorization = `Bearer ${accessToken}`
+          ;(originalRequest.headers as any).Authorization = `Bearer ${newAccessToken}`
         }
 
-        processQueue(null, accessToken)
+        processQueue(null, newAccessToken)
         isRefreshing = false
+        if (refreshTimeoutId) { clearTimeout(refreshTimeoutId); refreshTimeoutId = null }
         return apiClient(originalRequest)
       } catch (refreshError) {
-        clearAuthData()
-        notifySessionCleared()
+        forceSignOut('Token refresh failed')
         processQueue(refreshError, null)
         isRefreshing = false
-        return Promise.reject(refreshError)
+        if (refreshTimeoutId) { clearTimeout(refreshTimeoutId); refreshTimeoutId = null }
+        return Promise.reject(
+          refreshError instanceof Error
+            ? refreshError
+            : new Error('Session expired. Please sign in again.'),
+        )
       }
     }
 
