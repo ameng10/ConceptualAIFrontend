@@ -1,14 +1,35 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Sparkles, LayoutGrid, Settings, History, PlusCircle, Sun, Moon, LogOut, LogIn, MessageCircle } from 'lucide-vue-next'
+import {
+  Sparkles,
+  LayoutGrid,
+  Settings,
+  History,
+  PlusCircle,
+  Sun,
+  Moon,
+  LogOut,
+  LogIn,
+  MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-vue-next'
 import { authApi, authState } from '@/services/api'
 
+const props = defineProps<{
+  collapsed?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggle'): void
+}>()
+
 const navItems = [
-  { label: 'Create App', icon: PlusCircle, path: '/' },
+  { label: 'Create App', icon: PlusCircle, path: '/build' },
   { label: 'My Projects', icon: History, path: '/projects' },
   { label: 'Community', icon: MessageCircle, path: '/posts' },
-  { label: 'Library', icon: LayoutGrid, path: '/library' },
+  { label: 'Docs', icon: LayoutGrid, path: '/library' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]
 
@@ -46,6 +67,7 @@ const userInitials = computed(() => {
 const handleLogout = async () => {
   await authApi.logout()
   refreshAuth()
+  router.replace('/')
 }
 
 const toggleTheme = () => {
@@ -65,12 +87,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ collapsed }">
     <div class="sidebar-header">
       <div class="logo">
         <Sparkles class="logo-icon" />
-        <span class="logo-text">ConceptualAI</span>
+        <span v-if="!collapsed" class="logo-text">ConceptualAI</span>
       </div>
+
+      <button
+        class="collapse-toggle"
+        type="button"
+        @click="emit('toggle')"
+        :aria-expanded="!collapsed"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      >
+        <PanelLeftOpen v-if="collapsed" :size="18" />
+        <PanelLeftClose v-else :size="18" />
+      </button>
     </div>
 
     <nav class="sidebar-nav">
@@ -83,7 +117,7 @@ onMounted(() => {
       >
         <div class="nav-item-content" :class="{ active: isActive }">
           <component :is="item.icon" :size="20" class="nav-icon" />
-          <span>{{ item.label }}</span>
+          <span v-if="!collapsed">{{ item.label }}</span>
         </div>
       </router-link>
     </nav>
@@ -92,12 +126,12 @@ onMounted(() => {
       <button class="theme-toggle" @click="toggleTheme">
         <Sun v-if="theme === 'dark'" :size="18" />
         <Moon v-else :size="18" />
-        <span>{{ theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+        <span v-if="!collapsed">{{ theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
       </button>
 
       <div class="user-profile">
         <div class="avatar" aria-label="User avatar">{{ userInitials }}</div>
-        <div class="user-info">
+        <div v-if="!collapsed" class="user-info">
           <span class="user-name">{{ userDisplayName }}</span>
           <span class="user-plan" v-if="isSignedIn">Signed in</span>
           <span class="user-plan" v-else>Not signed in</span>
@@ -120,7 +154,7 @@ onMounted(() => {
           title="Sign in"
         >
           <LogIn :size="16" />
-          <span>Sign In</span>
+          <span v-if="!collapsed">Sign In</span>
         </button>
       </div>
     </div>
@@ -135,7 +169,100 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, width 0.25s ease;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 0.75rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+  justify-content: center;
+}
+
+.collapse-toggle:hover {
+  border-color: rgba(45, 212, 191, 0.25);
+}
+
+.sidebar.collapsed .collapse-toggle {
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar.collapsed .logo {
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.sidebar.collapsed .nav-item-content {
+  justify-content: center;
+  gap: 0;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 0.75rem 0.5rem;
+  align-items: center;
+}
+
+.sidebar.collapsed .theme-toggle {
+  width: 100%;
+  justify-content: center;
+  gap: 0;
+  padding: 0.5rem;
+}
+
+.sidebar.collapsed .user-profile {
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.sidebar.collapsed .logout-btn {
+  margin-left: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+
+.sidebar.collapsed .login-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 12px;
+  justify-content: center;
 }
 
 .sidebar-header {

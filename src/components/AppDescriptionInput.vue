@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
 
 const emit = defineEmits<{
@@ -9,6 +9,139 @@ const emit = defineEmits<{
 const description = ref('')
 const name = ref('')
 const isSubmitting = ref(false)
+
+type TypewriterOptions = {
+  startDelayMs: number
+  typeDelayMs: number
+  deleteDelayMs: number
+  pauseAfterTypedMs: number
+  pauseAfterDeletedMs: number
+}
+
+const createPairedTypewriterPlaceholders = (
+  leftPhrases: string[],
+  rightPhrases: string[],
+  options: TypewriterOptions,
+) => {
+  const leftText = ref('')
+  const rightText = ref('')
+
+  const pairCount = Math.min(leftPhrases.length, rightPhrases.length)
+  let phraseIndex = 0
+  let leftCharIndex = 0
+  let rightCharIndex = 0
+  let isDeleting = false
+  let tickTimeout: number | null = null
+
+  const clear = () => {
+    if (tickTimeout !== null) {
+      window.clearTimeout(tickTimeout)
+      tickTimeout = null
+    }
+  }
+
+  const schedule = (delayMs: number) => {
+    clear()
+    tickTimeout = window.setTimeout(tick, delayMs)
+  }
+
+  const tick = () => {
+    if (pairCount <= 0) return
+    const leftPhrase = leftPhrases[phraseIndex] ?? ''
+    const rightPhrase = rightPhrases[phraseIndex] ?? ''
+
+    if (!isDeleting) {
+      if (leftCharIndex < leftPhrase.length) leftCharIndex += 1
+      if (rightCharIndex < rightPhrase.length) rightCharIndex += 1
+
+      leftText.value = leftPhrase.slice(0, leftCharIndex)
+      rightText.value = rightPhrase.slice(0, rightCharIndex)
+
+      const leftDone = leftCharIndex >= leftPhrase.length
+      const rightDone = rightCharIndex >= rightPhrase.length
+      if (leftDone && rightDone) {
+        isDeleting = true
+        schedule(options.pauseAfterTypedMs)
+        return
+      }
+
+      schedule(options.typeDelayMs)
+      return
+    }
+
+    // Deleting
+    if (leftCharIndex > 0) leftCharIndex -= 1
+    if (rightCharIndex > 0) rightCharIndex -= 1
+
+    leftText.value = leftPhrase.slice(0, leftCharIndex)
+    rightText.value = rightPhrase.slice(0, rightCharIndex)
+
+    const leftEmpty = leftCharIndex <= 0
+    const rightEmpty = rightCharIndex <= 0
+    if (leftEmpty && rightEmpty) {
+      isDeleting = false
+      phraseIndex = (phraseIndex + 1) % pairCount
+      schedule(options.pauseAfterDeletedMs)
+      return
+    }
+
+    schedule(options.deleteDelayMs)
+  }
+
+  const start = () => {
+    leftText.value = ''
+    rightText.value = ''
+    phraseIndex = 0
+    leftCharIndex = 0
+    rightCharIndex = 0
+    isDeleting = false
+    schedule(options.startDelayMs)
+  }
+
+  return {
+    leftText,
+    rightText,
+    start,
+    stop: clear,
+  }
+}
+
+const namePlaceholderPhrases = [
+  'Stuffed Animal Social',
+  'Dental Office Scheduler',
+  'Restaurant Reservations',
+]
+
+const requirementsPlaceholderPhrases = [
+  'Build me a social media app for my stuffed animals...',
+  'Build me an app for my dental office for scheduling patients...',
+  'Create a website for my restaurant to manage reservations...',
+]
+
+const typewriterOptions: TypewriterOptions = {
+  startDelayMs: 450,
+  typeDelayMs: 30,
+  deleteDelayMs: 14,
+  pauseAfterTypedMs: 1600,
+  pauseAfterDeletedMs: 300,
+}
+
+const pairedTypewriter = createPairedTypewriterPlaceholders(
+  namePlaceholderPhrases,
+  requirementsPlaceholderPhrases,
+  typewriterOptions,
+)
+
+const namePlaceholder = computed(() => pairedTypewriter.leftText.value)
+const requirementsPlaceholder = computed(() => pairedTypewriter.rightText.value)
+
+onMounted(() => {
+  pairedTypewriter.start()
+})
+
+onBeforeUnmount(() => {
+  pairedTypewriter.stop()
+})
 
 const handleSubmit = () => {
   if (!description.value || !name.value) return
@@ -35,7 +168,7 @@ const handleSubmit = () => {
           v-model="name"
           type="text"
           class="ghost-input"
-          placeholder="Give your app a name..."
+          :placeholder="namePlaceholder"
           :disabled="isSubmitting"
         />
       </div>
@@ -50,7 +183,7 @@ const handleSubmit = () => {
         <textarea
           v-model="description"
           class="ghost-textarea"
-          placeholder="Describe what you want to build... (e.g., A blog with comments and likes)"
+          :placeholder="requirementsPlaceholder"
           :disabled="isSubmitting"
           @keydown.enter.prevent.exact="handleSubmit"
         ></textarea>

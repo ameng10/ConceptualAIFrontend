@@ -112,18 +112,18 @@ const tryCopy = async () => {
           </span>
           <div class="section-title-row">
             <Library :size="16" />
-            <h4>Library pulls</h4>
+            <h4>Docs pulls</h4>
             <span class="pill">{{ normalized.libraryPulls.length }}</span>
           </div>
         </summary>
 
         <div class="section-body">
-          <div v-if="!normalized.libraryPulls.length" class="empty">No library pulls found.</div>
+          <div v-if="!normalized.libraryPulls.length" class="empty">No docs pulls found.</div>
 
           <ul v-else class="pull-list">
             <li v-for="(pull, idx) in normalized.libraryPulls" :key="idx" class="pull-row">
               <div class="pull-main">
-                <span class="pull-name monospace">{{ pull.libraryName || pull.instanceName || 'LibraryPull' }}</span>
+                <span class="pull-name monospace">{{ pull.libraryName || pull.instanceName || 'DocsPull' }}</span>
                 <span
                   v-if="pull.libraryName && pull.instanceName && pull.libraryName !== pull.instanceName"
                   class="pull-sub"

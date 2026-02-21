@@ -550,7 +550,7 @@ const handleModifyDesign = async () => {
               v-model="designFeedback"
               class="modify-input"
               rows="3"
-              placeholder="Example: Use a different concept library and simplify the data model."
+              placeholder="Example: Use a different concept docs set and simplify the data model."
               :disabled="isModifyingDesign"
             />
             <div v-if="modifyDesignError" class="error-msg">{{ modifyDesignError }}</div>

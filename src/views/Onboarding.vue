@@ -62,10 +62,10 @@ onMounted(async () => {
         <div v-if="showLibraryPrompt" class="library-prompt">
           <div class="prompt-content">
             <BookOpen :size="16" />
-            <span>New here? Check out the Library docs for a quick start.</span>
+            <span>New here? Check out the Docs for a quick start.</span>
           </div>
           <div class="prompt-actions">
-            <button type="button" class="btn btn-primary btn-small" @click="openLibrary">Open Library</button>
+            <button type="button" class="btn btn-primary btn-small" @click="openLibrary">Open Docs</button>
             <button type="button" class="btn-dismiss" @click="dismissLibraryPrompt">Maybe later</button>
           </div>
         </div>

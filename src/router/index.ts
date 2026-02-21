@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Home from '@/views/Home.vue'
+import Contact from '@/views/Contact.vue'
 import CreateProject from '@/views/CreateProject.vue'
 import ProjectStatus from '@/views/ProjectStatus.vue'
 import Implementing from '@/views/Implementing.vue'
@@ -36,16 +38,28 @@ const router = createRouter({
             path: LOGIN_PATH,
             name: 'login',
             component: Login,
-            meta: { public: true }
+            meta: { public: true, hideSidebar: true }
         },
         {
             path: REGISTER_PATH,
             name: 'register',
             component: Register,
-            meta: { public: true }
+            meta: { public: true, hideSidebar: true }
         },
         {
             path: '/',
+            name: 'home',
+            component: Home,
+            meta: { public: true, hideSidebar: true }
+        },
+        {
+            path: '/contact',
+            name: 'contact',
+            component: Contact,
+            meta: { public: true, hideSidebar: true }
+        },
+        {
+            path: '/build',
             name: 'create-project',
             component: CreateProject,
             meta: { requiresAuth: true }
@@ -150,7 +164,7 @@ router.beforeEach(async (to, _from, next) => {
     const authenticated = isAuthenticated()
 
     if (isPublic && authenticated && (to.path === LOGIN_PATH || to.path === REGISTER_PATH)) {
-        return next('/')
+        return next('/build')
     }
     if (requiresAuth && !authenticated) {
         return next({ path: LOGIN_PATH, query: { redirect: to.fullPath } })

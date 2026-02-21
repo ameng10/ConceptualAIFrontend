@@ -1,9 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Common Tokens */
   --radius: 24px;
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --sidebar-width: 260px;
+  --sidebar-collapsed-width: 76px;
   --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Let native controls (select, scrollbars) match the theme */
+  color-scheme: dark;
 
   /* Gradients */
   --grad-primary: linear-gradient(135deg, #3b82f6 0%, #06b6d4 50%, #10b981 100%);
@@ -35,6 +43,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --primary: #10b981;
   --primary-glow: #059669;
   --bg: #f8fafc;
@@ -56,6 +65,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --primary: #06b6d4;
   --primary-glow: #0891b2;
   --bg: #030712;
@@ -80,11 +90,37 @@
   padding: 0;
 }
 
+*::selection {
+  background: var(--grad-color-1);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--primary);
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-color: var(--primary);
+}
+
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-family);
   line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -127,6 +163,19 @@ body::before {
   display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+}
+
+.sidebar-container {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  overflow: hidden;
+  transition: width 0.25s ease, flex-basis 0.25s ease;
+}
+
+.sidebar-container.collapsed {
+  width: var(--sidebar-collapsed-width);
+  flex-basis: var(--sidebar-collapsed-width);
 }
 
 .main-content {
@@ -137,8 +186,21 @@ body::before {
   flex-direction: column;
 }
 
+.main-content.marketing {
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.25rem;
+  }
+}
+
 .glass {
   background: var(--glass-bg);
+  background-image:
+    radial-gradient(1200px circle at 10% 0%, var(--grad-color-1), transparent 55%),
+    radial-gradient(900px circle at 90% 10%, var(--grad-color-2), transparent 50%);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   border: 1px solid var(--glass-border);
@@ -166,12 +228,18 @@ h3 {
   border: none;
   gap: 0.5rem;
   font-family: inherit;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn-primary {
   background: var(--grad-neon);
   color: #042f2e;
-  box-shadow: 0 4px 15px rgba(45, 212, 191, 0.3);
+  box-shadow: 0 10px 28px var(--grad-color-1);
   font-weight: 800;
   border: 1px solid rgba(255, 255, 255, 0.1);
   filter: none !important;
@@ -204,7 +272,16 @@ h3 {
 .input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px var(--grad-color-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @keyframes fadeIn {
