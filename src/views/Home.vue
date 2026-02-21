@@ -100,12 +100,6 @@ const ctaLabel = computed(() => (isSignedIn.value ? 'Start Building' : 'Start Bu
             >
               How it Works
             </a>
-            <a
-              href="#pricing"
-              class="rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-text-dim transition hover:border-glass-border hover:bg-white/5 hover:text-text"
-            >
-              Pricing
-            </a>
           </nav>
         </div>
 
@@ -398,75 +392,6 @@ const ctaLabel = computed(() => (isSignedIn.value ? 'Start Building' : 'Start Bu
       </div>
     </section>
 
-    <!-- PRICING -->
-    <section id="pricing" class="mx-auto w-full max-w-6xl px-4 py-14">
-      <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Pricing</div>
-      <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Pay per project.</h2>
-      <p class="mt-3 max-w-2xl text-lg text-text-dim">
-        No tiers. No seats. Pay only when you generate a project.
-      </p>
-
-      <div class="mt-8 grid gap-4 md:grid-cols-2">
-        <div class="rounded-3xl border border-glass-border bg-glass-bg p-7 shadow-glass backdrop-blur-xl">
-          <div
-            class="inline-flex items-center gap-2 rounded-full border border-glass-border bg-white/5 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-neon-teal"
-          >
-            Pricing model
-          </div>
-          <div class="mt-4 text-2xl font-black tracking-tight md:text-3xl">One payment per project.</div>
-          <p class="mt-2 max-w-prose text-text-dim">
-            Generate a complete plan, full-stack implementation steps, and delivery artifacts — then ship.
-          </p>
-
-          <button
-            type="button"
-            class="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[image:var(--grad-neon)] px-6 py-3 text-base font-black text-[#042f2e] shadow-glass transition hover:-translate-y-0.5 hover:brightness-110"
-            @click="goBuild"
-          >
-            Start Building
-            <ArrowRight :size="18" />
-          </button>
-
-          <div class="mt-4 text-xs font-extrabold uppercase tracking-[0.18em] text-text-dim">
-            No subscription required
-          </div>
-        </div>
-
-        <div class="rounded-3xl border border-glass-border bg-white/5 p-7 shadow-glass">
-          <div class="text-sm font-black">Includes</div>
-          <ul class="mt-4 space-y-3 text-sm text-text-dim">
-            <li class="flex items-start gap-2">
-              <CheckCircle2 :size="16" class="mt-0.5 text-neon-teal" />
-              Planning + clarification loop
-            </li>
-            <li class="flex items-start gap-2">
-              <CheckCircle2 :size="16" class="mt-0.5 text-neon-teal" />
-              Concept architecture + assembly
-            </li>
-            <li class="flex items-start gap-2">
-              <CheckCircle2 :size="16" class="mt-0.5 text-neon-teal" />
-              Sandboxed verification runs
-            </li>
-            <li class="flex items-start gap-2">
-              <CheckCircle2 :size="16" class="mt-0.5 text-neon-teal" />
-              Downloadable artifacts + deployment-ready structure
-            </li>
-          </ul>
-
-          <div class="mt-6 rounded-2xl border border-glass-border bg-white/5 p-4">
-            <div class="text-sm font-black">Need a lot of projects?</div>
-            <div class="mt-1 text-sm text-text-dim">We can support higher throughput and custom Concepts.</div>
-            <a
-              href="#"
-              class="mt-3 inline-flex items-center justify-center rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-extrabold text-text transition hover:bg-white/10"
-            >
-              Contact Sales
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- FINAL CTA -->
     <section class="mx-auto w-full max-w-6xl px-4 pb-14">
       <div
@@ -496,14 +421,13 @@ const ctaLabel = computed(() => (isSignedIn.value ? 'Start Building' : 'Start Bu
     <!-- FOOTER -->
     <footer class="border-t border-glass-border bg-glass-bg">
       <div class="mx-auto w-full max-w-6xl px-4 py-10">
-        <div class="grid gap-8 md:grid-cols-4">
+        <div class="grid gap-8 md:grid-cols-3">
           <div class="md:col-span-1">
             <div class="inline-flex items-center gap-2 text-sm font-black">
               <Sparkles :size="16" class="text-neon-teal" />
               ConceptualAI
             </div>
             <div class="mt-2 text-sm text-text-dim">Also known as ConceptHub.</div>
-            <div class="mt-4 text-xs text-text-dim">© 2026 ConceptualAI</div>
           </div>
 
           <div>
@@ -511,7 +435,6 @@ const ctaLabel = computed(() => (isSignedIn.value ? 'Start Building' : 'Start Bu
             <div class="mt-3 flex flex-col gap-2 text-sm text-text-dim">
               <a href="#features" class="hover:text-text">Features</a>
               <a href="#how" class="hover:text-text">How it works</a>
-              <a href="#pricing" class="hover:text-text">Pricing</a>
             </div>
           </div>
 
@@ -522,15 +445,6 @@ const ctaLabel = computed(() => (isSignedIn.value ? 'Start Building' : 'Start Bu
               <router-link to="/contact" class="hover:text-text">Contact</router-link>
               <router-link to="/posts" class="hover:text-text">Community</router-link>
               <router-link to="/library" class="hover:text-text">Docs</router-link>
-            </div>
-          </div>
-
-          <div>
-            <div class="text-sm font-black">Legal</div>
-            <div class="mt-3 flex flex-col gap-2 text-sm text-text-dim">
-              <a href="#" class="hover:text-text">Privacy</a>
-              <a href="#" class="hover:text-text">Terms</a>
-              <router-link to="/settings" class="hover:text-text">Settings</router-link>
             </div>
           </div>
         </div>
