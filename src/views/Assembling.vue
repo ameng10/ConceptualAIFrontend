@@ -5,7 +5,7 @@ import { projectApi } from '@/services/api'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
-import { ArrowDownToLine, ArrowLeft } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowLeft, RotateCcw } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
@@ -30,6 +30,8 @@ const backendDownloadUrl = ref<string>('')
 
 const buildError = ref('')
 const buildInfo = ref('')
+const isReverting = ref(false)
+const revertError = ref('')
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
@@ -197,6 +199,24 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
   }
 }
 
+const handleRevert = async () => {
+  isReverting.value = true
+  revertError.value = ''
+  try {
+    await projectApi.revertProject(projectId)
+    await projectApi.getProject(projectId)
+    router.push({
+      path: `/project/${projectId}/syncing`,
+      query: {
+        projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+      },
+    })
+  } catch (err) {
+    revertError.value = err instanceof Error ? err.message : String(err)
+    isReverting.value = false
+  }
+}
+
 onMounted(async () => {
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
@@ -298,6 +318,18 @@ onMounted(async () => {
         <p v-if="hasAnyDownload && !allDone" class="muted" style="margin-top: 0.75rem;">
           Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
         </p>
+
+        <div class="revert-row" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
+          <div class="revert-info">
+            <span class="revert-label">Revert to previous stage</span>
+            <span class="revert-desc">Undo the build and restore sync artifacts.</span>
+          </div>
+          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
+            <RotateCcw :size="15" />
+            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
+          </button>
+        </div>
+        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
       </div>
     </div>
   </div>
@@ -445,5 +477,55 @@ onMounted(async () => {
 
 .backend-btn:hover:not(:disabled) {
   box-shadow: 0 12px 28px rgba(45, 212, 191, 0.22);
+}
+
+.revert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.revert-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.revert-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.revert-desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.btn-revert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(239, 68, 68, 0.9);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-revert:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-revert:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

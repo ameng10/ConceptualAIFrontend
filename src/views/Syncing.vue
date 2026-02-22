@@ -8,7 +8,7 @@ import SyncExplorer from '@/components/SyncExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
-import { ArrowLeft, ChevronDown, Clipboard, ClipboardCheck } from 'lucide-vue-next'
+import { ArrowLeft, ChevronDown, Clipboard, ClipboardCheck, RotateCcw } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -210,6 +210,27 @@ const startIfNeeded = async () => {
   }
 }
 
+const isReverting = ref(false)
+const revertError = ref('')
+
+const handleRevert = async () => {
+  isReverting.value = true
+  revertError.value = ''
+  try {
+    await projectApi.revertProject(projectId)
+    await projectApi.getProject(projectId)
+    router.push({
+      path: `/project/${projectId}/implementing`,
+      query: {
+        projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+      },
+    })
+  } catch (err) {
+    revertError.value = err instanceof Error ? err.message : String(err)
+    isReverting.value = false
+  }
+}
+
 onMounted(() => {
   startIfNeeded()
 })
@@ -248,7 +269,7 @@ onMounted(() => {
         <div v-if="syncDoc" style="margin-top: 1rem;">
           <SyncExplorer :syncs="syncDoc" />
 
-          <div style="margin-top: 1rem; display: flex; justify-content: flex-start;">
+          <div style="margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
             <button
               class="btn-primary"
               type="button"
@@ -287,6 +308,18 @@ onMounted(() => {
             </div>
           </details>
         </div>
+
+        <div class="revert-row">
+          <div class="revert-info">
+            <span class="revert-label">Revert to previous stage</span>
+            <span class="revert-desc">Undo sync generation and restore the implementation.</span>
+          </div>
+          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
+            <RotateCcw :size="15" />
+            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
+          </button>
+        </div>
+        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
       </div>
 
       <details v-if="implementationDoc" class="glass fade-in dropdown">
@@ -478,6 +511,59 @@ onMounted(() => {
 
 .btn-primary:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.revert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.revert-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.revert-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.revert-desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.btn-revert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(239, 68, 68, 0.9);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-revert:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-revert:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 </style>

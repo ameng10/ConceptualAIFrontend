@@ -32,11 +32,12 @@ export interface Project {
     description: string
     status:
         | 'planning'
-    | 'planning_complete'
+        | 'planned'
+        | 'planning_complete'
         | 'designing'
         | 'design_complete'
         | 'implementing'
-    | 'implemented'
+        | 'implemented'
         | 'sync_generating'
         | 'syncs_generated'
         | 'syncing'
@@ -49,6 +50,17 @@ export interface Project {
         | 'awaiting_input'
     createdAt?: string
     updatedAt?: string
+}
+
+/**
+ * The backend may return 'planned' as the status for a completed planning stage.
+ * Normalize it to 'planning_complete' so all frontend logic works consistently.
+ */
+function normalizeProjectStatus(project: Project): Project {
+    if (project.status === 'planned') {
+        return { ...project, status: 'planning_complete' }
+    }
+    return project
 }
 
 export interface ProjectListResponse {
@@ -409,10 +421,10 @@ export const projectApi = {
     },
 
     async getProject(projectId: string) {
-    // API.md: GET /projects/:projectId
-    const response = await api.get<{ project: Project }>(`/api/projects/${projectId}`)
-    if (!response.data?.project) throw new Error('Project not found')
-    return response.data.project
+        // API.md: GET /projects/:projectId
+        const response = await api.get<{ project: Project }>(`/api/projects/${projectId}`)
+        if (!response.data?.project) throw new Error('Project not found')
+        return normalizeProjectStatus(response.data.project)
     },
 
     async deleteProject(projectId: string) {
@@ -477,9 +489,21 @@ export const projectApi = {
     },
 
     async getProjects(owner: string) {
-    // API.md: GET /projects
-    const response = await api.get<{ projects: Project[] }>('/api/projects')
-    return response.data?.projects ?? []
+        // API.md: GET /projects
+        const response = await api.get<{ projects: Project[] }>('/api/projects')
+        return (response.data?.projects ?? []).map(normalizeProjectStatus)
+    },
+
+    async revertProject(projectId: string) {
+        // API.md: POST /projects/:projectId/revert
+        const response = await api.post<{ project: string; status: string; revertedFrom?: any }>(
+            `/api/projects/${projectId}/revert`,
+            {},
+        )
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
     },
 
     async updateStatus(projectId: string, status: string) {

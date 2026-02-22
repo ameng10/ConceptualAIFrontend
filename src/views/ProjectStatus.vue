@@ -8,7 +8,7 @@ import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
-import { ArrowLeft, Share2 } from 'lucide-vue-next'
+import { ArrowLeft, RotateCcw, Share2 } from 'lucide-vue-next'
 import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
 const route = useRoute()
@@ -38,6 +38,20 @@ const modifyDesignError = ref('')
 const planToastShown = ref(false)
 const designToastShown = ref(false)
 const planningError = ref('')
+
+// Revert
+const isReverting = ref(false)
+const revertError = ref('')
+const REVERT_BLOCKED_STATUSES = ['planning', 'planning_complete', 'awaiting_clarification', 'awaiting_input']
+const canRevert = computed(() => {
+  // planningStatus.value is the live UI-tracked status and is updated on every
+  // stage transition (accept plan, design starts, etc.). project.value?.status is
+  // only refreshed by explicit backend fetches, so it can be stale after transitions.
+  const status = planningStatus.value ?? project.value?.status
+  if (!status) return false
+  return !REVERT_BLOCKED_STATUSES.includes(status)
+})
+
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
@@ -384,6 +398,8 @@ const handleAcceptPlan = () => {
       designStatus.value = 'started'
       // Try to capture any design payload the backend returns.
       designDoc.value = (res as any)?.design ?? (res as any)?.result ?? res
+      planningStatus.value = 'design_complete'
+      if (project.value) project.value = { ...project.value, status: 'design_complete' }
   toastDesignReady()
   designToastShown.value = true
     })
@@ -439,6 +455,43 @@ const handleModifyDesign = async () => {
     modifyDesignError.value = err instanceof Error ? err.message : String(err)
   } finally {
     isModifyingDesign.value = false
+  }
+}
+
+const handleRevert = async () => {
+  isReverting.value = true
+  revertError.value = ''
+  try {
+    await projectApi.revertProject(projectId)
+    const updatedProject = await projectApi.getProject(projectId)
+    project.value = updatedProject
+    const newStatus = updatedProject.status
+
+    // Reset design state
+    accepted.value = false
+    designDoc.value = null
+    designStatus.value = 'idle'
+    designError.value = ''
+    planDoc.value = null
+    planningStatus.value = newStatus
+    planToastShown.value = false
+    designToastShown.value = false
+
+    // Refetch plan — it persists after reverting from design stage
+    try {
+      const plan = await projectApi.getPlan(projectId)
+      if (plan) {
+        planDoc.value = { status: 'complete', plan }
+        planningStatus.value = 'planning_complete'
+        if (project.value) project.value = { ...project.value, status: 'planning_complete' }
+      }
+    } catch {
+      // Plan may not be available; let the waiting state show
+    }
+  } catch (err) {
+    revertError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    isReverting.value = false
   }
 }
 </script>
@@ -568,6 +621,20 @@ const handleModifyDesign = async () => {
       >
         <div class="loader-beam"></div>
         <p>Planning your backend…</p>
+      </div>
+
+      <div v-if="canRevert" class="glass fade-in revert-card">
+        <div class="revert-row">
+          <div class="revert-info">
+            <span class="revert-label">Revert to previous stage</span>
+            <span class="revert-desc">Undo the current stage and clear its artifacts.</span>
+          </div>
+          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
+            <RotateCcw :size="15" />
+            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
+          </button>
+        </div>
+        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
       </div>
     </div>
 
@@ -817,5 +884,60 @@ h1 {
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
+}
+
+.revert-card {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.revert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.revert-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.revert-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.revert-desc {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.btn-revert {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(239, 68, 68, 0.9);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-revert:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-revert:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
