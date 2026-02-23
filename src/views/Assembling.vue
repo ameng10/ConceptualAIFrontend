@@ -227,10 +227,18 @@ onMounted(async () => {
     }
   }
 
-  // Check if project is already assembled (from projectStatus query param).
-  const projectStatus = route.query?.projectStatus
-  const isAlreadyBuilding = projectStatus === 'building'
-  const isAlreadyAssembled = projectStatus === 'assembled' || projectStatus === 'complete'
+  // Determine lifecycle status from the project record (authoritative), with
+  // query param as a fallback for older navigation paths.
+  let lifecycleStatus = typeof route.query?.projectStatus === 'string' ? route.query.projectStatus : ''
+  try {
+    const project = await projectApi.getProject(projectId)
+    if (project?.status) lifecycleStatus = String(project.status)
+  } catch {
+    // If project fetch fails, continue with query-param fallback.
+  }
+
+  const isAlreadyBuilding = lifecycleStatus === 'building'
+  const isAlreadyAssembled = lifecycleStatus === 'assembled' || lifecycleStatus === 'complete'
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
     // Existing lifecycle state: use getter (stage-aware for building).
@@ -244,8 +252,7 @@ onMounted(async () => {
     return
   }
 
-  // No artifacts found from status precheck -> trigger build explicitly.
-  // This prevents a "status says processing" response from suppressing POST /build.
+  // No build found and no active sandbox -> trigger build explicitly.
   await startBuild()
 })
 
