@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
+import { usePolling } from '@/composables/usePolling'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
@@ -14,6 +15,7 @@ import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated 
 const route = useRoute()
 const router = useRouter()
 const projectId = route.params.id as string
+
 const project = ref<Project | null>(null)
 const planningStatus = ref<string | null>(null)
 const planDoc = ref<any | null>(null)
@@ -44,9 +46,6 @@ const isReverting = ref(false)
 const revertError = ref('')
 const REVERT_BLOCKED_STATUSES = ['planning', 'planning_complete', 'awaiting_clarification', 'awaiting_input']
 const canRevert = computed(() => {
-  // planningStatus.value is the live UI-tracked status and is updated on every
-  // stage transition (accept plan, design starts, etc.). project.value?.status is
-  // only refreshed by explicit backend fetches, so it can be stale after transitions.
   const status = planningStatus.value ?? project.value?.status
   if (!status) return false
   return !REVERT_BLOCKED_STATUSES.includes(status)
@@ -80,7 +79,7 @@ const IN_PROGRESS_STATUSES = [
 const PAST_PLANNING_STATUSES = IN_PROGRESS_STATUSES.filter((s) => s !== 'planning')
 
 const canStartDesign = computed(() => {
-  const status = project.value?.status ?? planningStatus.value
+  const status = planningStatus.value ?? project.value?.status
   if (status && IN_PROGRESS_STATUSES.includes(status as any)) return false
   return true
 })
@@ -100,46 +99,17 @@ const PAST_DESIGN_STATUSES = [
 ] as const
 
 const canAcceptDesign = computed(() => {
-  const status = project.value?.status ?? planningStatus.value
+  const status = planningStatus.value ?? project.value?.status
   if (status && PAST_DESIGN_STATUSES.includes(status as any)) return false
   return true
 })
 
 const isPastPlanningStage = computed(() => {
-  const status = project.value?.status ?? planningStatus.value
+  const status = planningStatus.value ?? project.value?.status
   return Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
 })
 
 const tryHydrateFromQuery = () => {
-  const planQ = route.query?.plan
-  if (planQ && typeof planQ === 'string') {
-    try {
-      const decoded = decodeURIComponent(planQ)
-      const plan = JSON.parse(decoded)
-      planDoc.value = { status: 'complete', plan }
-      if (!planToastShown.value) {
-        toastPlanReady()
-        planToastShown.value = true
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  const questionsQ = route.query?.questions
-  if (questionsQ && typeof questionsQ === 'string') {
-    try {
-      const decoded = decodeURIComponent(questionsQ)
-      const qs = JSON.parse(decoded)
-      if (Array.isArray(qs)) {
-        questions.value = qs
-        showClarification.value = true
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   const statusQ = route.query?.planningStatus
   if (statusQ && typeof statusQ === 'string') {
     planningStatus.value = statusQ
@@ -155,49 +125,110 @@ const tryHydrateFromQuery = () => {
   }
 }
 
-const fetchPlanAfterItExists = async () => {
-  // Only fetch the plan from the backend *after* we've already received a plan payload.
-  // This avoids triggering GET /projects/:id/plan during active planning, which can time out.
-  if (!planDoc.value?.plan) return
-  try {
-    const plan = await projectApi.getPlan(projectId)
-    if (plan) {
-      planDoc.value = { status: 'complete', plan }
-      planningStatus.value = 'planning_complete'
-      if (!planToastShown.value) {
-        toastPlanReady()
-        planToastShown.value = true
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch project plan:', error)
+const isPlanInProgressStatus = (status: string) =>
+  status === 'planning' || status === 'awaiting_clarification' || status === 'awaiting_input'
+
+const isDesignInProgressStatus = (status: string) => status === 'designing'
+
+const refreshPlan = async () => {
+  const planPayload = await projectApi.getPlan(projectId)
+  if (!planPayload || typeof planPayload !== 'object') return
+
+  const status = String((planPayload as any)?.status ?? '')
+  if (status === 'planning') {
+    planDoc.value = { status: 'processing' }
+    planningStatus.value = 'planning'
+    return
+  }
+
+  if (status === 'awaiting_clarification' || status === 'awaiting_input') {
+    const qs = Array.isArray((planPayload as any)?.questions) ? (planPayload as any).questions : []
+    questions.value = qs
+    showClarification.value = true
+    planDoc.value = { status: 'needs_clarification' }
+    planningStatus.value = 'awaiting_clarification'
+    return
+  }
+
+  // Any non-status plan payload is considered ready plan data.
+  planDoc.value = { status: 'complete', plan: planPayload }
+  planningStatus.value = 'planning_complete'
+  if (project.value) project.value = { ...project.value, status: 'planning_complete' as any }
+  if (!planToastShown.value) {
+    toastPlanReady()
+    planToastShown.value = true
   }
 }
+
+const refreshDesign = async () => {
+  const designPayload = await projectApi.getDesign(projectId)
+  if (!designPayload || typeof designPayload !== 'object') return
+
+  const status = String((designPayload as any)?.status ?? '')
+  if (status === 'designing') {
+    designStatus.value = 'starting'
+    planningStatus.value = 'designing'
+    return
+  }
+
+  designDoc.value = designPayload
+  accepted.value = true
+  designStatus.value = 'started'
+  if (planningStatus.value === 'designing') {
+    planningStatus.value = 'design_complete'
+  }
+  if (project.value && project.value.status === 'designing') {
+    project.value = { ...project.value, status: 'design_complete' as any }
+  }
+  if (!designToastShown.value) {
+    toastDesignReady()
+    designToastShown.value = true
+  }
+}
+
+const tickProject = async () => {
+  try {
+    const p = await projectApi.getProject(projectId)
+    project.value = p
+    const status = p.status
+    planningStatus.value = status
+    accepted.value = Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
+
+    if (isPlanInProgressStatus(status) || status === 'planning_complete') {
+      await refreshPlan()
+    }
+
+    const shouldLoadDesign =
+      isDesignInProgressStatus(status) ||
+      status === 'design_complete' ||
+      status === 'implementing' ||
+      status === 'implemented' ||
+      status === 'sync_generating' ||
+      status === 'syncs_generated' ||
+      status === 'building' ||
+      status === 'assembling' ||
+      status === 'assembled' ||
+      status === 'complete'
+
+    if (shouldLoadDesign) {
+      await refreshDesign()
+    }
+  } catch (e) {
+    planningError.value = toErrorMessage(e, 'Failed to refresh project status.')
+  }
+}
+
+const projectPoll = usePolling(async () => {
+  await tickProject()
+}, 30_000)
 
 const handleClarificationSubmit = async (answers: Record<string, string>) => {
   try {
     await projectApi.provideClarification(projectId, answers)
     showClarification.value = false
-    // After clarifications, planning resumes on the backend.
-    // We show a lightweight waiting state and then fetch the plan so the user sees it.
-    if (!planDoc.value?.plan) {
-      planDoc.value = { status: 'processing' }
-    }
+    planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
-
-    try {
-      const plan = await projectApi.getPlan(projectId)
-      if (plan) {
-        planDoc.value = { status: 'complete', plan }
-        planningStatus.value = 'planning_complete'
-        if (!planToastShown.value) {
-          toastPlanReady()
-          planToastShown.value = true
-        }
-      }
-    } catch (e) {
-      console.error('Failed to fetch project plan after clarification:', e)
-    }
+    await tickProject()
   } catch (error) {
     console.error('Failed to submit clarifications:', error)
   }
@@ -205,169 +236,8 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 
 onMounted(() => {
   tryHydrateFromQuery()
-  // View Details behavior:
-  // - If design exists: show design phase and render it.
-  // - Else if plan exists: show planning phase and render it.
-  ;(async () => {
-    // Fetch project first to get authoritative status (needed when navigating without query params)
-    try {
-      const p = await projectApi.getProject(projectId)
-      project.value = p
-      if (p.status) {
-        // Backend status is authoritative. Query params can be stale after paging out/in.
-        planningStatus.value = p.status === 'design_complete' ? 'designing' : p.status
-      }
-      if (p.status && PAST_PLANNING_STATUSES.includes(p.status as any)) {
-        accepted.value = true
-      }
-    } catch {
-      /* ignore */
-    }
-    const statusFromQuery = planningStatus.value
-    const shouldPreferPlan = statusFromQuery === 'planning_complete'
-
-    // Only attempt to fetch an existing plan when we have a status that could actually have one.
-    // This prevents noisy/early GET /projects/:id/plan calls during active planning or clarification.
-    const planFetchAllowed =
-      statusFromQuery === 'planning_complete' ||
-      statusFromQuery === 'designing' ||
-      statusFromQuery === 'design_complete' ||
-      statusFromQuery === 'implementing' ||
-      statusFromQuery === 'syncing' ||
-      statusFromQuery === 'building' ||
-      statusFromQuery === 'assembling' ||
-      statusFromQuery === 'complete' ||
-      statusFromQuery === 'error'
-
-    // Only attempt to fetch an existing design when we have a status that could actually have one.
-    // This prevents noisy/early GET /projects/:id/design calls while we're still awaiting clarification.
-    const designFetchAllowed =
-      statusFromQuery === 'designing' ||
-      statusFromQuery === 'design_complete' ||
-      statusFromQuery === 'implementing' ||
-      statusFromQuery === 'syncing' ||
-      statusFromQuery === 'building' ||
-      statusFromQuery === 'assembling' ||
-      statusFromQuery === 'complete' ||
-      statusFromQuery === 'error'
-
-    // If we're explicitly in planning, call getPlan and await. Backend holds the request until plan is ready.
-    if (statusFromQuery === 'planning') {
-      planningError.value = ''
-      try {
-        const plan = await projectApi.getPlan(projectId)
-        if (plan) {
-          planDoc.value = { status: 'complete', plan }
-          planningStatus.value = 'planning_complete'
-          if (project.value) project.value = { ...project.value, status: 'planning_complete' }
-          if (!planToastShown.value) {
-            toastPlanReady()
-            planToastShown.value = true
-          }
-        }
-      } catch (e) {
-        planDoc.value = { status: 'error' }
-        planningError.value = toErrorMessage(e, 'Failed to fetch plan.')
-      }
-      return
-    }
-
-    // If we're explicitly in designing, fetch or wait for the design.
-    // During `designing`, GET /design is stage-aware and waits until design is ready.
-    if (statusFromQuery === 'designing') {
-      accepted.value = true
-      designStatus.value = 'starting'
-      designError.value = ''
-      designDoc.value = null
-
-      try {
-        const design = await projectApi.getDesign(projectId)
-        if (design) {
-          designDoc.value = design
-          if (project.value) project.value = { ...project.value, status: 'design_complete' }
-          planningStatus.value = 'design_complete'
-          if (!designToastShown.value) {
-            toastDesignReady()
-            designToastShown.value = true
-          }
-          designStatus.value = 'started'
-        } else {
-          designStatus.value = 'error'
-          designError.value = 'Design is not available yet.'
-        }
-      } catch (e) {
-        designStatus.value = 'error'
-        designError.value = toErrorMessage(e, 'Failed to fetch design.')
-        return
-      }
-      return
-    }
-
-    // If planning is complete, fetch/show the plan first.
-    // (Avoid calling getDesign in this case; user explicitly wants getPlan.)
-    if (shouldPreferPlan) {
-      if (!planDoc.value?.plan) {
-        try {
-          const plan = await projectApi.getPlan(projectId)
-          if (plan) {
-            planDoc.value = { status: 'complete', plan }
-            planningStatus.value = 'planning_complete'
-            if (!planToastShown.value) {
-              toastPlanReady()
-              planToastShown.value = true
-            }
-          }
-        } catch (e) {
-          console.error('Failed to fetch plan:', e)
-        }
-      } else {
-        // We have a plan already; optionally refresh it.
-        fetchPlanAfterItExists()
-      }
-      return
-    }
-
-    // Otherwise: prefer design (but only if the status can legitimately have it)
-    if (designFetchAllowed) {
-      try {
-        const design = await projectApi.getDesign(projectId)
-        if (design) {
-          designDoc.value = design
-          accepted.value = true
-          planningStatus.value = 'designing'
-          if (!designToastShown.value) {
-            toastDesignReady()
-            designToastShown.value = true
-          }
-          return
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // 2) Otherwise show plan (hydrate-first, then fetch if allowed)
-    if (!planDoc.value?.plan) {
-      if (planFetchAllowed) {
-        try {
-          const plan = await projectApi.getPlan(projectId)
-          if (plan) {
-            planDoc.value = { status: 'complete', plan }
-            planningStatus.value = planningStatus.value || 'planning_complete'
-            if (!planToastShown.value) {
-              toastPlanReady()
-              planToastShown.value = true
-            }
-          }
-        } catch (e) {
-          console.error('Failed to fetch plan:', e)
-        }
-      }
-    } else {
-      // We have a plan already; optionally refresh it.
-      fetchPlanAfterItExists()
-    }
-  })()
+  void tickProject()
+  projectPoll.start()
 })
 
 const handleAcceptDesign = () => {
@@ -386,22 +256,14 @@ const handleAcceptDesign = () => {
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
   accepted.value = true
-  // Hide the plan + kick off design immediately.
   designStatus.value = 'starting'
   designError.value = ''
   designDoc.value = null
-  // Move the progress UI to the designing stage right away.
   planningStatus.value = 'designing'
   projectApi
     .startDesign(projectId, planDoc.value.plan)
-    .then((res) => {
-      designStatus.value = 'started'
-      // Try to capture any design payload the backend returns.
-      designDoc.value = (res as any)?.design ?? (res as any)?.result ?? res
-      planningStatus.value = 'design_complete'
-      if (project.value) project.value = { ...project.value, status: 'design_complete' }
-  toastDesignReady()
-  designToastShown.value = true
+    .then(async () => {
+      await tickProject()
     })
     .catch((err) => {
       designStatus.value = 'error'
@@ -418,14 +280,13 @@ const handleModifyPlan = async () => {
 
   isModifying.value = true
   try {
-    const res = await projectApi.modifyPlan(projectId, feedback.value.trim())
-    planDoc.value = { status: 'complete', plan: res.plan }
-    planningStatus.value = 'planning_complete'
+    await projectApi.modifyPlan(projectId, feedback.value.trim())
+    planDoc.value = { status: 'processing' }
+    planningStatus.value = 'planning'
     accepted.value = false
     feedback.value = ''
-  toastPlanUpdated()
-  // Allow future "Plan ready" toasts if the plan gets re-fetched later.
-  planToastShown.value = true
+    toastPlanUpdated()
+    await tickProject()
   } catch (err) {
     modifyError.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -446,11 +307,13 @@ const handleModifyDesign = async () => {
 
   isModifyingDesign.value = true
   try {
-    const res = await projectApi.modifyDesign(projectId, designFeedback.value.trim())
-    designDoc.value = (res as any).design
+    await projectApi.modifyDesign(projectId, designFeedback.value.trim())
+    designDoc.value = null
+    designStatus.value = 'starting'
+    planningStatus.value = 'designing'
     designFeedback.value = ''
-  toastDesignUpdated()
-  designToastShown.value = true
+    toastDesignUpdated()
+    await tickProject()
   } catch (err) {
     modifyDesignError.value = err instanceof Error ? err.message : String(err)
   } finally {

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
+import { usePolling } from '@/composables/usePolling'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
@@ -109,6 +110,35 @@ const isPayloadProcessing = (payload: BuildStatus | any): boolean => {
   return overallStatus === 'processing' || frontendStatus === 'processing' || backendStatus === 'processing'
 }
 
+const pollBuildStatusOnce = async (): Promise<boolean> => {
+  const status: BuildStatus = await projectApi.getBuildStatus(projectId)
+  const foundAny = applyBuildPayload(status)
+
+  if (allDone.value) {
+    buildInfo.value = ''
+    buildPoll.stop()
+    return true
+  }
+
+  if ((status?.status === 'processing' || isPayloadProcessing(status)) && !buildError.value) {
+    buildInfo.value = foundAny
+      ? 'Build is still running. Waiting for remaining artifacts...'
+      : 'Build is running in the containerized session. Polling every 30 seconds...'
+  }
+  return foundAny
+}
+
+const buildPoll = usePolling(async () => {
+  try {
+    await pollBuildStatusOnce()
+  } catch (e) {
+    buildError.value = toErrorMessage(e, 'Failed to poll build status.')
+    frontendState.value = 'error'
+    backendState.value = 'error'
+    buildPoll.stop()
+  }
+}, 30_000)
+
 const applyBuildPayload = (payload: BuildStatus | any): boolean => {
   const { frontendUrl, backendUrl } = extractDownloadUrls(payload)
   const overallStatus = String(payload?.status ?? '').toLowerCase()
@@ -158,12 +188,12 @@ const startBuild = async () => {
   backendState.value = 'starting'
 
   try {
-    // Trigger build. Backend should hold this request until build completes.
-    const res: BuildStatus = await projectApi.startBuild(projectId)
-    applyBuildPayload(res)
-    if (!allDone.value && !buildError.value) {
-      buildInfo.value = 'Build is still running. Waiting for backend to finish...'
-    }
+    await projectApi.startBuild(projectId)
+    frontendState.value = 'running'
+    backendState.value = 'running'
+    buildInfo.value = 'Build started. Polling every 30 seconds...'
+    await pollBuildStatusOnce()
+    if (!allDone.value && !buildError.value) buildPoll.start()
   } catch (e) {
     frontendState.value = 'error'
     backendState.value = 'error'
@@ -180,18 +210,12 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
   backendState.value = 'loading'
 
   try {
-    const status: BuildStatus = await projectApi.getBuildStatus(projectId)
-    const foundAny = applyBuildPayload(status)
-    if (allDone.value) return true
-    if ((status?.status === 'processing' || isPayloadProcessing(status)) && !buildError.value) {
-      // During `building`, getter is stage-aware and may long-poll until completion.
-      buildInfo.value = foundAny
-        ? 'Build is still running. Waiting for remaining artifacts...'
-        : 'Build is running in the containerized session. Waiting for completion...'
+    const foundAny = await pollBuildStatusOnce()
+    if (!allDone.value && !buildError.value && (frontendState.value === 'running' || backendState.value === 'running')) {
+      buildPoll.start()
     }
     return foundAny
   } catch (e) {
-    // Backend returns 409 when project is `building` but no sandbox is active.
     frontendState.value = 'idle'
     backendState.value = 'idle'
     buildError.value = toErrorMessage(e, 'Failed to fetch build status.')
@@ -241,18 +265,17 @@ onMounted(async () => {
   const isAlreadyAssembled = lifecycleStatus === 'assembled' || lifecycleStatus === 'complete'
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
-    // Existing lifecycle state: use getter (stage-aware for building).
     await fetchExistingDownloads()
     return
   }
 
-  // First, try to fetch existing downloads in case build already completed.
+  // First, try to fetch existing downloads in case a prior build already completed.
   const hasExistingDownloads = await fetchExistingDownloads()
   if (hasExistingDownloads) {
     return
   }
 
-  // No build found and no active sandbox -> trigger build explicitly.
+  // No existing build artifacts found -> trigger a new build.
   await startBuild()
 })
 

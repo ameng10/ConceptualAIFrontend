@@ -444,15 +444,14 @@ export const projectApi = {
     },
 
     async getPlan(projectId: string) {
-    // API.md: GET /projects/:projectId/plan
-    const response = await api.get<{ plan: any }>(`/api/projects/${projectId}/plan`)
-    return response.data?.plan ?? null
+    // API.md: GET /projects/:projectId/plan (immediate polling model)
+    const response = await api.get<{ plan?: any; status?: string; questions?: string[] }>(`/api/projects/${projectId}/plan`)
+    return response.data?.plan ?? response.data ?? null
     },
 
     async getDesign(projectId: string) {
-        // Not documented in API.md yet; provides the finished design doc.
-        // Support a few possible shapes: { design }, { result }, or the raw payload.
-    const response = await api.get<any>(`/api/projects/${projectId}/design`)
+        // API.md: GET /projects/:projectId/design (immediate polling model)
+        const response = await api.get<any>(`/api/projects/${projectId}/design`)
         return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 
@@ -466,9 +465,6 @@ export const projectApi = {
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
-        if (!(response.data as any)?.design) {
-            throw new Error('Design modification did not return an updated design')
-        }
         return response.data
     },
 
@@ -481,9 +477,6 @@ export const projectApi = {
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
-        }
-        if (!response.data?.plan) {
-            throw new Error('Plan modification did not return an updated plan')
         }
         return response.data
     },

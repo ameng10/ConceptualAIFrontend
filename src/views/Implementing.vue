@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
+import { usePolling } from '@/composables/usePolling'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -48,6 +49,57 @@ const toErrorMessage = (err: unknown, fallback: string) => {
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
 
+const isImplementationReady = (payload: any) => {
+  if (!payload || typeof payload !== 'object') return false
+  const status = String((payload as any)?.status ?? '')
+  return status !== 'implementing'
+}
+
+const loadDesignDoc = async () => {
+  try {
+    designDoc.value = await projectApi.getDesign(projectId)
+  } catch {
+    // ignore
+  }
+}
+
+const pollImplementationOnce = async () => {
+  const p = await projectApi.getProject(projectId)
+  const status = p?.status ?? null
+  projectStatus.value = status
+
+  if (status && PAST_IMPLEMENTING_STATUSES.includes(status as any)) {
+    // We're already beyond implementing stage.
+    if (!implementationDoc.value) {
+      const existing = await projectApi.getImplementation(projectId)
+      if (isImplementationReady(existing)) {
+        implementationDoc.value = existing
+      }
+    }
+    implementationPoll.stop()
+    return
+  }
+
+  const current = await projectApi.getImplementation(projectId)
+  if (isImplementationReady(current)) {
+    implementationDoc.value = current
+    projectStatus.value = 'implemented'
+    implementationPoll.stop()
+  } else {
+    implementStatus.value = 'started'
+  }
+}
+
+const implementationPoll = usePolling(async () => {
+  try {
+    await pollImplementationOnce()
+  } catch (e) {
+    implementStatus.value = 'error'
+    implementError.value = toErrorMessage(e, 'Failed to poll implementation.')
+    implementationPoll.stop()
+  }
+}, 30_000)
+
 const startIfNeeded = async () => {
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
@@ -58,87 +110,27 @@ const startIfNeeded = async () => {
     }
   }
 
-  // Only fetch the canonical design from the backend once the project is in a state
-  // where a design can legitimately exist. This keeps backend traces clean.
   try {
     const project = await projectApi.getProject(projectId)
     const status = project?.status
     projectStatus.value = status ?? null
-    const designFetchAllowed =
-      status === 'designing' ||
-      status === 'design_complete' ||
-      status === 'implementing' ||
-      status === 'implemented' ||
-      status === 'syncing' ||
-      status === 'building' ||
-      status === 'assembling' ||
-      status === 'complete' ||
-      status === 'error'
 
-    const implementationFetchAllowed =
-      status === 'implementing' ||
-      status === 'implemented' ||
-      status === 'syncing' ||
-      status === 'building' ||
-      status === 'assembling' ||
-      status === 'complete' ||
-      status === 'error'
+    await loadDesignDoc()
 
-    // If implementation already exists or is in progress, fetch via stage-aware getter.
-    // During `implementing`, backend long-polls until implementation is ready.
-    if (implementationFetchAllowed) {
+    const shouldTriggerImplementation =
+      status === 'design_complete' || status === 'designing' || status === 'planning_complete'
+
+    if (shouldTriggerImplementation) {
+      implementStatus.value = 'starting'
+      await projectApi.startImplementation(projectId, designDoc.value)
+      projectStatus.value = 'implementing'
+    } else {
       implementStatus.value = 'started'
-      try {
-        const existing = await projectApi.getImplementation(projectId)
-        if (existing) {
-          implementationDoc.value = existing
-          // Load design for the bottom dropdown (best effort).
-          try {
-            designDoc.value = await projectApi.getDesign(projectId)
-          } catch {
-            // ignore
-          }
-          projectStatus.value = 'implemented'
-          return
-        }
-      } catch (e) {
-        // Backend returns 409 when project is `implementing` but no active sandbox exists.
-        // For later stages, treat missing implementation as non-fatal.
-        if (status === 'implementing') {
-          implementStatus.value = 'error'
-          implementError.value = toErrorMessage(e, 'Failed to fetch implementation.')
-          return
-        }
-      }
     }
 
-    if (!designFetchAllowed) {
-      implementStatus.value = 'error'
-      implementError.value = 'Project is not ready for implementation yet.'
-      return
-    }
-
-    if (
-      status !== 'implementing' &&
-      status !== 'implemented' &&
-      status !== 'syncing' &&
-      status !== 'building' &&
-      status !== 'assembling' &&
-      status !== 'complete'
-    ) {
-      // If implementation hasn't started yet, start it.
-      const design = await projectApi.getDesign(projectId)
-      if (design) {
-        designDoc.value = design
-        const res = await projectApi.startImplementation(projectId, design)
-        implementStatus.value = 'started'
-        const maybe = (res as any)?.implementations ?? (res as any)?.implementation ?? (res as any)?.result ?? null
-        if (maybe) {
-          implementationDoc.value = maybe
-          return
-        }
-        // Backend is expected to hold this request until implementation is ready.
-      }
+    await pollImplementationOnce()
+    if (!implementationDoc.value) {
+      implementationPoll.start()
     }
   } catch (e) {
     implementStatus.value = 'error'
@@ -146,8 +138,6 @@ const startIfNeeded = async () => {
     return
   }
 
-  // No polling fallback.
-  implementStatus.value = 'started'
 }
 
 const handleRevert = async () => {
@@ -176,19 +166,17 @@ const handleGenerateSyncs = async () => {
   generateSyncsError.value = ''
   isGeneratingSyncs.value = true
 
-  // Navigate immediately so the user sees the generating screen + games right away.
-  // The syncing page uses stage-aware getter behavior during in-progress sync generation.
-  const navPromise = router.push({
-    path: `/project/${projectId}/syncing`,
-    query: {
-      projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
-    },
-  })
-
   try {
-    await navPromise
+    await projectApi.startSyncGeneration(projectId)
+    await router.push({
+      path: `/project/${projectId}/syncing`,
+      query: {
+        projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+      },
+    })
   } catch (e) {
     generateSyncsError.value = e instanceof Error ? e.message : String(e)
+  } finally {
     isGeneratingSyncs.value = false
   }
 }

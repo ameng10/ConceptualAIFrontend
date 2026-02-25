@@ -81,9 +81,7 @@ const handleProjectSubmit = async (
       path: `/project/${pid}`,
       query: {
         projectName: encodeURIComponent(name),
-        planningStatus: created?.planning?.status ? String(created.planning.status) : 'planning',
-        plan: created?.planning?.plan ? encodeURIComponent(JSON.stringify(created.planning.plan)) : undefined,
-        questions: created?.planning?.questions ? encodeURIComponent(JSON.stringify(created.planning.questions)) : undefined,
+        planningStatus: 'planning',
       },
     })
 
