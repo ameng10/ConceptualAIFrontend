@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
+import { isHttp524 } from '@/services/http-errors'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -49,6 +50,8 @@ const toErrorMessage = (err: unknown, fallback: string) => {
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
 
+const isTransientPollingError = (err: unknown) => isHttp524(err)
+
 const isImplementationReady = (payload: any) => {
   if (!payload || typeof payload !== 'object') return false
   const status = String((payload as any)?.status ?? '')
@@ -94,6 +97,11 @@ const implementationPoll = usePolling(async () => {
   try {
     await pollImplementationOnce()
   } catch (e) {
+    if (isTransientPollingError(e)) {
+      implementStatus.value = 'started'
+      // Keep polling on transient gateway timeouts.
+      return
+    }
     implementStatus.value = 'error'
     implementError.value = toErrorMessage(e, 'Failed to poll implementation.')
     implementationPoll.stop()
@@ -117,22 +125,30 @@ const startIfNeeded = async () => {
 
     await loadDesignDoc()
 
-    const shouldTriggerImplementation =
-      status === 'design_complete' || status === 'designing' || status === 'planning_complete'
+    const shouldTriggerImplementation = status === 'design_complete'
 
     if (shouldTriggerImplementation) {
       implementStatus.value = 'starting'
-      await projectApi.startImplementation(projectId, designDoc.value)
+      await projectApi.startImplementation(projectId)
       projectStatus.value = 'implementing'
     } else {
       implementStatus.value = 'started'
     }
 
-    await pollImplementationOnce()
+    try {
+      await pollImplementationOnce()
+    } catch (e) {
+      if (!isTransientPollingError(e)) throw e
+      implementStatus.value = 'started'
+    }
     if (!implementationDoc.value) {
       implementationPoll.start()
     }
   } catch (e) {
+    if (isHttp524(e)) {
+      implementationPoll.start()
+      return
+    }
     implementStatus.value = 'error'
     implementError.value = toErrorMessage(e, 'Failed to start implementation.')
     return
@@ -153,6 +169,7 @@ const handleRevert = async () => {
       },
     })
   } catch (err) {
+    if (isHttp524(err)) return
     revertError.value = err instanceof Error ? err.message : String(err)
     isReverting.value = false
   }
@@ -167,7 +184,6 @@ const handleGenerateSyncs = async () => {
   isGeneratingSyncs.value = true
 
   try {
-    await projectApi.startSyncGeneration(projectId)
     await router.push({
       path: `/project/${projectId}/syncing`,
       query: {
@@ -175,6 +191,7 @@ const handleGenerateSyncs = async () => {
       },
     })
   } catch (e) {
+    if (isHttp524(e)) return
     generateSyncsError.value = e instanceof Error ? e.message : String(e)
   } finally {
     isGeneratingSyncs.value = false

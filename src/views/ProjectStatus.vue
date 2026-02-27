@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
+import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
@@ -214,6 +215,7 @@ const tickProject = async () => {
       await refreshDesign()
     }
   } catch (e) {
+    if (isHttp524(e)) return
     planningError.value = toErrorMessage(e, 'Failed to refresh project status.')
   }
 }
@@ -266,6 +268,7 @@ const handleAcceptPlan = () => {
       await tickProject()
     })
     .catch((err) => {
+      if (isHttp524(err)) return
       designStatus.value = 'error'
       designError.value = err instanceof Error ? err.message : String(err)
     })
@@ -288,6 +291,7 @@ const handleModifyPlan = async () => {
     toastPlanUpdated()
     await tickProject()
   } catch (err) {
+    if (isHttp524(err)) return
     modifyError.value = err instanceof Error ? err.message : String(err)
   } finally {
     isModifying.value = false
@@ -315,6 +319,7 @@ const handleModifyDesign = async () => {
     toastDesignUpdated()
     await tickProject()
   } catch (err) {
+    if (isHttp524(err)) return
     modifyDesignError.value = err instanceof Error ? err.message : String(err)
   } finally {
     isModifyingDesign.value = false
@@ -352,6 +357,7 @@ const handleRevert = async () => {
       // Plan may not be available; let the waiting state show
     }
   } catch (err) {
+    if (isHttp524(err)) return
     revertError.value = err instanceof Error ? err.message : String(err)
   } finally {
     isReverting.value = false

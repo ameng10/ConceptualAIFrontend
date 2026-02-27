@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
+import { isHttp524 } from '@/services/http-errors'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import SyncExplorer from '@/components/SyncExplorer.vue'
@@ -41,6 +42,8 @@ const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
+
+const isTransientPollingError = (err: unknown) => isHttp524(err)
 
 const safeStringify = (value: any, space = 2) => {
   const seen = new WeakSet<object>()
@@ -116,9 +119,14 @@ const syncPoll = usePolling(async () => {
   try {
     await pollSyncOnce()
   } catch (e) {
+    if (isTransientPollingError(e)) {
+      syncStatus.value = 'started'
+      // Keep polling on transient gateway timeouts.
+      return
+    }
     syncStatus.value = 'error'
     syncError.value = toErrorMessage(e, 'Failed to poll sync generation.')
-    syncPoll.stop()
+    // Keep polling even after non-transient errors so recovery is automatic.
   }
 }, 30_000)
 
@@ -180,7 +188,8 @@ const startIfNeeded = async () => {
     const p = await projectApi.getProject(projectId)
     const apiStatus = p?.status ? String(p.status) : ''
     projectStatus.value = apiStatus || null
-    if (!resolvedStatus && apiStatus) resolvedStatus = apiStatus
+    // Always trust backend status over query-param fallbacks.
+    if (apiStatus) resolvedStatus = apiStatus
   } catch {
     // ignore
   }
@@ -192,6 +201,10 @@ const startIfNeeded = async () => {
       projectStatus.value = 'sync_generating'
       resolvedStatus = 'sync_generating'
     } catch (e) {
+      if (isHttp524(e)) {
+        syncPoll.start()
+        return
+      }
       syncStatus.value = 'error'
       syncError.value = toErrorMessage(e, 'Failed to generate syncs.')
       return
@@ -200,8 +213,9 @@ const startIfNeeded = async () => {
 
   if (resolvedStatus === 'sync_generating') {
     syncStatus.value = 'starting'
-    await pollSyncOnce()
-    if (!syncDoc.value) syncPoll.start()
+    // Always start polling in active generation stage.
+    // Immediate run gives a fast first refresh; interval keeps polling every 30s.
+    syncPoll.start({ immediate: true })
     return
   }
 
@@ -209,9 +223,19 @@ const startIfNeeded = async () => {
   try {
     syncStatus.value = 'started'
     await pollSyncOnce()
+    if (!syncDoc.value) {
+      // If artifacts are not ready yet, keep polling every 30s until they are.
+      syncPoll.start()
+    }
   } catch (e) {
+    if (isHttp524(e)) {
+      syncPoll.start()
+      return
+    }
     syncStatus.value = 'error'
     syncError.value = toErrorMessage(e, 'Failed to fetch syncs.')
+    // Even after an initial fetch error, continue polling for eventual consistency.
+    syncPoll.start()
   }
 }
 
@@ -231,6 +255,7 @@ const handleRevert = async () => {
       },
     })
   } catch (err) {
+    if (isHttp524(err)) return
     revertError.value = err instanceof Error ? err.message : String(err)
     isReverting.value = false
   }

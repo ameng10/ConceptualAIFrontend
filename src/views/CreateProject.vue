@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
+import { isHttp524 } from '@/services/http-errors'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { useGeminiCredentials } from '@/services/gemini-credentials'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
@@ -77,7 +78,7 @@ const handleProjectSubmit = async (
     currentProjectId.value = pid
 
     // Navigate to the workspace/status page with the *real* project id.
-    router.push({
+    await router.push({
       path: `/project/${pid}`,
       query: {
         projectName: encodeURIComponent(name),
@@ -88,6 +89,11 @@ const handleProjectSubmit = async (
     done(true)
 
   } catch (error) {
+    if (isHttp524(error)) {
+      // Suppress noisy 524 popups; other flows keep polling in status pages.
+      done(false)
+      return
+    }
     console.error('Failed to create project:', error)
     const anyErr = error as any
     const status = anyErr?.response?.status as number | undefined

@@ -295,10 +295,10 @@ export const projectApi = {
      * Placeholder endpoint: start the implementing agent.
      * TODO: Replace with real API docs once available.
      */
-    async startImplementation(projectId: string, design: any) {
+    async startImplementation(projectId: string) {
     const response = await api.post<any>(
             `/api/projects/${projectId}/implement`,
-            { design },
+            {},
             { headers: getGeminiHeadersOrThrow() },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {

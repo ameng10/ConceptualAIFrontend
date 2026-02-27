@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
+import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
@@ -38,6 +39,8 @@ const toErrorMessage = (err: unknown, fallback: string) => {
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
 
+const isTransientPollingError = (err: unknown) => isHttp524(err)
+
 const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
 const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
 
@@ -51,7 +54,9 @@ const downloadFrontend = async () => {
     const filename = `${projectName.value || 'project'}_frontend.zip`
     await projectApi.downloadFile(frontendDownloadUrl.value, filename)
   } catch (e) {
-    buildError.value = `Frontend download failed: ${e instanceof Error ? e.message : String(e)}`
+    if (!isHttp524(e)) {
+      buildError.value = `Frontend download failed: ${e instanceof Error ? e.message : String(e)}`
+    }
   } finally {
     downloadingFrontend.value = false
   }
@@ -64,7 +69,9 @@ const downloadBackend = async () => {
     const filename = `${projectName.value || 'project'}_backend.zip`
     await projectApi.downloadFile(backendDownloadUrl.value, filename)
   } catch (e) {
-    buildError.value = `Backend download failed: ${e instanceof Error ? e.message : String(e)}`
+    if (!isHttp524(e)) {
+      buildError.value = `Backend download failed: ${e instanceof Error ? e.message : String(e)}`
+    }
   } finally {
     downloadingBackend.value = false
   }
@@ -132,6 +139,10 @@ const buildPoll = usePolling(async () => {
   try {
     await pollBuildStatusOnce()
   } catch (e) {
+    if (isTransientPollingError(e)) {
+      // Keep polling on transient gateway timeouts.
+      return
+    }
     buildError.value = toErrorMessage(e, 'Failed to poll build status.')
     frontendState.value = 'error'
     backendState.value = 'error'
@@ -192,7 +203,11 @@ const startBuild = async () => {
     frontendState.value = 'running'
     backendState.value = 'running'
     buildInfo.value = 'Build started. Polling every 30 seconds...'
-    await pollBuildStatusOnce()
+    try {
+      await pollBuildStatusOnce()
+    } catch (e) {
+      if (!isTransientPollingError(e)) throw e
+    }
     if (!allDone.value && !buildError.value) buildPoll.start()
   } catch (e) {
     frontendState.value = 'error'
@@ -210,8 +225,16 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
   backendState.value = 'loading'
 
   try {
-    const foundAny = await pollBuildStatusOnce()
-    if (!allDone.value && !buildError.value && (frontendState.value === 'running' || backendState.value === 'running')) {
+    let foundAny = false
+    try {
+      foundAny = await pollBuildStatusOnce()
+    } catch (e) {
+      if (!isTransientPollingError(e)) throw e
+    }
+    // Keep polling whenever build is not finished and no non-transient error is present.
+    // This covers cases where backend is ready but frontend is still processing,
+    // and cases where the first status read hit a transient 524.
+    if (!allDone.value && !buildError.value) {
       buildPoll.start()
     }
     return foundAny
@@ -236,6 +259,7 @@ const handleRevert = async () => {
       },
     })
   } catch (err) {
+    if (isHttp524(err)) return
     revertError.value = err instanceof Error ? err.message : String(err)
     isReverting.value = false
   }
