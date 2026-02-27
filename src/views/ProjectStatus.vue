@@ -130,6 +130,8 @@ const isPlanInProgressStatus = (status: string) =>
   status === 'planning' || status === 'awaiting_clarification' || status === 'awaiting_input'
 
 const isDesignInProgressStatus = (status: string) => status === 'designing'
+const shouldPollProjectStatus = (status: string | null | undefined) =>
+  Boolean(status) && (isPlanInProgressStatus(String(status)) || isDesignInProgressStatus(String(status)))
 
 const refreshPlan = async () => {
   const planPayload = await projectApi.getPlan(projectId)
@@ -214,6 +216,11 @@ const tickProject = async () => {
     if (shouldLoadDesign) {
       await refreshDesign()
     }
+
+    // Stop polling once this page reaches a stable non-in-progress state.
+    if (!shouldPollProjectStatus(status)) {
+      projectPoll.stop()
+    }
   } catch (e) {
     if (isHttp524(e)) return
     planningError.value = toErrorMessage(e, 'Failed to refresh project status.')
@@ -230,6 +237,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
     showClarification.value = false
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
+    projectPoll.start()
     await tickProject()
   } catch (error) {
     console.error('Failed to submit clarifications:', error)
@@ -239,7 +247,9 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 onMounted(() => {
   tryHydrateFromQuery()
   void tickProject()
-  projectPoll.start()
+  if (shouldPollProjectStatus(planningStatus.value)) {
+    projectPoll.start()
+  }
 })
 
 const handleAcceptDesign = () => {
@@ -262,6 +272,7 @@ const handleAcceptPlan = () => {
   designError.value = ''
   designDoc.value = null
   planningStatus.value = 'designing'
+  projectPoll.start()
   projectApi
     .startDesign(projectId, planDoc.value.plan)
     .then(async () => {
@@ -286,6 +297,7 @@ const handleModifyPlan = async () => {
     await projectApi.modifyPlan(projectId, feedback.value.trim())
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
+    projectPoll.start()
     accepted.value = false
     feedback.value = ''
     toastPlanUpdated()
@@ -315,6 +327,7 @@ const handleModifyDesign = async () => {
     designDoc.value = null
     designStatus.value = 'starting'
     planningStatus.value = 'designing'
+    projectPoll.start()
     designFeedback.value = ''
     toastDesignUpdated()
     await tickProject()
