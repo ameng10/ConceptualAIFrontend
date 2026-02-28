@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
@@ -10,6 +10,7 @@ import { useGeminiCredentials } from '@/services/gemini-credentials'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const showClarification = ref(false)
 const questions = ref<string[]>([])
 const currentProjectId = ref('')
@@ -35,6 +36,11 @@ const userBadgeLabel = computed(() => {
   if (u?.name) return u.name
   return isSignedIn.value ? 'Signed in' : 'User'
 })
+
+const prefillName = computed(() => (typeof route.query.name === 'string' ? route.query.name : ''))
+const prefillDescription = computed(() =>
+  typeof route.query.description === 'string' ? route.query.description : '',
+)
 
 // Check auth on mount
 onMounted(() => {
@@ -150,7 +156,11 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       </div>
 
       <div class="input-wrapper">
-        <AppDescriptionInput @submit="handleProjectSubmit" />
+        <AppDescriptionInput
+          :initialName="prefillName"
+          :initialDescription="prefillDescription"
+          @submit="handleProjectSubmit"
+        />
       </div>
 
       <div class="quick-tips">

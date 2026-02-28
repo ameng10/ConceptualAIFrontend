@@ -2,6 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
 
+const props = defineProps<{
+  initialName?: string
+  initialDescription?: string
+}>()
+
 const emit = defineEmits<{
   (e: 'submit', description: string, name: string, done: (ok: boolean, errorMessage?: string) => void): void
 }>()
@@ -136,6 +141,8 @@ const namePlaceholder = computed(() => pairedTypewriter.leftText.value)
 const requirementsPlaceholder = computed(() => pairedTypewriter.rightText.value)
 
 onMounted(() => {
+  if (props.initialName && !name.value) name.value = props.initialName
+  if (props.initialDescription && !description.value) description.value = props.initialDescription
   pairedTypewriter.start()
 })
 
