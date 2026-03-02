@@ -89,10 +89,10 @@ onMounted(() => {
 <template>
   <aside class="sidebar" :class="{ collapsed }">
     <div class="sidebar-header">
-      <div class="logo">
+      <router-link to="/" class="logo logo-link" aria-label="Go to landing page" title="Go to landing page">
         <Sparkles class="logo-icon" />
         <span v-if="!collapsed" class="logo-text">ConceptualAI</span>
-      </div>
+      </router-link>
 
       <button
         class="collapse-toggle"
@@ -274,6 +274,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.logo-link {
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 
 .logo-icon {

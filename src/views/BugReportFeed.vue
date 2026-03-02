@@ -128,7 +128,7 @@ onMounted(() => {
           class="btn btn-primary create-btn"
           @click="handleCreatePost"
         >
-          <PlusCircle :size="18" />
+          <PlusCircle :size="16" />
           New Post
         </button>
         <router-link v-else to="/login" class="btn btn-primary create-btn">
@@ -147,7 +147,7 @@ onMounted(() => {
         <MessageCircle :size="48" class="empty-icon" />
         <h3>No posts yet</h3>
         <p>Be the first to report a bug, suggest a feature, or share an app update.</p>
-        <button v-if="canCreatePost" class="btn btn-primary" @click="handleCreatePost">
+        <button v-if="canCreatePost" class="btn btn-primary create-btn" @click="handleCreatePost">
           Create Post
         </button>
       </div>
@@ -280,6 +280,17 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.feed-view :deep(.btn.btn-primary.create-btn) {
+  border-radius: 10px;
+  padding: 0.42rem 0.90rem;
+  font-size: 0.875rem;
+}
+
+.feed-view :deep(.btn.btn-primary.create-btn svg) {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .error-banner {

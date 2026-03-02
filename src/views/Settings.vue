@@ -148,7 +148,7 @@ onMounted(loadProfile)
           <p v-if="error" class="error-msg">{{ error }}</p>
           <p v-if="success" class="success-msg">{{ success }}</p>
 
-          <button class="btn btn-primary" type="submit" :disabled="saving">
+          <button class="btn btn-primary save-profile-btn" type="submit" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save Profile' }}
           </button>
         </form>
@@ -202,6 +202,13 @@ h1 {
 .profile-form {
   display: flex;
   flex-direction: column;
+}
+
+.save-profile-btn {
+  border-radius: 10px;
+  padding: 0.42rem 0.90rem;
+  font-size: 0.875rem;
+  width: fit-content;
 }
 
 .field-group {

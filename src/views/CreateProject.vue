@@ -309,6 +309,17 @@ h1 {
   margin: 0 auto;
 }
 
+.input-wrapper :deep(.input-footer .btn.btn-primary) {
+  border-radius: 10px;
+  padding: 0.42rem 0.90rem;
+  font-size: 0.875rem;
+}
+
+.input-wrapper :deep(.input-footer .btn.btn-primary svg) {
+  width: 16px !important;
+  height: 16px !important;
+}
+
 .byok-wrapper .error-msg {
   margin-top: 0.75rem;
 }

@@ -6,8 +6,6 @@ import {
   Boxes,
   Terminal,
   CheckCircle2,
-  XCircle,
-  AlertTriangle,
   BookOpen,
   ClipboardList,
   PenTool,
@@ -22,9 +20,7 @@ const router = useRouter()
 
 const isSignedIn = computed(() => authState.isSignedIn())
 
-const headerRef = ref<HTMLElement | null>(null)
 const heroRef = ref<HTMLElement | null>(null)
-const heroPromptRef = ref<HTMLElement | null>(null)
 const landingAlt = ref(false)
 
 let scrollTicking = false
@@ -113,14 +109,12 @@ const factorySteps: Array<{
 ]
 
 onMounted(() => {
-  document.documentElement.classList.add('landing-slide')
   updateLandingBackground()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', updateLandingBackground, { passive: true } as any)
 })
 
 onBeforeUnmount(() => {
-  document.documentElement.classList.remove('landing-slide')
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('resize', updateLandingBackground as any)
 })
@@ -129,7 +123,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="landing min-h-screen text-text" :class="{ 'landing-alt': landingAlt }">
     <!-- HEADER (minimal, premium) -->
-    <header ref="headerRef" class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+    <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
       <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div class="flex items-center gap-3">
           <button
@@ -160,7 +154,7 @@ onBeforeUnmount(() => {
               href="#moat"
               class="rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-text-dim transition hover:border-glass-border hover:bg-white/5 hover:text-text"
             >
-              The Moat
+              Competitors
             </a>
           </nav>
         </div>
@@ -184,13 +178,13 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- 1) HERO -->
-    <section ref="heroRef" class="relative overflow-hidden snap-section">
+    <section ref="heroRef" class="relative overflow-hidden">
       <div class="pointer-events-none absolute -inset-20 bg-[image:var(--grad-wave)] opacity-20 blur-3xl" />
       <div class="pointer-events-none absolute inset-0 landing-grid" />
 
       <div class="mx-auto w-full max-w-6xl px-4 pb-14 pt-40 md:pb-20 md:pt-28">
         <!-- Central prompt box (Lovable/Base44-style entry point) -->
-        <div ref="heroPromptRef" class="mb-40">
+        <div class="mb-40">
           <div class="mx-auto max-w-3xl">
             <div
               class="mb-5 pb-1 text-center text-4xl font-semibold leading-[1.25] tracking-tight text-transparent md:text-5xl bg-clip-text bg-[image:var(--grad-wave)]"
@@ -203,7 +197,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div id="hero-main" class="snap-section grid gap-10 md:grid-cols-2 md:items-center">
+        <div class="grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <h1 class="mt-5 text-balance text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
               Your Personal Autonomous Software Factory.
@@ -231,7 +225,7 @@ onBeforeUnmount(() => {
             <div class="mt-8 flex flex-wrap items-center gap-3 text-sm text-text-dim">
               <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
                 <CheckCircle2 :size="16" class="text-emerald-400" />
-                No vendor lock‑in
+                Concepts & Syncs architecture
               </span>
               <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
                 <CheckCircle2 :size="16" class="text-emerald-400" />
@@ -308,7 +302,7 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 2) HOW IT WORKS (horizontal flow) -->
-    <section id="how" class="snap-section mx-auto w-full max-w-6xl px-4 py-14">
+    <section id="how" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
         <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">How it works</div>
         <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">An Autonomous Assembly Line</h2>
@@ -366,7 +360,7 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 2.5) CONCEPTS & SYNCS (high-level) -->
-    <section class="snap-section mx-auto w-full max-w-6xl px-4 py-14">
+    <section class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
         <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Concepts &amp; Syncs</div>
         <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Reusable building blocks. Reliable wiring.</h2>
@@ -412,13 +406,11 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 2.75) DEMO -->
-    <section class="snap-section mx-auto w-full max-w-6xl px-4 py-14">
+    <section class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
         <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Demo</div>
         <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">A real project, end to end.</h2>
-        <p class="mt-3 max-w-2xl text-lg text-text-dim">
-          Here’s a sample project prompt and what the generated app looks like.
-        </p>
+        <p class="mt-3 w-full whitespace-nowrap text-base text-text-dim md:text-lg">Here’s a sample project prompt and what the generated app looks like after no debugging.</p>
       </div>
 
       <div class="mt-8 grid gap-4 md:grid-cols-2 md:items-start">
@@ -432,7 +424,7 @@ onBeforeUnmount(() => {
 
           <div class="demo-input-group">
             <div class="demo-group-label">Requirements</div>
-            <pre class="demo-ghost-textarea demo-prompt"><code>I would like a simple social media app where users can sign up with their email and a password, create a profile with a profile picture, a bio, a name, and a username/displayname. Users can posts images with text captions and users can issue friend requests to eachother. Users can accept or decline friend requests. In their feed, users see only the posts from people they are friends with, in a most recent sort. There is pagination here. Users have a my profile page where their posts are, and there is pagination here too and this is sorted by create date. Users can like posts and comment on posts. Users can message their friends through DMs. Users can send photos through DMs.</code></pre>
+            <pre class="demo-ghost-textarea demo-prompt"><code>I would like a simple social media app where users can sign up with their email and a password, create a profile with a profile picture, a bio, a name, and a username/displayname. Users can posts images with text captions and users can issue friend requests to eachother. Users can accept or decline friend requests. In their feed, users see only the posts from people they are friends with, in a most recent sort. Users have a my profile page where their posts are and this is sorted by create date. Users can like posts and comment on posts. Users can message their friends through DMs. Users can send photos through DMs.</code></pre>
           </div>
         </div>
 
@@ -459,15 +451,12 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="mt-3 text-sm text-text-dim">
-            Upload your MP4 to <span class="text-text">public/demos/simplesocialv2.mp4</span> and it will appear here.
-          </div>
         </div>
       </div>
     </section>
 
     <!-- 3) CODE YOU ACTUALLY OWN -->
-    <section id="own" class="snap-section mx-auto w-full max-w-6xl px-4 py-14">
+    <section id="own" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div class="grid gap-10 md:grid-cols-2 md:items-start">
         <div>
           <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Code you actually own</div>
@@ -543,83 +532,149 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 4) COMPETITOR COMPARISON (The Moat) -->
-    <section id="moat" class="snap-section mx-auto w-full max-w-6xl px-4 py-14">
+    <!-- 4) COMPETITORS -->
+    <section id="moat" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">The Moat</div>
-        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">A real software factory beats a page builder.</h2>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Competitors</div>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">The App Creation Landscape</h2>
+        <p class="mt-3 max-w-3xl text-lg text-text-dim">
+          Here is a comparison table breaking down how ConceptualAI stacks up against current Page Builders and Boilerplates.
+        </p>
       </div>
 
       <div class="mt-8 overflow-hidden rounded-3xl border border-glass-border bg-glass-bg shadow-glass backdrop-blur-2xl">
-        <div class="grid grid-cols-4 border-b border-glass-border bg-white/5 px-4 py-3 text-sm font-black">
-          <div class="col-span-1 text-text-dim">Capability</div>
-          <div class="col-span-1">ConceptualAI</div>
-          <div class="col-span-1 text-text-dim">Wix/Webflow</div>
-          <div class="col-span-1 text-text-dim">Boilerplate Templates</div>
-        </div>
+        <div class="overflow-x-auto">
+          <div class="min-w-[1080px]">
+            <div
+              class="grid grid-cols-[240px_1fr_1fr_1fr] gap-8 border-b border-glass-border bg-white/5 px-6 py-4 text-sm font-black"
+            >
+              <div class="col-span-1 text-text-dim">Feature / Capability</div>
+              <div class="col-span-1">ConceptualAI</div>
+              <div class="col-span-1 text-text-dim">Page Builders</div>
+              <div class="col-span-1 text-text-dim">Boilerplates</div>
+            </div>
 
-        <div class="divide-y divide-glass-border">
-          <div class="grid grid-cols-4 items-center gap-3 px-4 py-4">
-            <div class="col-span-1 font-semibold">Own the Code?</div>
-            <div class="col-span-1 flex items-center gap-2">
-              <CheckCircle2 :size="18" class="text-emerald-400" />
-              <span>Yes</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <XCircle :size="18" class="text-red-400" />
-              <span>No</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <AlertTriangle :size="18" class="text-amber-400" />
-              <span>Partial</span>
-            </div>
-          </div>
+            <div class="divide-y divide-glass-border">
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Core Approach</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  AI architect dynamically assembles &amp; tests concepts
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  Visual drag-and-drop UI with proprietary logic blocks
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  Pre-written static codebase that you manually edit
+                </div>
+              </div>
 
-          <div class="grid grid-cols-4 items-center gap-3 px-4 py-4">
-            <div class="col-span-1 font-semibold">Custom Complex Logic?</div>
-            <div class="col-span-1 flex items-center gap-2">
-              <CheckCircle2 :size="18" class="text-emerald-400" />
-              <span>Yes</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <XCircle :size="18" class="text-red-400" />
-              <span>No</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <AlertTriangle :size="18" class="text-amber-400" />
-              <span>Depends</span>
-            </div>
-          </div>
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">100% Code Ownership</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Yes.</span> You get raw Deno, React, and MongoDB code.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">No.</span> You are locked into their proprietary hosting platform.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Yes.</span> You own the base repository.
+                </div>
+              </div>
 
-          <div class="grid grid-cols-4 items-center gap-3 px-4 py-4">
-            <div class="col-span-1 font-semibold">Auto-Fixing Compiler?</div>
-            <div class="col-span-1 flex items-center gap-2">
-              <CheckCircle2 :size="18" class="text-emerald-400" />
-              <span>Yes</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <XCircle :size="18" class="text-red-400" />
-              <span>No</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <AlertTriangle :size="18" class="text-amber-400" />
-              <span>Manual</span>
-            </div>
-          </div>
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Custom Backend Logic</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Limitless.</span> AI writes, compiles, and tests custom backend TypeScript for your specific needs.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Limited.</span> You must use their visual logic systems, which struggle with complex math or deep
+                  integrations.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Manual.</span> If the template doesn't have it, you must code the feature entirely from scratch.
+                </div>
+              </div>
 
-          <div class="grid grid-cols-4 items-center gap-3 px-4 py-4">
-            <div class="col-span-1 font-semibold">True DB Control?</div>
-            <div class="col-span-1 flex items-center gap-2">
-              <CheckCircle2 :size="18" class="text-emerald-400" />
-              <span>Yes</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <XCircle :size="18" class="text-red-400" />
-              <span>No</span>
-            </div>
-            <div class="col-span-1 flex items-center gap-2 text-text-dim">
-              <AlertTriangle :size="18" class="text-amber-400" />
-              <span>Maybe</span>
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Database Architecture</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Dynamic.</span> Creates isolated MongoDB collections tailored precisely to your data model.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Rigid/Proprietary.</span> Often uses slow, proprietary databases or strictly enforced relational tables.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Static.</span> Comes with a pre-set schema (e.g., Prisma models) that is painful to refactor.
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Self-Healing Code</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Yes.</span> Uses a Docker Sandbox to compile code, run tests, and fix its own bugs before delivery.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">N/A.</span> It's a visual builder; you can't generate raw backend code to test.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">No.</span> If you modify the boilerplate and it breaks, you have to debug it yourself.
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Security &amp; Isolation</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">High.</span> Uses discrete "Concepts" that cannot maliciously access each other's data (Isolated Blast
+                  Radius).
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Medium.</span> Generally secure, but you rely entirely on the platform's internal security team.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Variable.</span> Depends entirely on how well the template was written and how carefully you modify it.
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Ejectability (Avoiding Lock-in)</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Instant.</span> The generated app uses standard web technologies you can host anywhere (AWS, Render, etc.).
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Impossible.</span> If your app succeeds, you cannot export the code. You must rewrite it from scratch to
+                  leave.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Instant.</span> It is standard code hosted wherever you want.
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Time-to-Value for Unique Ideas</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  <span class="font-black">Hours.</span> Prompt your unique idea, get a custom architecture with little-to-no bugs.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Days/Weeks.</span> You have to learn their complex visual UI builder and proprietary logic system.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  <span class="font-black">Weeks/Months.</span> You get a fast start on Auth/Payments, but spend months coding your unique business
+                  logic.
+                </div>
+              </div>
+
+              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
+                <div class="col-span-1 font-semibold">Target User</div>
+                <div class="col-span-1 text-[15px] leading-7">
+                  Founders, developers, and visionaries building scalable, custom software.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  Non-technical users building marketing sites or simple internal CRUD apps.
+                </div>
+                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
+                  Developers who want to skip setting up Stripe and Auth but still want to write all the feature code.
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -627,7 +682,7 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- 5) FOOTER CTA -->
-    <section class="snap-section mx-auto w-full max-w-6xl px-4 pb-14">
+    <section class="mx-auto w-full max-w-6xl px-4 pb-14">
       <div class="relative overflow-hidden rounded-3xl border border-glass-border bg-glass-bg p-8 shadow-glass backdrop-blur-2xl">
         <div class="absolute -inset-10 -z-10 bg-[image:var(--grad-wave)] opacity-30 blur-2xl" />
         <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
@@ -669,17 +724,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-:global(html.landing-slide) {
-  scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
-  scroll-padding-top: 90px;
-}
-
-.snap-section {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
 .start-building-btn {
   border-radius: 10px;
   padding: 0.42rem 0.90rem;
