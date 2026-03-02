@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
               href="#moat"
               class="rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-text-dim transition hover:border-glass-border hover:bg-white/5 hover:text-text"
             >
-              Competitors
+              Why Us
             </a>
           </nav>
         </div>
@@ -532,10 +532,10 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 4) COMPETITORS -->
+    <!-- 4) WHY US -->
     <section id="moat" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Competitors</div>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Why Us</div>
         <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">The App Creation Landscape</h2>
         <p class="mt-3 max-w-3xl text-lg text-text-dim">
           Here is a comparison table breaking down how ConceptualAI stacks up against current Page Builders and Boilerplates.
