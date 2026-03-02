@@ -210,6 +210,14 @@ const startBuild = async () => {
     }
     if (!allDone.value && !buildError.value) buildPoll.start()
   } catch (e) {
+    if (isTransientPollingError(e)) {
+      // Treat 524 on trigger as transient: build may already be in-flight.
+      frontendState.value = 'running'
+      backendState.value = 'running'
+      buildInfo.value = 'Build request timed out, continuing to poll every 30 seconds...'
+      buildPoll.start({ immediate: true })
+      return
+    }
     frontendState.value = 'error'
     backendState.value = 'error'
     buildInfo.value = ''

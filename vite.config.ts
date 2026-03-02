@@ -12,6 +12,9 @@ export default defineConfig({
     },
     server: {
         allowedHosts: ['conceptual-ai.app'],
+        fs: {
+            deny: ['**/.git/**'],
+        },
         proxy: {
             '/api': {
                 target: 'http://localhost:8000',

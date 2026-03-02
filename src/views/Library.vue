@@ -99,7 +99,12 @@ const onMarkdownClick = (event: MouseEvent) => {
   if (href.startsWith('http://') || href.startsWith('https://')) {
     link.setAttribute('target', '_blank')
     link.setAttribute('rel', 'noopener noreferrer')
+    return
   }
+
+  // Block unknown/non-http link schemes (e.g. local file-like paths such as
+  // "C:/.../.git/index") so Vite doesn't try to load repository internals.
+  event.preventDefault()
 }
 </script>
 
