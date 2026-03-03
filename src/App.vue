@@ -15,6 +15,14 @@ const toggleSidebar = () => {
 }
 
 onMounted(() => {
+  // Apply persisted theme on first paint across all routes (including marketing pages without sidebar).
+  try {
+    const savedTheme = localStorage.getItem('theme') || 'dark'
+    document.documentElement.setAttribute('data-theme', savedTheme)
+  } catch {
+    // no-op (e.g. storage disabled)
+  }
+
   // On smaller screens default to closed (drawer-style), otherwise open.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
   isSidebarOpen.value = !window.matchMedia('(max-width: 768px)').matches

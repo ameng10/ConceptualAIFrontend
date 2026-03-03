@@ -7,6 +7,8 @@ import {
   Terminal,
   CheckCircle2,
   BookOpen,
+  Sun,
+  Moon,
   ClipboardList,
   PenTool,
   Blocks,
@@ -48,6 +50,22 @@ const goLogin = () => {
 }
 
 const primaryCtaLabel = computed(() => 'Start Building (Beta)')
+
+const theme = ref<'dark' | 'light'>('dark')
+
+const applyTheme = (value: 'dark' | 'light') => {
+  theme.value = value
+  document.documentElement.setAttribute('data-theme', value)
+  try {
+    localStorage.setItem('theme', value)
+  } catch {
+    // no-op
+  }
+}
+
+const toggleTheme = () => {
+  applyTheme(theme.value === 'dark' ? 'light' : 'dark')
+}
 
 const demoVideoUrl = '/demos/simplesocialv2.mp4'
 
@@ -109,6 +127,14 @@ const factorySteps: Array<{
 ]
 
 onMounted(() => {
+  // Ensure theme is applied on marketing pages too.
+  try {
+    const savedTheme = (localStorage.getItem('theme') as 'dark' | 'light' | null) || 'dark'
+    applyTheme(savedTheme)
+  } catch {
+    applyTheme('dark')
+  }
+
   updateLandingBackground()
   window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', updateLandingBackground, { passive: true } as any)
@@ -160,6 +186,18 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10"
+            @click="toggleTheme"
+            :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            :title="theme === 'dark' ? 'Light mode' : 'Dark mode'"
+          >
+            <Sun v-if="theme === 'dark'" :size="18" />
+            <Moon v-else :size="18" />
+            <span>{{ theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+          </button>
+
           <button
             v-if="!isSignedIn"
             type="button"
