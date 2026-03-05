@@ -339,6 +339,19 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <!-- 1.5) WHAT WE DO -->
+    <section id="what-we-do" class="mx-auto w-full max-w-6xl px-4 py-14">
+      <div class="glass rounded-3xl border border-glass-border bg-glass-bg p-8 md:p-12 shadow-glass backdrop-blur-2xl text-center">
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">What is ConceptualAI?</div>
+        <h2 class="mx-auto mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">
+          We turn your idea into a production-ready codebase.
+        </h2>
+        <p class="mx-auto mt-6 max-w-2xl text-lg text-text-dim text-balance leading-relaxed">
+          ConceptualAI is your personal autonomous software factory. We are an entirely new way of AI Full-stack App building. Instead of locking you into drag-and-drop builders or rigid templates, our AI architects, writes, and tests a full-stack web application from your prompt. You get standard, scalable modern code that you own 100%.
+        </p>
+      </div>
+    </section>
+
     <!-- 2) HOW IT WORKS (horizontal flow) -->
     <section id="how" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
