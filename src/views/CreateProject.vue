@@ -5,8 +5,7 @@ import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
 import { isHttp524 } from '@/services/http-errors'
-import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
-import { useGeminiCredentials } from '@/services/gemini-credentials'
+import { isGeminiCredentialError } from '@/services/gemini-credentials'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -17,12 +16,6 @@ const currentProjectId = ref('')
 const currentUser = ref(null as any) // Simple reactive user state
 const isSignedIn = ref(authState.isSignedIn())
 
-const {
-  apiKey: geminiApiKey,
-  tier: geminiTier,
-  isValid: isGeminiValid,
-  isTierSupported: isGeminiTierSupported,
-} = useGeminiCredentials()
 const geminiError = ref('')
 
 const syncAuthFromStorage = () => {
@@ -60,16 +53,6 @@ const handleProjectSubmit = async (
 ) => {
   try {
     geminiError.value = ''
-    if (!isGeminiValid.value) {
-      geminiError.value = !geminiApiKey.value.trim()
-        ? 'Missing Gemini API Key.'
-        : !isGeminiTierSupported.value
-          ? 'Tier 0 is unsupported. Select tier 1, 2, or 3.'
-          : 'Invalid Gemini credentials.'
-      done(false, geminiError.value)
-      return
-    }
-
     // User must be authenticated (enforced by route guard)
     const userId = authState.getUserId()
     if (!userId) {
@@ -117,6 +100,12 @@ const handleProjectSubmit = async (
           ? error.message
           : String(error)
 
+    if (isGeminiCredentialError(error)) {
+      geminiError.value = msg || 'Gemini credentials are required to continue.'
+      done(false, geminiError.value)
+      return
+    }
+
     alert(msg || 'Failed to start project. Please check if the backend is running.')
     done(false, msg || 'Failed to start project.')
   }
@@ -150,11 +139,6 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
         <p class="subtitle">Architect your conceptual backend in minutes.</p>
       </div>
 
-      <div class="byok-wrapper fade-in">
-        <GeminiCredentialsForm />
-        <div v-if="geminiError" class="error-msg">{{ geminiError }}</div>
-      </div>
-
       <div class="input-wrapper">
         <AppDescriptionInput
           :initialName="prefillName"
@@ -166,6 +150,8 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       <div class="quick-tips">
         <p>Try: "A marketplace with items and reviews" or "A social app with following and posting"</p>
       </div>
+
+      <div v-if="geminiError" class="error-msg centered-error">{{ geminiError }}</div>
     </div>
 
     <ClarificationDialog
@@ -303,12 +289,6 @@ h1 {
   margin-top: 0.75rem;
 }
 
-.byok-wrapper {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
 .input-wrapper :deep(.input-footer .btn.btn-primary) {
   border-radius: 10px;
   padding: 0.42rem 0.90rem;
@@ -320,7 +300,7 @@ h1 {
   height: 16px !important;
 }
 
-.byok-wrapper .error-msg {
-  margin-top: 0.75rem;
+.centered-error {
+  text-align: center;
 }
 </style>

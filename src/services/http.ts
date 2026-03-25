@@ -39,6 +39,13 @@ function notifySessionCleared() {
   }
 }
 
+function isGeminiCredentialUnauthorized(error: AxiosError): boolean {
+  const status = error.response?.status
+  const data = error.response?.data as { error?: string; message?: string } | undefined
+  const message = String(data?.error || data?.message || '').toLowerCase()
+  return status === 401 && message.includes('gemini unwrap key')
+}
+
 /** Force-clear auth and notify so the UI redirects to login. */
 function forceSignOut(reason: string) {
   console.warn('[auth] Forcing sign-out:', reason)
@@ -101,6 +108,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
+
+    if (isGeminiCredentialUnauthorized(error)) {
+      return Promise.reject(error)
+    }
 
     // --- Handle 401 on a RETRIED request (refresh already happened but token still rejected) ---
     if (

@@ -9,7 +9,6 @@ import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { ArrowLeft, RotateCcw, Share2 } from 'lucide-vue-next'
 import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
@@ -385,7 +384,6 @@ const handleRevert = async () => {
         <ArrowLeft :size="18" /> Back to Generator
       </router-link>
       <div class="actions">
-        <GeminiCredentialsForm v-if="planningStatus !== 'complete'" class="header-gemini" />
         <button class="btn-icon">
           <Share2 :size="18" />
         </button>
@@ -546,10 +544,6 @@ const handleRevert = async () => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-
-.header-nav .header-gemini {
-  max-width: 480px;
 }
 
 .back-link {

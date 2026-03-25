@@ -6,7 +6,6 @@ import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import { ArrowDownToLine, ArrowLeft, RotateCcw } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
@@ -319,9 +318,6 @@ onMounted(async () => {
       <button type="button" class="back-link" @click="router.push({ path: '/projects' })">
         <ArrowLeft :size="18" /> Back to Projects
       </button>
-      <div v-if="!allDone" class="actions">
-        <GeminiCredentialsForm class="header-gemini" />
-      </div>
     </div>
 
     <div class="content container">
@@ -409,16 +405,6 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-}
-
-.header-nav .actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.header-nav .header-gemini {
-  max-width: 480px;
 }
 
 .back-link {

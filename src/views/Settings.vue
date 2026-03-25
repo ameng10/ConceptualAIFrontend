@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { User } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
+import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -97,9 +98,18 @@ onMounted(loadProfile)
   <div class="settings-view">
     <div class="container fade-in">
       <div class="header">
-        <h1 class="animated-gradient-text">Profile Settings</h1>
-        <p class="subtitle">Update your public profile details.</p>
+        <h1 class="animated-gradient-text">Settings</h1>
+        <p class="subtitle">Manage your Gemini credentials and public profile.</p>
       </div>
+
+      <main class="settings-content glass">
+        <div class="section-title">
+          <User :size="18" />
+          <h3>Gemini Credentials</h3>
+        </div>
+
+        <GeminiCredentialsForm />
+      </main>
 
       <main class="settings-content glass">
         <div class="section-title">

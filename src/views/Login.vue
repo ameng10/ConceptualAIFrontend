@@ -21,12 +21,14 @@ const handleSubmit = async () => {
   isLoading.value = true
   try {
     await authApi.login(email.value, password.value)
+    password.value = ''
     router.replace(redirectTo.value)
   } catch (e: any) {
     const data = e.response?.data
     error.value =
       data?.error || data?.message || e.message || 'Invalid credentials. Please try again.'
   } finally {
+    password.value = ''
     isLoading.value = false
   }
 }

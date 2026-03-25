@@ -11,7 +11,13 @@ import {
     setUsername,
 } from './auth-storage'
 import * as authFns from './auth'
-import { getGeminiHeadersOrThrow } from './gemini-credentials'
+import {
+    clearGeminiCredentialState,
+    getGeminiHeadersOrThrow,
+    initializeGeminiCredentialSession,
+    normalizeGeminiRequestError,
+    syncGeminiCredentialStatus,
+} from './gemini-credentials'
 
 // Types
 export interface User {
@@ -128,6 +134,11 @@ export async function validateSession(): Promise<void> {
 
     try {
         await authFns.getUserFromToken(accessToken)
+        try {
+            await syncGeminiCredentialStatus()
+        } catch {
+            // Do not block route access if Gemini status refresh fails.
+        }
     } catch {
         // Access token invalid/expired – try to refresh before giving up.
         const refreshToken = getRefreshToken()
@@ -140,6 +151,11 @@ export async function validateSession(): Promise<void> {
                     // Verify the new token works
                     try {
                         await authFns.getUserFromToken(result.accessToken)
+                        try {
+                            await syncGeminiCredentialStatus()
+                        } catch {
+                            // Do not block route access if Gemini status refresh fails.
+                        }
                         return // Session recovered successfully
                     } catch {
                         // New token also invalid – fall through to clear
@@ -149,6 +165,7 @@ export async function validateSession(): Promise<void> {
                 // Refresh failed – fall through to clear
             }
         }
+        clearGeminiCredentialState()
         clearAuthData()
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('auth:session-cleared'))
@@ -167,6 +184,7 @@ export function initAuthOnStartup() {
     const user = getUserId()
     if (!user) {
         // If there's no user id, make sure we clear any stale tokens/usernames.
+        clearGeminiCredentialState()
         clearAuthData()
         return
     }
@@ -178,6 +196,7 @@ export function initAuthOnStartup() {
     const hasAnyToken = accessToken !== null || refreshToken !== null
     const hasValidTokens = Boolean(accessToken) && Boolean(refreshToken)
     if (hasAnyToken && !hasValidTokens) {
+        clearGeminiCredentialState()
         clearAuthData()
     }
 }
@@ -192,25 +211,36 @@ export const authApi = {
     },
 
     async login(email: string, password: string) {
-    const res = await authFns.login(email, password)
-    const loginUsername = (res as any)?.username as string | undefined
-    authState.set({ ...res, username: loginUsername })
+    let plaintextPassword = password
+    try {
+        const res = await authFns.login(email, plaintextPassword)
+        const loginUsername = (res as any)?.username as string | undefined
+        authState.set({ ...res, username: loginUsername })
 
-    // Never block login completion on profile fetch. Enrich username in background only.
-    if (!loginUsername) {
-        void api
-            .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
-            .then((profileRes) => {
-                const candidate = profileRes.data?.profile?.username
-                if (candidate && candidate.trim()) {
-                    setUsername(candidate.trim())
-                }
-            })
-            .catch(() => {
-                // Profile may not exist yet (or endpoint may be unavailable). Ignore.
-            })
+        try {
+            await initializeGeminiCredentialSession(plaintextPassword)
+        } catch {
+            // Do not fail login if the Gemini status probe is temporarily unavailable.
+        }
+
+        // Never block login completion on profile fetch. Enrich username in background only.
+        if (!loginUsername) {
+            void api
+                .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
+                .then((profileRes) => {
+                    const candidate = profileRes.data?.profile?.username
+                    if (candidate && candidate.trim()) {
+                        setUsername(candidate.trim())
+                    }
+                })
+                .catch(() => {
+                    // Profile may not exist yet (or endpoint may be unavailable). Ignore.
+                })
+        }
+        return res
+    } finally {
+        plaintextPassword = ''
     }
-    return res
     },
 
     async logout() {
@@ -218,17 +248,28 @@ export const authApi = {
         if (accessToken) {
             await authFns.logout(accessToken)
         }
+        clearGeminiCredentialState()
         authState.clear()
+    }
+}
+
+async function runGeminiRequest<T>(execute: () => Promise<T>): Promise<T> {
+    try {
+        return await execute()
+    } catch (error) {
+        normalizeGeminiRequestError(error)
     }
 }
 
 export const projectApi = {
     async create(owner: string, name: string, description: string) {
         // API.md: POST /projects (auth required)
-    const response = await api.post<any>(
-            '/api/projects',
-            { name, description },
-            { headers: getGeminiHeadersOrThrow() },
+    const response = await runGeminiRequest(() =>
+            api.post<any>(
+                '/api/projects',
+                { name, description },
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
 
         if ((response.data as any)?.error || (response.data as any)?.message) {
@@ -280,10 +321,12 @@ export const projectApi = {
     async startDesign(projectId: string, plan: any) {
         // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
         // Expected to return status/progress payload.
-    const response = await api.post<any>(
-            `/api/projects/${projectId}/design`,
-            { plan },
-            { headers: getGeminiHeadersOrThrow() },
+    const response = await runGeminiRequest(() =>
+            api.post<any>(
+                `/api/projects/${projectId}/design`,
+                { plan },
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -296,10 +339,12 @@ export const projectApi = {
      * TODO: Replace with real API docs once available.
      */
     async startImplementation(projectId: string) {
-    const response = await api.post<any>(
-            `/api/projects/${projectId}/implement`,
-            {},
-            { headers: getGeminiHeadersOrThrow() },
+    const response = await runGeminiRequest(() =>
+            api.post<any>(
+                `/api/projects/${projectId}/implement`,
+                {},
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -320,10 +365,12 @@ export const projectApi = {
      * API.md: POST /projects/:projectId/syncs
      */
     async startSyncGeneration(projectId: string) {
-        const response = await api.post<any>(
-            `/api/projects/${projectId}/syncs`,
-            {},
-            { headers: getGeminiHeadersOrThrow() },
+        const response = await runGeminiRequest(() =>
+            api.post<any>(
+                `/api/projects/${projectId}/syncs`,
+                {},
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -367,10 +414,12 @@ export const projectApi = {
      * }
      */
     async startBuild(projectId: string) {
-        const response = await api.post<any>(
-            `/api/projects/${projectId}/build`,
-            {},
-            { headers: getGeminiHeadersOrThrow() },
+        const response = await runGeminiRequest(() =>
+            api.post<any>(
+                `/api/projects/${projectId}/build`,
+                {},
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         const data = response.data as any
         if (data?.error || data?.status === 'error') {
@@ -395,7 +444,11 @@ export const projectApi = {
         backend?: { status?: string; downloadUrl?: string | null }
         frontend?: { status?: string; downloadUrl?: string | null }
     }> {
-        const response = await api.get<any>(`/api/projects/${projectId}/build/status`)
+        const response = await runGeminiRequest(() =>
+            api.get<any>(`/api/projects/${projectId}/build/status`, {
+                headers: getGeminiHeadersOrThrow(),
+            })
+        )
         return response.data
     },
 
@@ -457,10 +510,12 @@ export const projectApi = {
 
     async modifyDesign(projectId: string, feedback: string) {
         // API.md: PUT /projects/:projectId/design
-        const response = await api.put<{ status: string; design?: any; error?: string; message?: string }>(
-            `/api/projects/${projectId}/design`,
-            { feedback },
-            { headers: getGeminiHeadersOrThrow() },
+        const response = await runGeminiRequest(() =>
+            api.put<{ status: string; design?: any; error?: string; message?: string }>(
+                `/api/projects/${projectId}/design`,
+                { feedback },
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -470,10 +525,12 @@ export const projectApi = {
 
     async modifyPlan(projectId: string, feedback: string) {
         // API.md: PUT /projects/:projectId/plan
-        const response = await api.put<{ status: string; plan?: any; error?: string; message?: string }>(
-            `/api/projects/${projectId}/plan`,
-            { feedback },
-            { headers: getGeminiHeadersOrThrow() },
+        const response = await runGeminiRequest(() =>
+            api.put<{ status: string; plan?: any; error?: string; message?: string }>(
+                `/api/projects/${projectId}/plan`,
+                { feedback },
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -509,10 +566,12 @@ export const projectApi = {
     // Ideally we transition fully to the new endpoints
     async provideClarification(projectId: string, answers: Record<string, string>) {
         // API.md: POST /projects/:projectId/clarify
-        const response = await api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
-            `/api/projects/${projectId}/clarify`,
-            { answers },
-            { headers: getGeminiHeadersOrThrow() },
+        const response = await runGeminiRequest(() =>
+            api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
+                `/api/projects/${projectId}/clarify`,
+                { answers },
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
