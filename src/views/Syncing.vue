@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import SyncExplorer from '@/components/SyncExplorer.vue'
@@ -133,6 +134,22 @@ const pollSyncOnce = async () => {
   const p = await projectApi.getProject(projectId)
   const status = p?.status ? String(p.status) : ''
   if (status) projectStatus.value = status
+  if (p?.name) {
+    projectName.value = p.name
+  }
+
+  const navigated = await maybeNavigateToAutocompleteStage(
+    router,
+    route.path,
+    projectId,
+    status,
+    p?.autocomplete,
+    p?.name ?? projectName.value,
+  )
+  if (navigated) {
+    syncPoll.stop()
+    return
+  }
 
   const raw = await projectApi.getSyncs(projectId)
   const payload = unwrapSyncPayload(raw)
@@ -183,10 +200,28 @@ const startIfNeeded = async () => {
   ])
 
   let resolvedStatus = initialProjectStatus.value || ''
+  let enableAutocomplete = false
   try {
     const p = await projectApi.getProject(projectId)
     const apiStatus = p?.status ? String(p.status) : ''
+    enableAutocomplete = Boolean(p?.autocomplete)
     projectStatus.value = apiStatus || null
+    if (p?.name) {
+      projectName.value = p.name
+    }
+
+    const navigated = await maybeNavigateToAutocompleteStage(
+      router,
+      route.path,
+      projectId,
+      apiStatus,
+      p?.autocomplete,
+      p?.name ?? projectName.value,
+    )
+    if (navigated) {
+      return
+    }
+
     // Always trust backend status over query-param fallbacks.
     if (apiStatus) resolvedStatus = apiStatus
   } catch {
@@ -196,7 +231,7 @@ const startIfNeeded = async () => {
   if (resolvedStatus === 'implemented') {
     try {
       syncStatus.value = 'starting'
-      await projectApi.startSyncGeneration(projectId)
+      await projectApi.startSyncGeneration(projectId, enableAutocomplete)
       projectStatus.value = 'sync_generating'
       resolvedStatus = 'sync_generating'
     } catch (e) {

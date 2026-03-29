@@ -6,6 +6,7 @@ import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
 import { isHttp524 } from '@/services/http-errors'
 import { isGeminiCredentialError } from '@/services/gemini-credentials'
+import { getProjectPathForStatus } from '@/services/project-stage-routing'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -34,6 +35,84 @@ const prefillName = computed(() => (typeof route.query.name === 'string' ? route
 const prefillDescription = computed(() =>
   typeof route.query.description === 'string' ? route.query.description : '',
 )
+const prefillAutocomplete = computed(() => route.query.autocomplete === 'true')
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+const selectNewestProjectId = (
+  projects: Array<{ _id: string; name: string; description: string; createdAt?: string }>,
+  existingProjectIds: Set<string>,
+  name: string,
+  description: string,
+) => {
+  const matches = projects.filter((project) => project.name === name && project.description === description)
+  if (!matches.length) return null
+
+  const unseenMatches = matches.filter((project) => !existingProjectIds.has(project._id))
+  const candidates = unseenMatches.length ? unseenMatches : matches
+  candidates.sort((a, b) => {
+    const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
+    const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
+    return bTime - aTime
+  })
+
+  return candidates[0]?._id ?? null
+}
+
+const waitForCreatedProject = async (
+  userId: string,
+  name: string,
+  description: string,
+  existingProjectIds: Set<string>,
+  getCreateResult: () => { project?: string } | null,
+  getCreateError: () => unknown,
+) => {
+  while (true) {
+    const createResult = getCreateResult()
+    if (createResult?.project) {
+      return createResult.project
+    }
+
+    const createError = getCreateError()
+    if (createError) {
+      throw createError
+    }
+
+    try {
+      const projects = await projectApi.getProjects(userId)
+      const discoveredProjectId = selectNewestProjectId(projects, existingProjectIds, name, description)
+      if (discoveredProjectId) {
+        return discoveredProjectId
+      }
+    } catch {
+      // Ignore list polling errors and retry while the create request is still pending.
+    }
+
+    await sleep(1500)
+  }
+}
+
+const waitForProjectStatus = async (
+  projectId: string,
+  getCreateError: () => unknown,
+) => {
+  while (true) {
+    try {
+      return await projectApi.getProject(projectId)
+    } catch (error) {
+      const createError = getCreateError()
+      if (createError && !isHttp524(error)) {
+        throw createError
+      }
+      if (!isHttp524(error)) {
+        await sleep(1200)
+        continue
+      }
+    }
+
+    await sleep(1200)
+  }
+}
 
 // Check auth on mount
 onMounted(() => {
@@ -49,6 +128,7 @@ onUnmounted(() => {
 const handleProjectSubmit = async (
   description: string,
   name: string,
+  enableAutocomplete: boolean,
   done: (ok: boolean, errorMessage?: string) => void,
 ) => {
   try {
@@ -60,18 +140,43 @@ const handleProjectSubmit = async (
       return
     }
 
+    const existingProjects = await projectApi.getProjects(userId).catch(() => [])
+    const existingProjectIds = new Set(existingProjects.map((project) => project._id))
+
+    let createResult: { project?: string } | null = null
+    let createError: unknown = null
+
+    void projectApi
+      .create(userId, name, description, enableAutocomplete)
+      .then((result) => {
+        createResult = result
+      })
+      .catch((error) => {
+        createError = error
+      })
+
     // Important: the backend generates the canonical project id.
-    // If we invent a client id and route with it, subsequent GETs (plan/project) will 404.
-    const created = await projectApi.create(userId, name, description)
-    const pid = created.project
+    // We poll for it immediately instead of waiting for POST /projects to finish,
+    // because autocomplete may keep that request open while the pipeline continues.
+    const pid = await waitForCreatedProject(
+      userId,
+      name,
+      description,
+      existingProjectIds,
+      () => createResult,
+      () => createError,
+    )
     currentProjectId.value = pid
 
-    // Navigate to the workspace/status page with the *real* project id.
+    const project = await waitForProjectStatus(pid, () => createError)
+    const targetPath = getProjectPathForStatus(pid, project.status) ?? `/project/${pid}`
+
+    // Navigate as soon as the created project can be fetched.
     await router.push({
-      path: `/project/${pid}`,
+      path: targetPath,
       query: {
-        projectName: encodeURIComponent(name),
-        planningStatus: 'planning',
+        projectName: encodeURIComponent(project.name || name),
+        projectStatus: project.status,
       },
     })
 
@@ -143,6 +248,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
         <AppDescriptionInput
           :initialName="prefillName"
           :initialDescription="prefillDescription"
+          :initialEnableAutocomplete="prefillAutocomplete"
           @submit="handleProjectSubmit"
         />
       </div>

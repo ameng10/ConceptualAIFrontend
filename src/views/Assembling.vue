@@ -22,6 +22,7 @@ const router = useRouter()
 
 const projectId = route.params.id as string
 const projectName = ref<string>('')
+const projectLifecycleStatus = ref<string | null>(null)
 
 const frontendState = ref<AgentState>('loading')
 const backendState = ref<AgentState>('loading')
@@ -42,6 +43,12 @@ const isTransientPollingError = (err: unknown) => isHttp524(err)
 
 const allDone = computed(() => Boolean(frontendDownloadUrl.value) && Boolean(backendDownloadUrl.value))
 const hasAnyDownload = computed(() => Boolean(frontendDownloadUrl.value) || Boolean(backendDownloadUrl.value))
+const hasTerminalProjectStatus = computed(
+  () => projectLifecycleStatus.value === 'assembled' || projectLifecycleStatus.value === 'complete',
+)
+const displayStatus = computed(() =>
+  allDone.value || hasTerminalProjectStatus.value ? 'complete' : 'assembling',
+)
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
@@ -149,6 +156,45 @@ const buildPoll = usePolling(async () => {
   }
 }, 30_000)
 
+const pollProjectStateOnce = async () => {
+  const project = await projectApi.getProject(projectId)
+  projectLifecycleStatus.value = project?.status ?? null
+  if (project?.name) {
+    projectName.value = project.name
+  }
+
+  if (hasTerminalProjectStatus.value) {
+    if (!allDone.value && !buildError.value) {
+      buildInfo.value = hasAnyDownload.value
+        ? 'Project is complete. Waiting for the remaining download artifact...'
+        : 'Project is complete. Finalizing build artifacts...'
+    }
+
+    try {
+      await pollBuildStatusOnce()
+    } catch (e) {
+      if (!isTransientPollingError(e)) {
+        throw e
+      }
+    }
+
+    if (allDone.value) {
+      buildPoll.stop()
+      projectPoll.stop()
+    }
+  }
+}
+
+const projectPoll = usePolling(async () => {
+  try {
+    await pollProjectStateOnce()
+  } catch (e) {
+    if (isTransientPollingError(e)) {
+      return
+    }
+  }
+}, 30_000)
+
 const applyBuildPayload = (payload: BuildStatus | any): boolean => {
   const { frontendUrl, backendUrl } = extractDownloadUrls(payload)
   const overallStatus = String(payload?.status ?? '').toLowerCase()
@@ -207,7 +253,10 @@ const startBuild = async () => {
     } catch (e) {
       if (!isTransientPollingError(e)) throw e
     }
-    if (!allDone.value && !buildError.value) buildPoll.start()
+    if (!allDone.value && !buildError.value) {
+      buildPoll.start()
+      projectPoll.start()
+    }
   } catch (e) {
     if (isTransientPollingError(e)) {
       // Treat 524 on trigger as transient: build may already be in-flight.
@@ -215,6 +264,7 @@ const startBuild = async () => {
       backendState.value = 'running'
       buildInfo.value = 'Build request timed out, continuing to poll every 30 seconds...'
       buildPoll.start({ immediate: true })
+      projectPoll.start({ immediate: true })
       return
     }
     frontendState.value = 'error'
@@ -243,6 +293,7 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
     // and cases where the first status read hit a transient 524.
     if (!allDone.value && !buildError.value) {
       buildPoll.start()
+      projectPoll.start()
     }
     return foundAny
   } catch (e) {
@@ -287,6 +338,10 @@ onMounted(async () => {
   let lifecycleStatus = typeof route.query?.projectStatus === 'string' ? route.query.projectStatus : ''
   try {
     const project = await projectApi.getProject(projectId)
+    projectLifecycleStatus.value = project?.status ?? null
+    if (project?.name) {
+      projectName.value = project.name
+    }
     if (project?.status) lifecycleStatus = String(project.status)
   } catch {
     // If project fetch fails, continue with query-param fallback.
@@ -327,7 +382,7 @@ onMounted(async () => {
       </div>
 
       <ProjectStatusDisplay
-        :status="allDone ? 'complete' : 'assembling'"
+        :status="displayStatus"
         :projectName="projectName || 'Project'"
         :showDownloadButton="false"
       />
@@ -337,10 +392,13 @@ onMounted(async () => {
       </div>
 
       <div class="glass fade-in plan-card">
-        <h2 class="section-title">{{ allDone || hasAnyDownload ? 'Downloads Ready' : 'Build' }}</h2>
+        <h2 class="section-title">{{ allDone || hasAnyDownload || hasTerminalProjectStatus ? 'Downloads Ready' : 'Build' }}</h2>
 
         <p v-if="!hasAnyDownload" class="muted">Frontend: {{ frontendState }}</p>
         <p v-if="!hasAnyDownload" class="muted">Backend: {{ backendState }}</p>
+        <p v-if="hasTerminalProjectStatus && !allDone" class="muted" style="margin-top: 0.75rem;">
+          Project status is `{{ projectLifecycleStatus }}`. Waiting for build downloads to finish syncing to the status endpoint...
+        </p>
 
         <div v-if="buildError" class="error-msg" style="margin-top: 0.75rem;">{{ buildError }}</div>
         <p v-else-if="buildInfo" class="muted" style="margin-top: 0.75rem;">{{ buildInfo }}</p>

@@ -4,11 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
+import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
 import { ArrowLeft, RotateCcw, Share2 } from 'lucide-vue-next'
 import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
@@ -36,6 +38,8 @@ const designDoc = ref<any | null>(null)
 const designFeedback = ref('')
 const isModifyingDesign = ref(false)
 const modifyDesignError = ref('')
+const planningAutocomplete = ref(false)
+const designAutocomplete = ref(false)
 
 const planToastShown = ref(false)
 const designToastShown = ref(false)
@@ -192,9 +196,29 @@ const tickProject = async () => {
   try {
     const p = await projectApi.getProject(projectId)
     project.value = p
+    if (p?.name) {
+      projectName.value = p.name
+    }
+    if (typeof p.autocomplete === 'boolean') {
+      planningAutocomplete.value = p.autocomplete
+      designAutocomplete.value = p.autocomplete
+    }
     const status = p.status
     planningStatus.value = status
     accepted.value = Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
+
+    const navigated = await maybeNavigateToAutocompleteStage(
+      router,
+      route.path,
+      projectId,
+      status,
+      p.autocomplete,
+      p.name ?? projectName.value,
+    )
+    if (navigated) {
+      projectPoll.stop()
+      return
+    }
 
     if (isPlanInProgressStatus(status) || status === 'planning_complete') {
       await refreshPlan()
@@ -230,9 +254,10 @@ const projectPoll = usePolling(async () => {
   await tickProject()
 }, 30_000)
 
-const handleClarificationSubmit = async (answers: Record<string, string>) => {
+const handleClarificationSubmit = async (answers: Record<string, string>, enableAutocomplete: boolean) => {
   try {
-    await projectApi.provideClarification(projectId, answers)
+    await projectApi.provideClarification(projectId, answers, enableAutocomplete)
+    planningAutocomplete.value = enableAutocomplete
     showClarification.value = false
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
@@ -260,6 +285,7 @@ const handleAcceptDesign = () => {
     path: `/project/${projectId}/implementing`,
     query: {
       projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+        enableAutocomplete: String(designAutocomplete.value),
     },
   })
 }
@@ -273,8 +299,9 @@ const handleAcceptPlan = () => {
   planningStatus.value = 'designing'
   projectPoll.start()
   projectApi
-    .startDesign(projectId, planDoc.value.plan)
+    .startDesign(projectId, planDoc.value.plan, planningAutocomplete.value)
     .then(async () => {
+      designAutocomplete.value = planningAutocomplete.value
       await tickProject()
     })
     .catch((err) => {
@@ -293,7 +320,7 @@ const handleModifyPlan = async () => {
 
   isModifying.value = true
   try {
-    await projectApi.modifyPlan(projectId, feedback.value.trim())
+    await projectApi.modifyPlan(projectId, feedback.value.trim(), planningAutocomplete.value)
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
     projectPoll.start()
@@ -322,7 +349,7 @@ const handleModifyDesign = async () => {
 
   isModifyingDesign.value = true
   try {
-    await projectApi.modifyDesign(projectId, designFeedback.value.trim())
+    await projectApi.modifyDesign(projectId, designFeedback.value.trim(), designAutocomplete.value)
     designDoc.value = null
     designStatus.value = 'starting'
     planningStatus.value = 'designing'
@@ -429,6 +456,12 @@ const handleRevert = async () => {
             <button class="btn-primary" type="button" :disabled="accepted || !canStartDesign || designStatus === 'starting'" @click="handleAcceptPlan">
               Accept plan
             </button>
+            <PipelineAutocompleteToggle
+              v-model="planningAutocomplete"
+              compact
+              :disabled="accepted || !canStartDesign || designStatus === 'starting'"
+              label="Autocomplete"
+            />
           </div>
 
           <div class="modify-block">
@@ -441,10 +474,18 @@ const handleRevert = async () => {
               :disabled="isModifying"
             />
             <div v-if="modifyError" class="error-msg">{{ modifyError }}</div>
-            <button class="btn-secondary" type="button" :disabled="isModifying" @click="handleModifyPlan">
-              <span v-if="!isModifying">Modify plan</span>
-              <span v-else>Modifying…</span>
-            </button>
+            <div class="action-row">
+              <button class="btn-secondary" type="button" :disabled="isModifying" @click="handleModifyPlan">
+                <span v-if="!isModifying">Modify plan</span>
+                <span v-else>Modifying…</span>
+              </button>
+              <PipelineAutocompleteToggle
+                v-model="planningAutocomplete"
+                compact
+                :disabled="isModifying"
+                label="Autocomplete"
+              />
+            </div>
           </div>
         </div>
 
@@ -475,6 +516,12 @@ const handleRevert = async () => {
             >
               Accept design
             </button>
+            <PipelineAutocompleteToggle
+              v-model="designAutocomplete"
+              compact
+              :disabled="!canAcceptDesign"
+              label="Autocomplete"
+            />
           </div>
 
           <div class="modify-block">
@@ -487,10 +534,18 @@ const handleRevert = async () => {
               :disabled="isModifyingDesign"
             />
             <div v-if="modifyDesignError" class="error-msg">{{ modifyDesignError }}</div>
-            <button class="btn-secondary" type="button" :disabled="isModifyingDesign" @click="handleModifyDesign">
-              <span v-if="!isModifyingDesign">Modify design</span>
-              <span v-else>Modifying…</span>
-            </button>
+            <div class="action-row">
+              <button class="btn-secondary" type="button" :disabled="isModifyingDesign" @click="handleModifyDesign">
+                <span v-if="!isModifyingDesign">Modify design</span>
+                <span v-else>Modifying…</span>
+              </button>
+              <PipelineAutocompleteToggle
+                v-model="designAutocomplete"
+                compact
+                :disabled="isModifyingDesign"
+                label="Autocomplete"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -521,6 +576,7 @@ const handleRevert = async () => {
     <ClarificationDialog
       :show="showClarification"
       :questions="questions"
+      :enableAutocomplete="planningAutocomplete"
       @submit="handleClarificationSubmit"
     />
   </div>
@@ -719,6 +775,13 @@ h1 {
   gap: 0.5rem;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
 .modify-label {
   font-size: 0.8125rem;
   color: var(--text-dim);
@@ -815,5 +878,13 @@ h1 {
 .btn-revert:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .review-buttons,
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

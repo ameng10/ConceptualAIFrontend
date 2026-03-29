@@ -72,6 +72,7 @@ const demoVideoUrl = '/demos/simplesocialv2.mp4'
 const handleLandingPromptSubmit = (
   description: string,
   name: string,
+  enableAutocomplete: boolean,
   done: (ok: boolean, errorMessage?: string) => void,
 ) => {
   // Keep UX minimal: take the user into the existing /build flow,
@@ -81,6 +82,7 @@ const handleLandingPromptSubmit = (
     query: {
       name,
       description,
+      autocomplete: String(enableAutocomplete),
     },
   })
   done(true)

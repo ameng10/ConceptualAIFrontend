@@ -36,6 +36,7 @@ export interface Project {
     _id: string
     name: string
     description: string
+    autocomplete?: boolean
     status:
         | 'planning'
         | 'planned'
@@ -262,12 +263,12 @@ async function runGeminiRequest<T>(execute: () => Promise<T>): Promise<T> {
 }
 
 export const projectApi = {
-    async create(owner: string, name: string, description: string) {
+    async create(owner: string, name: string, description: string, enableAutocomplete = false) {
         // API.md: POST /projects (auth required)
     const response = await runGeminiRequest(() =>
             api.post<any>(
                 '/api/projects',
-                { name, description },
+                { name, description, enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -318,13 +319,13 @@ export const projectApi = {
         return { project: pid, planning }
     },
 
-    async startDesign(projectId: string, plan: any) {
+    async startDesign(projectId: string, plan: any, enableAutocomplete = false) {
         // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
         // Expected to return status/progress payload.
     const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/design`,
-                { plan },
+                { plan, enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -338,11 +339,11 @@ export const projectApi = {
      * Placeholder endpoint: start the implementing agent.
      * TODO: Replace with real API docs once available.
      */
-    async startImplementation(projectId: string) {
+    async startImplementation(projectId: string, enableAutocomplete = false) {
     const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/implement`,
-                {},
+                { enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -364,11 +365,11 @@ export const projectApi = {
     /**
      * API.md: POST /projects/:projectId/syncs
      */
-    async startSyncGeneration(projectId: string) {
+    async startSyncGeneration(projectId: string, enableAutocomplete = false) {
         const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/syncs`,
-                {},
+                { enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -413,11 +414,11 @@ export const projectApi = {
      *   "frontend": { "status": "complete", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
      * }
      */
-    async startBuild(projectId: string) {
+    async startBuild(projectId: string, enableAutocomplete = false) {
         const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/build`,
-                {},
+                { enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -508,12 +509,12 @@ export const projectApi = {
         return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 
-    async modifyDesign(projectId: string, feedback: string) {
+    async modifyDesign(projectId: string, feedback: string, enableAutocomplete = false) {
         // API.md: PUT /projects/:projectId/design
         const response = await runGeminiRequest(() =>
             api.put<{ status: string; design?: any; error?: string; message?: string }>(
                 `/api/projects/${projectId}/design`,
-                { feedback },
+                { feedback, enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -523,12 +524,12 @@ export const projectApi = {
         return response.data
     },
 
-    async modifyPlan(projectId: string, feedback: string) {
+    async modifyPlan(projectId: string, feedback: string, enableAutocomplete = false) {
         // API.md: PUT /projects/:projectId/plan
         const response = await runGeminiRequest(() =>
             api.put<{ status: string; plan?: any; error?: string; message?: string }>(
                 `/api/projects/${projectId}/plan`,
-                { feedback },
+                { feedback, enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )
@@ -564,12 +565,12 @@ export const projectApi = {
 
     // Legacy support or if needed for specific extensions
     // Ideally we transition fully to the new endpoints
-    async provideClarification(projectId: string, answers: Record<string, string>) {
+    async provideClarification(projectId: string, answers: Record<string, string>, enableAutocomplete = false) {
         // API.md: POST /projects/:projectId/clarify
         const response = await runGeminiRequest(() =>
             api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
                 `/api/projects/${projectId}/clarify`,
-                { answers },
+                { answers, enableAutocomplete },
                 { headers: getGeminiHeadersOrThrow() },
             )
         )

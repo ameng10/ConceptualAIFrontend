@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { HelpCircle, CheckCircle2 } from 'lucide-vue-next'
+import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
 
 const props = defineProps<{
   questions: string[]
   show: boolean
+  enableAutocomplete?: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'submit', answers: Record<string, string>): void
+  (e: 'submit', answers: Record<string, string>, enableAutocomplete: boolean): void
 }>()
 
 const answers = ref<Record<string, string>>({})
 const submitting = ref(false)
+const enableAutocomplete = ref(false)
 
 watch(() => props.questions, (newQuestions) => {
   newQuestions.forEach(q => {
@@ -28,7 +31,7 @@ const handleSubmit = async () => {
   try {
     // Fire-and-forget: keep the button in a loading state while the parent
     // handles clarification + waiting for the plan, then closes the dialog.
-    emit('submit', answers.value)
+    emit('submit', answers.value, enableAutocomplete.value)
   } finally {
     // Intentionally do not reset `submitting` here.
     // The dialog will be hidden by the parent once planning continues,
@@ -40,6 +43,7 @@ watch(
   () => props.show,
   (isOpen) => {
     if (!isOpen) submitting.value = false
+    if (isOpen) enableAutocomplete.value = Boolean(props.enableAutocomplete)
   }
 )
 </script>
@@ -69,6 +73,12 @@ watch(
       </div>
 
       <div class="modal-footer">
+        <PipelineAutocompleteToggle
+          v-model="enableAutocomplete"
+          compact
+          :disabled="submitting"
+          label="Autocomplete"
+        />
         <button
           class="btn btn-primary"
           @click="handleSubmit"
@@ -152,7 +162,9 @@ label {
 
 .modal-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
   margin-top: 1rem;
   flex: 0 0 auto;
 }
@@ -185,6 +197,11 @@ label {
   .modal {
     padding: 1.25rem;
     max-height: calc(100vh - 1.5rem);
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

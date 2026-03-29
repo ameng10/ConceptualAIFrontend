@@ -4,10 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
+import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
 import { ArrowLeft, ChevronDown, RotateCcw } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -39,6 +41,8 @@ const implementStatus = ref<'starting' | 'started' | 'error'>('starting')
 const implementError = ref('')
 const implementationDoc = ref<any | null>(null)
 const designDoc = ref<any | null>(null)
+const syncAutocomplete = ref(false)
+const requestedAutocomplete = ref<boolean | null>(null)
 
 const isGeneratingSyncs = ref(false)
 const generateSyncsError = ref('')
@@ -69,6 +73,22 @@ const pollImplementationOnce = async () => {
   const p = await projectApi.getProject(projectId)
   const status = p?.status ?? null
   projectStatus.value = status
+  if (p?.name) {
+    projectName.value = p.name
+  }
+
+  const navigated = await maybeNavigateToAutocompleteStage(
+    router,
+    route.path,
+    projectId,
+    status,
+    p?.autocomplete,
+    p?.name ?? projectName.value,
+  )
+  if (navigated) {
+    implementationPoll.stop()
+    return
+  }
 
   if (status && PAST_IMPLEMENTING_STATUSES.includes(status as any)) {
     // We're already beyond implementing stage.
@@ -117,10 +137,33 @@ const startIfNeeded = async () => {
     }
   }
 
+  if (typeof route.query?.enableAutocomplete === 'string') {
+    requestedAutocomplete.value = route.query.enableAutocomplete === 'true'
+    syncAutocomplete.value = requestedAutocomplete.value
+  }
+
   try {
     const project = await projectApi.getProject(projectId)
     const status = project?.status
     projectStatus.value = status ?? null
+    if (project?.name) {
+      projectName.value = project.name
+    }
+    if (typeof project?.autocomplete === 'boolean' && requestedAutocomplete.value === null) {
+      syncAutocomplete.value = project.autocomplete
+    }
+
+    const navigated = await maybeNavigateToAutocompleteStage(
+      router,
+      route.path,
+      projectId,
+      status,
+      project?.autocomplete,
+      project?.name ?? projectName.value,
+    )
+    if (navigated) {
+      return
+    }
 
     await loadDesignDoc()
 
@@ -128,7 +171,7 @@ const startIfNeeded = async () => {
 
     if (shouldTriggerImplementation) {
       implementStatus.value = 'starting'
-      await projectApi.startImplementation(projectId)
+      await projectApi.startImplementation(projectId, syncAutocomplete.value)
       projectStatus.value = 'implementing'
     } else {
       implementStatus.value = 'started'
@@ -165,6 +208,7 @@ const handleRevert = async () => {
       path: `/project/${projectId}`,
       query: {
         projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+        enableAutocomplete: String(syncAutocomplete.value),
       },
     })
   } catch (err) {
@@ -243,6 +287,12 @@ const handleGenerateSyncs = async () => {
               <span v-if="!isGeneratingSyncs">Generate syncs</span>
               <span v-else>Generating…</span>
             </button>
+            <PipelineAutocompleteToggle
+              v-model="syncAutocomplete"
+              compact
+              :disabled="isGeneratingSyncs || !canGenerateSyncs"
+              label="Autocomplete"
+            />
           </div>
 
           <div v-if="generateSyncsError" class="error-msg" style="margin-top: 0.75rem;">{{ generateSyncsError }}</div>
@@ -370,6 +420,7 @@ const handleGenerateSyncs = async () => {
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 /* Match ProjectStatus.vue accept button styling */
@@ -490,5 +541,12 @@ const handleGenerateSyncs = async () => {
 .design-body {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 720px) {
+  .review-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
