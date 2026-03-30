@@ -6,7 +6,7 @@ import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import { ArrowDownToLine, ArrowLeft, RotateCcw } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowLeft, RotateCcw, MonitorPlay, Square, ExternalLink } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
@@ -34,6 +34,12 @@ const buildError = ref('')
 const buildInfo = ref('')
 const isReverting = ref(false)
 const revertError = ref('')
+
+type PreviewState = 'idle' | 'launching' | 'processing' | 'ready' | 'stopping' | 'error'
+const previewState = ref<PreviewState>('idle')
+const previewUrl = ref<string>('')
+const previewError = ref<string>('')
+
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
@@ -323,6 +329,64 @@ const handleRevert = async () => {
   }
 }
 
+const pollPreviewStatusOnce = async () => {
+  try {
+    const res = await projectApi.getPreviewStatus(projectId)
+    if (res.status === 'ready') {
+      previewUrl.value = res.frontendUrl || ''
+      previewState.value = 'ready'
+      previewError.value = ''
+      previewPoll.stop()
+    } else if (res.status === 'processing') {
+      previewState.value = 'processing'
+      previewError.value = ''
+    } else if (res.status === 'error') {
+      previewState.value = 'error'
+      previewError.value = res.error || 'Preview failed to start.'
+      previewPoll.stop()
+    } else if (res.status === 'expired' || res.status === 'none') {
+      previewState.value = 'idle'
+      previewPoll.stop()
+    }
+  } catch (e) {
+    console.error('Failed to poll preview status', e)
+  }
+}
+
+const previewPoll = usePolling(pollPreviewStatusOnce, 60_000)
+
+const handleLaunchPreview = async () => {
+  previewState.value = 'launching'
+  previewError.value = ''
+  previewUrl.value = ''
+  try {
+    const res = await projectApi.launchPreview(projectId)
+    if (res.status === 'previewing') {
+      previewState.value = 'processing'
+      previewPoll.start({ immediate: true })
+    }
+  } catch (e) {
+    previewState.value = 'error'
+    previewError.value = toErrorMessage(e, 'Failed to launch preview.')
+  }
+}
+
+const handleStopPreview = async () => {
+  if (previewState.value === 'stopping') return
+  previewState.value = 'stopping'
+  previewUrl.value = '' // Hides iframe immediately
+  previewError.value = ''
+  try {
+    await projectApi.teardownPreview(projectId)
+    previewState.value = 'idle'
+    previewPoll.stop()
+  } catch (e) {
+    previewState.value = 'error'
+    previewError.value = toErrorMessage(e, 'Failed to stop preview.')
+    console.error('Failed to stop preview', e)
+  }
+}
+
 onMounted(async () => {
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
@@ -352,6 +416,21 @@ onMounted(async () => {
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
     await fetchExistingDownloads()
+    if (isAlreadyAssembled) {
+      try {
+        const res = await projectApi.getPreviewStatus(projectId)
+        if (res.status === 'processing' || res.status === 'ready') {
+          previewState.value = res.status
+          if (res.status === 'ready') {
+            previewUrl.value = res.frontendUrl || ''
+          } else {
+            previewPoll.start({ immediate: true })
+          }
+        }
+      } catch (e) {
+        // ignore errors on initial load checkout
+      }
+    }
     return
   }
 
@@ -434,6 +513,59 @@ onMounted(async () => {
         <p v-if="hasAnyDownload && !allDone" class="muted" style="margin-top: 0.75rem;">
           Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
         </p>
+
+        <!-- Preview Actions Section -->
+        <div v-if="allDone" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <div class="revert-info">
+              <span class="revert-label">Live Preview</span>
+              <span class="revert-desc">Launch a hosted preview of your generated application.</span>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button
+                v-if="previewState === 'idle' || previewState === 'error' || previewState === 'launching'"
+                class="btn-preview btn-preview-launch"
+                type="button"
+                :disabled="previewState === 'launching'"
+                @click="handleLaunchPreview"
+              >
+                <MonitorPlay :size="15" />
+                <span>{{ previewState === 'launching' ? 'Launching…' : 'Launch Preview' }}</span>
+              </button>
+
+              <button
+                v-else
+                class="btn-preview btn-preview-stop"
+                type="button"
+                :disabled="previewState === 'stopping'"
+                @click="handleStopPreview"
+              >
+                <div v-if="previewState === 'stopping'" class="spinner" style="width: 14px; height: 14px; border-top-color: inherit; border-color: rgba(239, 68, 68, 0.3); border-top-color: rgba(239, 68, 68, 0.9);"></div>
+                <Square v-else :size="15" />
+                <span>{{ previewState === 'stopping' ? 'Stopping…' : 'Stop Preview' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="previewError" class="error-msg" style="margin-top: 0.5rem;">{{ previewError }}</div>
+
+          <div v-if="previewState === 'processing'" class="preview-loading-card">
+            <div class="spinner"></div>
+            <span>Starting preview environment. This may take a minute...</span>
+          </div>
+        </div>
+
+        <!-- Preview Iframe Section -->
+        <div v-if="previewState === 'ready' && previewUrl" class="preview-iframe-container fade-in">
+          <div class="preview-iframe-header">
+            <span class="preview-url">{{ previewUrl }}</span>
+            <a :href="previewUrl" target="_blank" rel="noopener noreferrer" class="preview-external-link">
+              <ExternalLink :size="14" />
+            </a>
+          </div>
+          <iframe :src="previewUrl" class="preview-iframe" title="Application Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        </div>
 
         <div class="revert-row" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
           <div class="revert-info">
@@ -633,5 +765,115 @@ onMounted(async () => {
 .btn-revert:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-preview:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-preview-launch {
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(45, 212, 191, 0.08);
+  color: var(--accent);
+}
+
+.btn-preview-launch:hover:not(:disabled) {
+  background: rgba(45, 212, 191, 0.14);
+  border-color: rgba(45, 212, 191, 0.5);
+}
+
+.btn-preview-stop {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.btn-preview-stop:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.preview-loading-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--neon-teal);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.preview-iframe-container {
+  margin-top: 1.5rem;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-color);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-iframe-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.preview-url {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.preview-external-link {
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.preview-external-link:hover {
+  color: var(--text);
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 600px;
+  border: none;
+  background: #ffffff;
 }
 </style>

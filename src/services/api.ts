@@ -38,23 +38,23 @@ export interface Project {
     description: string
     autocomplete?: boolean
     status:
-        | 'planning'
-        | 'planned'
-        | 'planning_complete'
-        | 'designing'
-        | 'design_complete'
-        | 'implementing'
-        | 'implemented'
-        | 'sync_generating'
-        | 'syncs_generated'
-        | 'syncing'
-        | 'building'
-        | 'assembling'
-        | 'assembled'
-        | 'complete'
-        | 'error'
-        | 'awaiting_clarification'
-        | 'awaiting_input'
+    | 'planning'
+    | 'planned'
+    | 'planning_complete'
+    | 'designing'
+    | 'design_complete'
+    | 'implementing'
+    | 'implemented'
+    | 'sync_generating'
+    | 'syncs_generated'
+    | 'syncing'
+    | 'building'
+    | 'assembling'
+    | 'assembled'
+    | 'complete'
+    | 'error'
+    | 'awaiting_clarification'
+    | 'awaiting_input'
     createdAt?: string
     updatedAt?: string
 }
@@ -103,9 +103,9 @@ export const authState = {
     set(data: AuthResponse) {
         setUserId(data.user)
         if (data.username) setUsername(data.username)
-    // Allow storing empty tokens; keep storage consistent.
-    setAccessToken(data.accessToken ?? '')
-    setRefreshToken(data.refreshToken ?? '')
+        // Allow storing empty tokens; keep storage consistent.
+        setAccessToken(data.accessToken ?? '')
+        setRefreshToken(data.refreshToken ?? '')
     },
     clear() {
         clearAuthData()
@@ -205,43 +205,43 @@ export function initAuthOnStartup() {
 // API Modules
 export const authApi = {
     async register(email: string, password: string, username: string, name: string) {
-    const res = await authFns.register(email, password, name, username)
-    // Backend register may not return username; we still know it from the form.
-    authState.set({ ...res, username })
-    return res
+        const res = await authFns.register(email, password, name, username)
+        // Backend register may not return username; we still know it from the form.
+        authState.set({ ...res, username })
+        return res
     },
 
     async login(email: string, password: string) {
-    let plaintextPassword = password
-    try {
-        const res = await authFns.login(email, plaintextPassword)
-        const loginUsername = (res as any)?.username as string | undefined
-        authState.set({ ...res, username: loginUsername })
-
+        let plaintextPassword = password
         try {
-            await initializeGeminiCredentialSession(plaintextPassword)
-        } catch {
-            // Do not fail login if the Gemini status probe is temporarily unavailable.
-        }
+            const res = await authFns.login(email, plaintextPassword)
+            const loginUsername = (res as any)?.username as string | undefined
+            authState.set({ ...res, username: loginUsername })
 
-        // Never block login completion on profile fetch. Enrich username in background only.
-        if (!loginUsername) {
-            void api
-                .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
-                .then((profileRes) => {
-                    const candidate = profileRes.data?.profile?.username
-                    if (candidate && candidate.trim()) {
-                        setUsername(candidate.trim())
-                    }
-                })
-                .catch(() => {
-                    // Profile may not exist yet (or endpoint may be unavailable). Ignore.
-                })
+            try {
+                await initializeGeminiCredentialSession(plaintextPassword)
+            } catch {
+                // Do not fail login if the Gemini status probe is temporarily unavailable.
+            }
+
+            // Never block login completion on profile fetch. Enrich username in background only.
+            if (!loginUsername) {
+                void api
+                    .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
+                    .then((profileRes) => {
+                        const candidate = profileRes.data?.profile?.username
+                        if (candidate && candidate.trim()) {
+                            setUsername(candidate.trim())
+                        }
+                    })
+                    .catch(() => {
+                        // Profile may not exist yet (or endpoint may be unavailable). Ignore.
+                    })
+            }
+            return res
+        } finally {
+            plaintextPassword = ''
         }
-        return res
-    } finally {
-        plaintextPassword = ''
-    }
     },
 
     async logout() {
@@ -265,7 +265,7 @@ async function runGeminiRequest<T>(execute: () => Promise<T>): Promise<T> {
 export const projectApi = {
     async create(owner: string, name: string, description: string, enableAutocomplete = false) {
         // API.md: POST /projects (auth required)
-    const response = await runGeminiRequest(() =>
+        const response = await runGeminiRequest(() =>
             api.post<any>(
                 '/api/projects',
                 { name, description, enableAutocomplete },
@@ -310,7 +310,7 @@ export const projectApi = {
         if (!pid) {
             throw new Error(
                 'Create project did not return a project id (and fallback lookup failed). ' +
-                    'Backend should include { project: "..." } or { projectId: "..." } in POST /api/projects response.',
+                'Backend should include { project: "..." } or { projectId: "..." } in POST /api/projects response.',
             )
         }
 
@@ -322,7 +322,7 @@ export const projectApi = {
     async startDesign(projectId: string, plan: any, enableAutocomplete = false) {
         // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
         // Expected to return status/progress payload.
-    const response = await runGeminiRequest(() =>
+        const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/design`,
                 { plan, enableAutocomplete },
@@ -340,7 +340,7 @@ export const projectApi = {
      * TODO: Replace with real API docs once available.
      */
     async startImplementation(projectId: string, enableAutocomplete = false) {
-    const response = await runGeminiRequest(() =>
+        const response = await runGeminiRequest(() =>
             api.post<any>(
                 `/api/projects/${projectId}/implement`,
                 { enableAutocomplete },
@@ -358,8 +358,8 @@ export const projectApi = {
       * API.md: GET /projects/:projectId/implementations
      */
     async getImplementation(projectId: string) {
-          const response = await api.get<any>(`/api/projects/${projectId}/implementations`)
-          return (response.data as any)?.implementations ?? (response.data as any)?.implementation ?? (response.data as any)?.result ?? response.data
+        const response = await api.get<any>(`/api/projects/${projectId}/implementations`)
+        return (response.data as any)?.implementations ?? (response.data as any)?.implementation ?? (response.data as any)?.result ?? response.data
     },
 
     /**
@@ -483,7 +483,7 @@ export const projectApi = {
 
     async deleteProject(projectId: string) {
         // API.md: DELETE /projects/:projectId
-    const response = await api.delete<{ status?: string; error?: string; message?: string }>(`/api/projects/${projectId}`)
+        const response = await api.delete<{ status?: string; error?: string; message?: string }>(`/api/projects/${projectId}`)
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
@@ -491,16 +491,16 @@ export const projectApi = {
     },
 
     async getPlanningStatus(projectId: string) {
-    // API.md doesn't define a status-only endpoint.
-    // We derive status from GET /projects/:projectId/plan when available.
-    const plan = await this.getPlan(projectId)
-    return plan ? 'planning_complete' : null
+        // API.md doesn't define a status-only endpoint.
+        // We derive status from GET /projects/:projectId/plan when available.
+        const plan = await this.getPlan(projectId)
+        return plan ? 'planning_complete' : null
     },
 
     async getPlan(projectId: string) {
-    // API.md: GET /projects/:projectId/plan (immediate polling model)
-    const response = await api.get<{ plan?: any; status?: string; questions?: string[] }>(`/api/projects/${projectId}/plan`)
-    return response.data?.plan ?? response.data ?? null
+        // API.md: GET /projects/:projectId/plan (immediate polling model)
+        const response = await api.get<{ plan?: any; status?: string; questions?: string[] }>(`/api/projects/${projectId}/plan`)
+        return response.data?.plan ?? response.data ?? null
     },
 
     async getDesign(projectId: string) {
@@ -545,6 +545,39 @@ export const projectApi = {
         return (response.data?.projects ?? []).map(normalizeProjectStatus)
     },
 
+    async launchPreview(projectId: string) {
+        const response = await api.post<{ project: string; status: string; error?: string }>(
+            `/api/projects/${projectId}/preview`,
+            {},
+        )
+        if (response.data?.error) {
+            throw new Error(response.data.error)
+        }
+        return response.data
+    },
+
+    async getPreviewStatus(projectId: string) {
+        const response = await api.get<{
+            status: 'none' | 'processing' | 'ready' | 'error' | 'expired'
+            frontendUrl?: string
+            backendUrl?: string
+            expiresAt?: string
+            error?: string
+        }>(`/api/projects/${projectId}/preview/status`)
+        return response.data
+    },
+
+    async teardownPreview(projectId: string) {
+        const response = await api.post<{ project: string; status: string; error?: string }>(
+            `/api/projects/${projectId}/preview/teardown`,
+            {},
+        )
+        if (response.data?.error) {
+            throw new Error(response.data.error)
+        }
+        return response.data
+    },
+
     async revertProject(projectId: string) {
         // API.md: POST /projects/:projectId/revert
         const response = await api.post<{ project: string; status: string; revertedFrom?: any }>(
@@ -558,9 +591,9 @@ export const projectApi = {
     },
 
     async updateStatus(projectId: string, status: string) {
-    // Not defined in API.md (status is managed server-side). Keep as no-op for now.
-    console.warn('updateStatus is not exposed in API.md; ignoring', projectId, status)
-    return { ok: true }
+        // Not defined in API.md (status is managed server-side). Keep as no-op for now.
+        console.warn('updateStatus is not exposed in API.md; ignoring', projectId, status)
+        return { ok: true }
     },
 
     // Legacy support or if needed for specific extensions
