@@ -49,7 +49,7 @@ const goLogin = () => {
   router.push({ path: '/login', query: { redirect: '/build' } })
 }
 
-const primaryCtaLabel = computed(() => 'Start Building (Beta)')
+const primaryCtaLabel = computed(() => 'Open Builder (Beta)')
 
 const theme = ref<'dark' | 'light'>('dark')
 
@@ -72,17 +72,17 @@ const demoVideoUrl = '/demos/simplesocialv2.mp4'
 const handleLandingPromptSubmit = (
   description: string,
   name: string,
-  enableAutocomplete: boolean,
+  _enableAutocomplete: boolean,
   done: (ok: boolean, errorMessage?: string) => void,
 ) => {
   // Keep UX minimal: take the user into the existing /build flow,
   // while preserving what they typed (including through login redirect).
+  // Autocomplete belongs on the actual builder page where generation starts.
   router.push({
     path: '/build',
     query: {
       name,
       description,
-      autocomplete: String(enableAutocomplete),
     },
   })
   done(true)
@@ -104,27 +104,76 @@ const factorySteps: Array<{
   },
   {
     icon: PenTool,
-    title: 'Designing',
-    description: 'Convert the plan into Concepts.',
+    title: 'Structuring',
+    description: 'Lay out the core pieces of the app before code is generated.',
     state: 'done',
   },
   {
     icon: Blocks,
-    title: 'Implementing',
-    description: 'Reuse library Concepts or generate custom Concepts as needed.',
+    title: 'Building',
+    description: 'Generate the main product features.',
     state: 'running',
   },
   {
     icon: Link2,
-    title: 'Generating Syncs',
-    description: 'Create API endpoints + glue code that ties Concepts to user flows.',
+    title: 'Connecting',
+    description: 'Make the different features work together cleanly.',
     state: 'queued',
   },
   {
     icon: Hammer,
     title: 'Assembling',
-    description: 'Assemble backend + generate frontend from endpoints + a detailed app graph.',
+    description: 'Package the backend and frontend into a cohesive starting app.',
     state: 'queued',
+  },
+]
+
+const aiCapabilities = [
+  {
+    title: 'Chat and assistants',
+    description: 'Add conversational experiences when the product calls for them.',
+  },
+  {
+    title: 'Answers over documents',
+    description: 'Build helpers that work from uploaded files and reference material.',
+  },
+  {
+    title: 'Extraction and moderation',
+    description: 'Use AI for tasks like categorizing content or pulling key details from text.',
+  },
+  {
+    title: 'Planning and coaching',
+    description: 'Create products that guide users, make plans, or help them stay on track.',
+  },
+]
+
+const comparisonCards = [
+  {
+    title: 'ConceptualAI',
+    description: 'For people who want a real starting codebase for a real product idea.',
+    points: [
+      'Built for apps where multiple features need to work together, not just single-screen demos.',
+      'Gives you code you can inspect, run locally, and keep building on.',
+      'Designed to stay clearer and more reliable as the product gets more ambitious.',
+    ],
+  },
+  {
+    title: 'Most AI app builders',
+    description: 'Excellent for fast drafts, especially inside their preferred workflow and stack.',
+    points: [
+      'Great for quick experiments and early prototypes.',
+      'Often work best when you stay inside a default stack or hosted workflow.',
+      'Can become more iterative as app logic and feature interactions grow.',
+    ],
+  },
+  {
+    title: 'Boilerplates',
+    description: 'A strong manual starting point when you already know the architecture.',
+    points: [
+      'You own the starter repo from the first commit.',
+      'Useful when your requirements are clear and you want to hand-build the differentiated logic.',
+      'Still requires you to implement the actual product behavior yourself.',
+    ],
   },
 ]
 
@@ -182,7 +231,7 @@ onBeforeUnmount(() => {
               href="#moat"
               class="rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-text-dim transition hover:border-glass-border hover:bg-white/5 hover:text-text"
             >
-              Why Us
+              Where It Fits
             </a>
           </nav>
         </div>
@@ -229,10 +278,14 @@ onBeforeUnmount(() => {
             <div
               class="mb-5 pb-1 text-center text-4xl font-semibold leading-[1.25] tracking-tight text-transparent md:text-5xl bg-clip-text bg-[image:var(--grad-wave)]"
             >
-              Create using ConceptualAI
+              Start with your app idea
             </div>
             <div class="hero-prompt">
-              <AppDescriptionInput @submit="handleLandingPromptSubmit" />
+              <AppDescriptionInput
+                submitLabel="Continue to Builder"
+                :showAutocompleteToggle="false"
+                @submit="handleLandingPromptSubmit"
+              />
             </div>
           </div>
         </div>
@@ -240,11 +293,12 @@ onBeforeUnmount(() => {
         <div class="grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <h1 class="mt-5 text-balance text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
-              Your Personal Autonomous Software Factory.
+              Describe your app. Get the codebase.
             </h1>
             <p class="mt-4 max-w-xl text-pretty text-lg text-text-dim">
-              Don't settle for locked-in templates. Type an idea, and our AI pipeline architects, writes, and tests a
-              production-ready Web App (React + Deno + MongoDB) that you own 100%.
+              ConceptualAI turns a plain-language prompt into a full-stack web app you can inspect, run locally, and
+              deploy yourself. It is built for ideas with real moving parts, not just simple mockups or locked-in
+              templates.
             </p>
 
             <div class="mt-7 flex flex-wrap items-center gap-3">
@@ -265,15 +319,15 @@ onBeforeUnmount(() => {
             <div class="mt-8 flex flex-wrap items-center gap-3 text-sm text-text-dim">
               <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
                 <CheckCircle2 :size="16" class="text-emerald-400" />
-                Concepts & Syncs architecture
+                Generated code you can keep
               </span>
               <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
                 <CheckCircle2 :size="16" class="text-emerald-400" />
-                Docker sandbox testing
+                Built for complex product ideas
               </span>
               <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
                 <CheckCircle2 :size="16" class="text-emerald-400" />
-                Standard stack export
+                AI-backed features when needed
               </span>
             </div>
           </div>
@@ -344,12 +398,14 @@ onBeforeUnmount(() => {
     <!-- 1.5) WHAT WE DO -->
     <section id="what-we-do" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div class="glass rounded-3xl border border-glass-border bg-glass-bg p-8 md:p-12 shadow-glass backdrop-blur-2xl text-center">
-        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">What is ConceptualAI?</div>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Built for real app ideas</div>
         <h2 class="mx-auto mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">
-          We turn your idea into a production-ready codebase.
+          Not just a mockup. A real starting codebase.
         </h2>
         <p class="mx-auto mt-6 max-w-2xl text-lg text-text-dim text-balance leading-relaxed">
-          ConceptualAI is your personal autonomous software factory. We are an entirely new way of AI Full-stack App building. Instead of locking you into drag-and-drop builders or rigid templates, our AI architects, writes, and tests a full-stack web application from your prompt. You get standard, scalable modern code that you own 100%.
+          Many AI builders are strongest when you stay inside a default stack or prototype scope. ConceptualAI is aimed
+          at the next step: apps where auth, feeds, messaging, scheduling, documents, or AI-backed workflows have to
+          work together inside one full-stack codebase.
         </p>
       </div>
     </section>
@@ -358,9 +414,10 @@ onBeforeUnmount(() => {
     <section id="how" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
         <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">How it works</div>
-        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">An Autonomous Assembly Line</h2>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">A generation pipeline, not a single-shot prompt.</h2>
         <p class="mt-3 max-w-2xl text-lg text-text-dim">
-          Planning → Designing → Implementing → Generating Syncs → Assembling. Built to feel like a real engineering system, not a template builder.
+          Your request moves through planning, structure, build, connection, and final assembly. The point is simple:
+          keep the generated app coherent even when the idea has several features that need to work together.
         </p>
       </div>
 
@@ -369,25 +426,24 @@ onBeforeUnmount(() => {
           <div class="how-step glass">
             <div class="how-kicker"><span class="how-stepnum">1</span><span>Step</span></div>
             <div class="how-title">Planning</div>
-            <div class="how-body">Takes your prompt and turns it into a detailed plan for the agents.</div>
+            <div class="how-body">Turn the prompt into a concrete build plan the agents can execute.</div>
           </div>
 
           <div class="how-connector" aria-hidden="true" />
 
           <div class="how-step glass">
             <div class="how-kicker"><span class="how-stepnum">2</span><span>Step</span></div>
-            <div class="how-title">Designing</div>
-            <div class="how-body">Turns the plan into Concepts.</div>
+            <div class="how-title">Structuring</div>
+            <div class="how-body">Lay out the major pieces of the app so the build has a clear shape.</div>
           </div>
 
           <div class="how-connector" aria-hidden="true" />
 
           <div class="how-step glass">
             <div class="how-kicker"><span class="how-stepnum">3</span><span>Step</span></div>
-            <div class="how-title">Implementing</div>
+            <div class="how-title">Building</div>
             <div class="how-body">
-              Creates implementation by reusing Concepts from the concept library or generating custom Concepts based on
-              the library.
+              Generate the core product features and the custom logic your app needs.
             </div>
           </div>
 
@@ -395,8 +451,8 @@ onBeforeUnmount(() => {
 
           <div class="how-step glass">
             <div class="how-kicker"><span class="how-stepnum">4</span><span>Step</span></div>
-            <div class="how-title">Generating Syncs</div>
-            <div class="how-body">Creates API endpoints and the glue code that ties Concepts together based on user flows.</div>
+            <div class="how-title">Connecting</div>
+            <div class="how-body">Make the important flows work together instead of leaving you with disconnected pieces.</div>
           </div>
 
           <div class="how-connector" aria-hidden="true" />
@@ -405,56 +461,79 @@ onBeforeUnmount(() => {
             <div class="how-kicker"><span class="how-stepnum">5</span><span>Step</span></div>
             <div class="how-title">Assembling</div>
             <div class="how-body">
-              Assembles the backend and creates the frontend based on the API endpoints and a detailed app graph.
+              Package the backend and frontend into a starting point you can actually keep working on.
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 2.5) CONCEPTS & SYNCS (high-level) -->
+    <!-- 2.5) COMPLEXITY EXPLAINER -->
     <section class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Concepts &amp; Syncs</div>
-        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Reusable building blocks. Reliable wiring.</h2>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Built for moving parts</div>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Why this holds up better as apps get more complex.</h2>
         <p class="mt-3 max-w-2xl text-lg text-text-dim">
-          Concepts capture what your product
-          is. Syncs capture how parts of the system
-          talk.
+          Most generators can make a first draft. The harder part is keeping feeds, messaging, auth, scheduling, and
+          AI features from turning into a tangled mess once they all live in the same app.
         </p>
       </div>
 
       <div class="mt-8 grid gap-4 md:grid-cols-2">
         <div class="glass rounded-3xl border border-glass-border bg-glass-bg p-6 shadow-glass backdrop-blur-2xl">
-          <div class="text-xs font-extrabold uppercase tracking-[0.18em] text-text-dim">Concepts</div>
-          <div class="mt-2 text-xl font-black tracking-tight">A typed “idea module”</div>
+          <div class="text-xs font-extrabold uppercase tracking-[0.18em] text-text-dim">Clear building blocks</div>
+          <div class="mt-2 text-xl font-black tracking-tight">Break the app into manageable parts</div>
           <p class="mt-2 text-text-dim">
-            A Concept is a reusable unit of domain logic: it defines data, invariants, and behaviors in one place so you
-            can reuse it across features and projects.
+            Instead of treating your whole product like one giant blob, the system breaks it into smaller pieces that
+            are easier to generate, test, and reason about.
           </p>
         </div>
 
         <div class="glass rounded-3xl border border-glass-border bg-glass-bg p-6 shadow-glass backdrop-blur-2xl">
-          <div class="text-xs font-extrabold uppercase tracking-[0.18em] text-text-dim">Syncs</div>
-          <div class="mt-2 text-xl font-black tracking-tight">The glue between Concepts</div>
+          <div class="text-xs font-extrabold uppercase tracking-[0.18em] text-text-dim">Disciplined connections</div>
+          <div class="mt-2 text-xl font-black tracking-tight">Keep important flows working together</div>
           <p class="mt-2 text-text-dim">
-            A Sync is an explicit integration point: it connects Concepts via clear inputs/outputs, generating the API
-            endpoints and orchestration code that turns modules into a working app.
+            That structure makes it easier for the generated app to handle feature interactions cleanly, instead of
+            breaking every time one part changes.
           </p>
         </div>
       </div>
 
       <div class="mt-6 text-sm text-text-dim">
-        Based on ideas in
+        Grounded in MIT research on legible software design:
         <a
           class="font-semibold text-neon-teal underline decoration-[color:var(--border)] underline-offset-4 hover:decoration-[color:var(--primary)]"
           href="https://arxiv.org/pdf/2508.14511"
           target="_blank"
           rel="noreferrer"
         >
-          arXiv:2508.14511
+          What You See Is What It Does
         </a>
         by Eagon Meng and Daniel Jackson.
+      </div>
+    </section>
+
+    <section class="mx-auto w-full max-w-6xl px-4 py-14">
+      <div>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">AI-native apps</div>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">
+          AI can be part of the product, not just the builder.
+        </h2>
+        <p class="mt-3 max-w-3xl text-lg text-text-dim">
+          ConceptualAI is not limited to CRUD screens. You can build products where AI is part of the actual user
+          experience, whether that means chat, document help, extraction, moderation, planning, or coaching.
+        </p>
+      </div>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+          v-for="capability in aiCapabilities"
+          :key="capability.title"
+          class="glass rounded-3xl border border-glass-border bg-glass-bg p-6 shadow-glass backdrop-blur-2xl"
+        >
+          <div class="text-lg font-black tracking-tight">{{ capability.title }}</div>
+          <p class="mt-2 text-sm leading-6 text-text-dim">{{ capability.description }}</p>
+        </div>
       </div>
     </section>
 
@@ -462,8 +541,10 @@ onBeforeUnmount(() => {
     <section class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
         <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Demo</div>
-        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">A real project, end to end.</h2>
-        <p class="mt-3 w-full whitespace-nowrap text-base text-text-dim md:text-lg">Here’s a sample project prompt and what the generated app looks like after no debugging.</p>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">A complex app, generated from one prompt.</h2>
+        <p class="mt-3 max-w-3xl text-base text-text-dim md:text-lg">
+          This sample combines profiles, posts, friend requests, feed logic, comments, likes, and DMs in one project.
+        </p>
       </div>
 
       <div class="mt-8 grid gap-4 md:grid-cols-2 md:items-start">
@@ -513,24 +594,24 @@ onBeforeUnmount(() => {
       <div class="grid gap-10 md:grid-cols-2 md:items-start">
         <div>
           <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Code you actually own</div>
-          <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Standard tech. Raw repo. Zero hostage UX.</h2>
+          <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Run it yourself. Keep the repo.</h2>
           <p class="mt-3 max-w-xl text-lg text-text-dim">
-            We don't host your code in a walled garden. You get a raw, beautiful repository built on standard, scalable
-            technologies.
+            Generated apps are standard codebases you can inspect, edit, run locally, and deploy on your own
+            infrastructure. The docs walk you through setup, testing, and deployment when you are ready.
           </p>
 
           <div class="mt-6 flex flex-wrap items-center gap-3 text-sm">
             <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
               <CheckCircle2 :size="16" class="text-emerald-400" />
-              Deno backend + MongoDB
+              Separate frontend + backend repos
             </span>
             <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
               <CheckCircle2 :size="16" class="text-emerald-400" />
-              React/Vue frontend structure
+              Deno + MongoDB backend
             </span>
             <span class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-3 py-2">
               <CheckCircle2 :size="16" class="text-emerald-400" />
-              Native DB control
+              Run locally or deploy yourself
             </span>
           </div>
         </div>
@@ -551,33 +632,24 @@ onBeforeUnmount(() => {
               </div>
               <pre class="mt-2 code-pre repo-tree"><code>backend/
   src/
-    concepts/
-    engine/
-    syncs/
-    tests/
-    utils/
-    concept_server.ts
-    main.ts</code></pre>
+    ...
+    main.ts
+  .env.template
+  deno.json</code></pre>
             </div>
 
             <div class="repo-pane p-3">
               <div class="flex items-center justify-between">
                 <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-neon-teal">frontend/</div>
-                <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">react/vue</div>
+                <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">web app</div>
               </div>
               <pre class="mt-2 code-pre repo-tree"><code>frontend/
   public/
   src/
-    assets/
-    components/
-    pages/
-    router/
-    styles/
+    ...
     App.tsx
     main.tsx
-  index.html
   package.json
-  tsconfig.json
   vite.config.ts</code></pre>
             </div>
           </div>
@@ -588,148 +660,28 @@ onBeforeUnmount(() => {
     <!-- 4) WHY US -->
     <section id="moat" class="mx-auto w-full max-w-6xl px-4 py-14">
       <div>
-        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Why Us</div>
-        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">The App Creation Landscape</h2>
+        <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Where it fits</div>
+        <h2 class="mt-2 text-3xl font-black tracking-tight md:text-4xl">Between app builders and boilerplates.</h2>
         <p class="mt-3 max-w-3xl text-lg text-text-dim">
-          Here is a comparison table breaking down how ConceptualAI stacks up against current Page Builders and Boilerplates.
+          ConceptualAI is for people who want a real starting codebase for a real product idea, not just a first screen
+          and not a blank starter repo.
         </p>
       </div>
 
-      <div class="mt-8 overflow-hidden rounded-3xl border border-glass-border bg-glass-bg shadow-glass backdrop-blur-2xl">
-        <div class="overflow-x-auto">
-          <div class="min-w-[1080px]">
-            <div
-              class="grid grid-cols-[240px_1fr_1fr_1fr] gap-8 border-b border-glass-border bg-white/5 px-6 py-4 text-sm font-black"
-            >
-              <div class="col-span-1 text-text-dim">Feature / Capability</div>
-              <div class="col-span-1">ConceptualAI</div>
-              <div class="col-span-1 text-text-dim">Page Builders</div>
-              <div class="col-span-1 text-text-dim">Boilerplates</div>
-            </div>
-
-            <div class="divide-y divide-glass-border">
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Core Approach</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  AI architect dynamically assembles &amp; tests concepts
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  Visual drag-and-drop UI with proprietary logic blocks
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  Pre-written static codebase that you manually edit
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">100% Code Ownership</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Yes.</span> You get raw Deno, React, and MongoDB code.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">No.</span> You are locked into their proprietary hosting platform.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Yes.</span> You own the base repository.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Custom Backend Logic</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Limitless.</span> AI writes, compiles, and tests custom backend TypeScript for your specific needs.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Limited.</span> You must use their visual logic systems, which struggle with complex math or deep
-                  integrations.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Manual.</span> If the template doesn't have it, you must code the feature entirely from scratch.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Database Architecture</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Dynamic.</span> Creates isolated MongoDB collections tailored precisely to your data model.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Rigid/Proprietary.</span> Often uses slow, proprietary databases or strictly enforced relational tables.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Static.</span> Comes with a pre-set schema (e.g., Prisma models) that is painful to refactor.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Self-Healing Code</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Yes.</span> Uses a Docker Sandbox to compile code, run tests, and fix its own bugs before delivery.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">N/A.</span> It's a visual builder; you can't generate raw backend code to test.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">No.</span> If you modify the boilerplate and it breaks, you have to debug it yourself.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Security &amp; Isolation</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">High.</span> Uses discrete "Concepts" that cannot maliciously access each other's data (Isolated Blast
-                  Radius).
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Medium.</span> Generally secure, but you rely entirely on the platform's internal security team.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Variable.</span> Depends entirely on how well the template was written and how carefully you modify it.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Ejectability (Avoiding Lock-in)</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Instant.</span> The generated app uses standard web technologies you can host anywhere (AWS, Render, etc.).
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Impossible.</span> If your app succeeds, you cannot export the code. You must rewrite it from scratch to
-                  leave.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Instant.</span> It is standard code hosted wherever you want.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Time-to-Value for Unique Ideas</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  <span class="font-black">Hours.</span> Prompt your unique idea, get a custom architecture with little-to-no bugs.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Days/Weeks.</span> You have to learn their complex visual UI builder and proprietary logic system.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  <span class="font-black">Weeks/Months.</span> You get a fast start on Auth/Payments, but spend months coding your unique business
-                  logic.
-                </div>
-              </div>
-
-              <div class="grid grid-cols-[240px_1fr_1fr_1fr] items-start gap-8 px-6 py-6 odd:bg-white/[0.02]">
-                <div class="col-span-1 font-semibold">Target User</div>
-                <div class="col-span-1 text-[15px] leading-7">
-                  Founders, developers, and visionaries building scalable, custom software.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  Non-technical users building marketing sites or simple internal CRUD apps.
-                </div>
-                <div class="col-span-1 text-[15px] leading-7 text-text-dim opacity-90">
-                  Developers who want to skip setting up Stripe and Auth but still want to write all the feature code.
-                </div>
-              </div>
-            </div>
-          </div>
+      <div class="mt-8 grid gap-4 lg:grid-cols-3">
+        <div
+          v-for="card in comparisonCards"
+          :key="card.title"
+          class="glass rounded-3xl border border-glass-border bg-glass-bg p-6 shadow-glass backdrop-blur-2xl"
+        >
+          <div class="text-xs font-extrabold uppercase tracking-[0.18em] text-neon-teal">{{ card.title }}</div>
+          <p class="mt-3 text-sm leading-6 text-text-dim">{{ card.description }}</p>
+          <ul class="mt-5 space-y-3">
+            <li v-for="point in card.points" :key="point" class="flex items-start gap-3 text-sm leading-6 text-text-dim">
+              <CheckCircle2 :size="16" class="mt-1 shrink-0 text-emerald-400" />
+              <span>{{ point }}</span>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
@@ -740,12 +692,12 @@ onBeforeUnmount(() => {
         <div class="absolute -inset-10 -z-10 bg-[image:var(--grad-wave)] opacity-30 blur-2xl" />
         <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Stop writing boilerplate.</div>
-            <h3 class="mt-2 text-2xl font-black tracking-tight md:text-3xl">Start architecting.</h3>
-            <p class="mt-2 max-w-xl text-text-dim">Generate your first app for free.</p>
+            <div class="text-xs font-extrabold uppercase tracking-[0.2em] text-neon-teal">Start with a prompt. Keep the code.</div>
+            <h3 class="mt-2 text-2xl font-black tracking-tight md:text-3xl">Open the builder and start your first app.</h3>
+            <p class="mt-2 max-w-xl text-text-dim">Free platform. Bring your own AI key.</p>
           </div>
           <button type="button" class="btn btn-primary" @click="goBuild">
-            Generate your first app for free.
+            Open Builder
             <ArrowRight :size="18" />
           </button>
         </div>
@@ -883,6 +835,7 @@ onBeforeUnmount(() => {
 .landing {
   position: relative;
   isolation: isolate;
+  overflow-x: hidden;
 }
 
 .landing::before,
@@ -1177,6 +1130,22 @@ onBeforeUnmount(() => {
 
 .how-connector {
   display: none;
+}
+
+@media (max-width: 640px) {
+  .console-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .step-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .step-chip {
+    white-space: normal;
+  }
 }
 
 @media (min-width: 900px) {

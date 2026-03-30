@@ -3,11 +3,19 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
 import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
 
-const props = defineProps<{
-  initialName?: string
-  initialDescription?: string
-  initialEnableAutocomplete?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    initialName?: string
+    initialDescription?: string
+    initialEnableAutocomplete?: boolean
+    showAutocompleteToggle?: boolean
+    submitLabel?: string
+  }>(),
+  {
+    showAutocompleteToggle: true,
+    submitLabel: 'Generate Backend',
+  },
+)
 
 const emit = defineEmits<{
   (
@@ -210,6 +218,7 @@ const handleSubmit = () => {
         <div class="footer-left">
           <p class="hint">Shift + Enter for new line</p>
           <PipelineAutocompleteToggle
+            v-if="props.showAutocompleteToggle"
             v-model="enableAutocomplete"
             compact
             :disabled="isSubmitting"
@@ -222,7 +231,7 @@ const handleSubmit = () => {
           @click="handleSubmit"
           :disabled="!description || !name || isSubmitting"
         >
-          <span v-if="!isSubmitting">Generate Backend</span>
+          <span v-if="!isSubmitting">{{ props.submitLabel }}</span>
           <ArrowRight v-if="!isSubmitting" :size="18" />
           <div v-else class="mini-loader"></div>
         </button>
