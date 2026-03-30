@@ -340,11 +340,14 @@ const pollPreviewStatusOnce = async () => {
     } else if (res.status === 'processing') {
       previewState.value = 'processing'
       previewError.value = ''
+    } else if (res.status === 'preview_stopping') {
+      previewState.value = 'stopping'
+      previewError.value = ''
     } else if (res.status === 'error') {
       previewState.value = 'error'
       previewError.value = res.error || 'Preview failed to start.'
       previewPoll.stop()
-    } else if (res.status === 'expired' || res.status === 'none') {
+    } else if (res.status === 'expired' || res.status === 'none' || res.status === 'preview_stopped') {
       previewState.value = 'idle'
       previewPoll.stop()
     }
@@ -353,7 +356,7 @@ const pollPreviewStatusOnce = async () => {
   }
 }
 
-const previewPoll = usePolling(pollPreviewStatusOnce, 60_000)
+const previewPoll = usePolling(pollPreviewStatusOnce, 30_000)
 
 const handleLaunchPreview = async () => {
   previewState.value = 'launching'
@@ -376,10 +379,32 @@ const handleStopPreview = async () => {
   previewState.value = 'stopping'
   previewUrl.value = '' // Hides iframe immediately
   previewError.value = ''
+  previewPoll.stop()
   try {
-    await projectApi.teardownPreview(projectId)
-    previewState.value = 'idle'
-    previewPoll.stop()
+    const response = await projectApi.teardownPreview(projectId)
+    if (response.status === 'preview_stopped') {
+      previewState.value = 'idle'
+      return
+    }
+    // Poll until backend officially says it's no longer ready/processing/preview_stopping
+    let attempts = 0
+    while (previewState.value === 'stopping' && attempts < 15) {
+      const res = await projectApi.getPreviewStatus(projectId)
+      if (res.status === 'none' || res.status === 'expired' || res.status === 'preview_stopped') {
+        previewState.value = 'idle'
+        break
+      } else if (res.status === 'error') {
+        previewState.value = 'error'
+        previewError.value = res.error || 'Preview failed during teardown.'
+        break
+      }
+      attempts++
+      await new Promise(r => setTimeout(r, 60000))
+    }
+    // Fallback if it exceeds max attempts
+    if (previewState.value === 'stopping') {
+      previewState.value = 'idle'
+    }
   } catch (e) {
     previewState.value = 'error'
     previewError.value = toErrorMessage(e, 'Failed to stop preview.')
@@ -419,11 +444,15 @@ onMounted(async () => {
     if (isAlreadyAssembled) {
       try {
         const res = await projectApi.getPreviewStatus(projectId)
-        if (res.status === 'processing' || res.status === 'ready') {
-          previewState.value = res.status
+        if (res.status === 'processing' || res.status === 'ready' || res.status === 'preview_stopping') {
           if (res.status === 'ready') {
+            previewState.value = 'ready'
             previewUrl.value = res.frontendUrl || ''
+          } else if (res.status === 'preview_stopping') {
+            previewState.value = 'stopping'
+            previewPoll.start({ immediate: true })
           } else {
+            previewState.value = 'processing'
             previewPoll.start({ immediate: true })
           }
         }

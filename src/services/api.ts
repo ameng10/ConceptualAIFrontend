@@ -558,7 +558,7 @@ export const projectApi = {
 
     async getPreviewStatus(projectId: string) {
         const response = await api.get<{
-            status: 'none' | 'processing' | 'ready' | 'error' | 'expired'
+            status: 'none' | 'processing' | 'ready' | 'error' | 'expired' | 'preview_stopping' | 'preview_stopped'
             frontendUrl?: string
             backendUrl?: string
             expiresAt?: string
