@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { projectApi } from '@/services/api'
+import {
+  projectApi,
+  type GithubExportArtifact,
+  type GithubExportJob,
+  type GithubExportStatusResponse,
+  type GithubExportVisibility,
+} from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import { ArrowDownToLine, ArrowLeft, RotateCcw, MonitorPlay, Square, ExternalLink } from 'lucide-vue-next'
+import { getSharedVaultUnwrapKeyOrThrow, syncGithubCredentialStatus, useGithubCredentials } from '@/services/github-credentials'
+import {
+  clearPendingGithubExport,
+  getPendingGithubExport,
+  setPendingGithubExport,
+} from '@/services/github-export'
+import { ArrowDownToLine, ArrowLeft, RotateCcw, MonitorPlay, Square, ExternalLink, Github } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
@@ -39,6 +51,26 @@ type PreviewState = 'idle' | 'launching' | 'processing' | 'ready' | 'stopping' |
 const previewState = ref<PreviewState>('idle')
 const previewUrl = ref<string>('')
 const previewError = ref<string>('')
+const githubStatusError = ref('')
+
+const { hasStoredGithubCredential, hasUnwrapKey: hasSharedVaultUnwrapKey } = useGithubCredentials()
+
+const backendRepoName = ref('')
+const frontendRepoName = ref('')
+const backendVisibility = ref<GithubExportVisibility>('private')
+const frontendVisibility = ref<GithubExportVisibility>('private')
+const backendExporting = ref(false)
+const frontendExporting = ref(false)
+const githubExportStatus = ref<GithubExportStatusResponse>({ backend: null, frontend: null })
+
+const backendExportJob = computed(() => githubExportStatus.value.backend)
+const frontendExportJob = computed(() => githubExportStatus.value.frontend)
+const backendExportBlocked = computed(
+  () => backendExportJob.value?.status === 'complete' && backendExportJob.value?.remoteExists === true,
+)
+const frontendExportBlocked = computed(
+  () => frontendExportJob.value?.status === 'complete' && frontendExportJob.value?.remoteExists === true,
+)
 
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
@@ -58,6 +90,63 @@ const displayStatus = computed(() =>
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
+
+const isExportProcessing = (job: GithubExportJob | null | undefined) => String(job?.status ?? '').toLowerCase() === 'processing'
+
+const formatExportTimestamp = (value?: string) => {
+  if (!value) return 'Unknown'
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) return value
+  return new Date(timestamp).toLocaleString()
+}
+
+const getArtifactDownloadReady = (artifact: GithubExportArtifact) =>
+  artifact === 'backend' ? Boolean(backendDownloadUrl.value) : Boolean(frontendDownloadUrl.value)
+
+const getArtifactRepoName = (artifact: GithubExportArtifact) =>
+  artifact === 'backend' ? backendRepoName.value : frontendRepoName.value
+
+const getArtifactVisibility = (artifact: GithubExportArtifact) =>
+  artifact === 'backend' ? backendVisibility.value : frontendVisibility.value
+
+const setArtifactExporting = (artifact: GithubExportArtifact, value: boolean) => {
+  if (artifact === 'backend') {
+    backendExporting.value = value
+  } else {
+    frontendExporting.value = value
+  }
+}
+
+const getArtifactJob = (artifact: GithubExportArtifact) =>
+  artifact === 'backend' ? backendExportJob.value : frontendExportJob.value
+
+const getResumeReturnPath = (artifact: GithubExportArtifact) =>
+  router.resolve({
+    path: route.path,
+    query: {
+      ...route.query,
+      resumeGithubExport: artifact,
+    },
+  }).fullPath
+
+const routeExportThroughSettings = (artifact: GithubExportArtifact, reason: string) => {
+  const returnPath = getResumeReturnPath(artifact)
+  setPendingGithubExport({
+    projectId,
+    artifact,
+    repoName: getArtifactRepoName(artifact).trim() || undefined,
+    visibility: getArtifactVisibility(artifact),
+    returnPath,
+    createdAt: Date.now(),
+  })
+  githubStatusError.value = reason
+  router.push({
+    path: '/settings',
+    query: {
+      returnPath,
+    },
+  })
+}
 
 const downloadFrontend = async () => {
   if (!frontendDownloadUrl.value || downloadingFrontend.value) return
@@ -201,6 +290,46 @@ const projectPoll = usePolling(async () => {
   }
 }, 30_000)
 
+const applyGithubExportStatus = (status: GithubExportStatusResponse) => {
+  githubExportStatus.value = {
+    backend: status?.backend ?? null,
+    frontend: status?.frontend ?? null,
+  }
+
+  if (status?.backend?.repoName) {
+    backendRepoName.value = status.backend.repoName
+  }
+  if (status?.frontend?.repoName) {
+    frontendRepoName.value = status.frontend.repoName
+  }
+  if (status?.backend?.visibility === 'public' || status?.backend?.visibility === 'private') {
+    backendVisibility.value = status.backend.visibility
+  }
+  if (status?.frontend?.visibility === 'public' || status?.frontend?.visibility === 'private') {
+    frontendVisibility.value = status.frontend.visibility
+  }
+}
+
+const pollGithubExportStatusOnce = async () => {
+  const status = await projectApi.getGithubExportStatus(projectId)
+  applyGithubExportStatus(status)
+
+  const backendProcessing = isExportProcessing(status.backend)
+  const frontendProcessing = isExportProcessing(status.frontend)
+  if (!backendProcessing && !frontendProcessing) {
+    githubExportPoll.stop()
+  }
+}
+
+const githubExportPoll = usePolling(async () => {
+  try {
+    await pollGithubExportStatusOnce()
+  } catch (e) {
+    githubStatusError.value = toErrorMessage(e, 'Failed to poll GitHub export status.')
+    githubExportPoll.stop()
+  }
+}, 15_000)
+
 const applyBuildPayload = (payload: BuildStatus | any): boolean => {
   const { frontendUrl, backendUrl } = extractDownloadUrls(payload)
   const overallStatus = String(payload?.status ?? '').toLowerCase()
@@ -307,6 +436,56 @@ const fetchExistingDownloads = async (): Promise<boolean> => {
     backendState.value = 'idle'
     buildError.value = toErrorMessage(e, 'Failed to fetch build status.')
     return false
+  }
+}
+
+const triggerGithubExport = async (artifact: GithubExportArtifact) => {
+  githubStatusError.value = ''
+
+  if (!getArtifactDownloadReady(artifact)) {
+    githubStatusError.value = `The ${artifact} artifact is not ready to export yet.`
+    return
+  }
+
+  if (!hasStoredGithubCredential.value) {
+    routeExportThroughSettings(artifact, 'Connect GitHub in Settings before exporting.')
+    return
+  }
+
+  let unwrapKey = ''
+  try {
+    unwrapKey = getSharedVaultUnwrapKeyOrThrow()
+  } catch (error) {
+    routeExportThroughSettings(
+      artifact,
+      error instanceof Error ? error.message : 'Reconnect your credentials in Settings before exporting.',
+    )
+    return
+  }
+
+  setArtifactExporting(artifact, true)
+  try {
+    await projectApi.startGithubExport(
+      projectId,
+      artifact,
+      unwrapKey,
+      getArtifactRepoName(artifact),
+      getArtifactVisibility(artifact),
+    )
+    clearPendingGithubExport()
+    await pollGithubExportStatusOnce()
+    if (isExportProcessing(getArtifactJob(artifact))) {
+      githubExportPoll.start()
+    }
+  } catch (e) {
+    githubStatusError.value = toErrorMessage(e, `Failed to export ${artifact} to GitHub.`)
+    try {
+      await pollGithubExportStatusOnce()
+    } catch {
+      // Keep the original export error if status refresh also fails.
+    }
+  } finally {
+    setArtifactExporting(artifact, false)
   }
 }
 
@@ -422,6 +601,21 @@ onMounted(async () => {
     }
   }
 
+  try {
+    await syncGithubCredentialStatus()
+  } catch {
+    // GitHub export UI can stay soft-fail if status probe is temporarily unavailable.
+  }
+
+  try {
+    await pollGithubExportStatusOnce()
+    if (isExportProcessing(githubExportStatus.value.backend) || isExportProcessing(githubExportStatus.value.frontend)) {
+      githubExportPoll.start()
+    }
+  } catch {
+    // GitHub export status is non-blocking for the build view.
+  }
+
   // Determine lifecycle status from the project record (authoritative), with
   // query param as a fallback for older navigation paths.
   let lifecycleStatus = typeof route.query?.projectStatus === 'string' ? route.query.projectStatus : ''
@@ -466,6 +660,35 @@ onMounted(async () => {
   // First, try to fetch existing downloads in case a prior build already completed.
   const hasExistingDownloads = await fetchExistingDownloads()
   if (hasExistingDownloads) {
+    const resumeArtifact =
+      route.query.resumeGithubExport === 'backend' || route.query.resumeGithubExport === 'frontend'
+        ? (route.query.resumeGithubExport as GithubExportArtifact)
+        : null
+    const pendingExport = getPendingGithubExport()
+
+    if (
+      resumeArtifact &&
+      pendingExport &&
+      pendingExport.projectId === projectId &&
+      pendingExport.artifact === resumeArtifact
+    ) {
+      if (pendingExport.repoName) {
+        if (resumeArtifact === 'backend') backendRepoName.value = pendingExport.repoName
+        else frontendRepoName.value = pendingExport.repoName
+      }
+      if (pendingExport.visibility) {
+        if (resumeArtifact === 'backend') backendVisibility.value = pendingExport.visibility
+        else frontendVisibility.value = pendingExport.visibility
+      }
+
+      await triggerGithubExport(resumeArtifact)
+      await router.replace({
+        path: route.path,
+        query: Object.fromEntries(
+          Object.entries(route.query).filter(([key]) => key !== 'resumeGithubExport'),
+        ),
+      })
+    }
     return
   }
 
@@ -594,6 +817,187 @@ onMounted(async () => {
             </a>
           </div>
           <iframe :src="previewUrl" class="preview-iframe" title="Application Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        </div>
+
+        <div v-if="hasAnyDownload" class="github-export-section">
+          <div class="export-section-header">
+            <div class="revert-info">
+              <span class="revert-label">GitHub Export</span>
+              <span class="revert-desc">Export backend and frontend as separate repositories.</span>
+            </div>
+          </div>
+
+          <p v-if="!hasStoredGithubCredential" class="muted" style="margin-top: 0.75rem;">
+            Connect GitHub in Settings before exporting repositories.
+          </p>
+          <p v-else-if="!hasSharedVaultUnwrapKey" class="muted" style="margin-top: 0.75rem;">
+            Reconnect your credentials in Settings before exporting to GitHub.
+          </p>
+          <div v-if="githubStatusError" class="error-msg" style="margin-top: 0.75rem;">{{ githubStatusError }}</div>
+
+          <div class="github-export-grid">
+            <div class="github-export-card">
+              <div class="github-export-card-header">
+                <div>
+                  <div class="github-export-title">Backend Repository</div>
+                  <div class="github-export-subtitle">Exports the generated backend artifact to its own repo.</div>
+                </div>
+                <div class="github-status-pill" :class="String(backendExportJob?.status || 'idle').toLowerCase()">
+                  {{ backendExportJob?.status || 'idle' }}
+                </div>
+              </div>
+
+              <div class="github-export-fields">
+                <div class="field">
+                  <label class="field-label" for="backend-repo-name">Repository name</label>
+                  <input
+                    id="backend-repo-name"
+                    v-model="backendRepoName"
+                    class="input"
+                    type="text"
+                    placeholder="Optional custom repo name"
+                  />
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="backend-visibility">Visibility</label>
+                  <select id="backend-visibility" v-model="backendVisibility" class="input">
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="github-export-actions">
+                <button
+                  class="download-btn backend-btn"
+                  type="button"
+                  :disabled="!getArtifactDownloadReady('backend') || backendExporting || isExportProcessing(backendExportJob) || backendExportBlocked"
+                  @click="triggerGithubExport('backend')"
+                >
+                  <span class="download-icon-wrap">
+                    <Github :size="16" />
+                  </span>
+                  {{
+                    !getArtifactDownloadReady('backend')
+                      ? 'Backend Artifact Not Ready'
+                      : backendExporting
+                      ? 'Exporting Backend...'
+                      : isExportProcessing(backendExportJob)
+                        ? 'Backend Export Running...'
+                        : backendExportBlocked
+                          ? 'Backend Already Exported'
+                          : backendExportJob?.status === 'stale'
+                            ? 'Re-export Backend to GitHub'
+                            : 'Export Backend to GitHub'
+                  }}
+                </button>
+
+                <a
+                  v-if="backendExportJob?.repoUrl"
+                  :href="backendExportJob.repoUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="preview-external-link github-repo-link"
+                >
+                  <ExternalLink :size="14" />
+                  <span>Open repository</span>
+                </a>
+              </div>
+
+              <div v-if="backendExportJob" class="github-export-meta">
+                <p v-if="backendExportJob.repoName"><strong>Repo:</strong> {{ backendExportJob.repoName }}</p>
+                <p v-if="backendExportJob.repoOwner"><strong>Owner:</strong> {{ backendExportJob.repoOwner }}</p>
+                <p v-if="backendExportJob.lastRemoteCheckAt">
+                  <strong>Last checked:</strong> {{ formatExportTimestamp(backendExportJob.lastRemoteCheckAt) }}
+                </p>
+                <p v-if="backendExportJob.logs?.length">
+                  <strong>Latest log:</strong> {{ backendExportJob.logs[backendExportJob.logs.length - 1] }}
+                </p>
+              </div>
+            </div>
+
+            <div class="github-export-card">
+              <div class="github-export-card-header">
+                <div>
+                  <div class="github-export-title">Frontend Repository</div>
+                  <div class="github-export-subtitle">Exports the generated frontend artifact to its own repo.</div>
+                </div>
+                <div class="github-status-pill" :class="String(frontendExportJob?.status || 'idle').toLowerCase()">
+                  {{ frontendExportJob?.status || 'idle' }}
+                </div>
+              </div>
+
+              <div class="github-export-fields">
+                <div class="field">
+                  <label class="field-label" for="frontend-repo-name">Repository name</label>
+                  <input
+                    id="frontend-repo-name"
+                    v-model="frontendRepoName"
+                    class="input"
+                    type="text"
+                    placeholder="Optional custom repo name"
+                  />
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="frontend-visibility">Visibility</label>
+                  <select id="frontend-visibility" v-model="frontendVisibility" class="input">
+                    <option value="private">Private</option>
+                    <option value="public">Public</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="github-export-actions">
+                <button
+                  class="download-btn frontend-btn"
+                  type="button"
+                  :disabled="!getArtifactDownloadReady('frontend') || frontendExporting || isExportProcessing(frontendExportJob) || frontendExportBlocked"
+                  @click="triggerGithubExport('frontend')"
+                >
+                  <span class="download-icon-wrap">
+                    <Github :size="16" />
+                  </span>
+                  {{
+                    !getArtifactDownloadReady('frontend')
+                      ? 'Frontend Artifact Not Ready'
+                      : frontendExporting
+                      ? 'Exporting Frontend...'
+                      : isExportProcessing(frontendExportJob)
+                        ? 'Frontend Export Running...'
+                        : frontendExportBlocked
+                          ? 'Frontend Already Exported'
+                          : frontendExportJob?.status === 'stale'
+                            ? 'Re-export Frontend to GitHub'
+                            : 'Export Frontend to GitHub'
+                  }}
+                </button>
+
+                <a
+                  v-if="frontendExportJob?.repoUrl"
+                  :href="frontendExportJob.repoUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="preview-external-link github-repo-link"
+                >
+                  <ExternalLink :size="14" />
+                  <span>Open repository</span>
+                </a>
+              </div>
+
+              <div v-if="frontendExportJob" class="github-export-meta">
+                <p v-if="frontendExportJob.repoName"><strong>Repo:</strong> {{ frontendExportJob.repoName }}</p>
+                <p v-if="frontendExportJob.repoOwner"><strong>Owner:</strong> {{ frontendExportJob.repoOwner }}</p>
+                <p v-if="frontendExportJob.lastRemoteCheckAt">
+                  <strong>Last checked:</strong> {{ formatExportTimestamp(frontendExportJob.lastRemoteCheckAt) }}
+                </p>
+                <p v-if="frontendExportJob.logs?.length">
+                  <strong>Latest log:</strong> {{ frontendExportJob.logs[frontendExportJob.logs.length - 1] }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="revert-row" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
@@ -904,5 +1308,147 @@ onMounted(async () => {
   height: 600px;
   border: none;
   background: #ffffff;
+}
+
+.github-export-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.export-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.github-export-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.github-export-card {
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+}
+
+.github-export-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.github-export-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.github-export-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.github-status-pill {
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.github-status-pill.processing {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  color: rgba(96, 165, 250, 0.95);
+}
+
+.github-status-pill.complete {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.12);
+  color: rgba(16, 185, 129, 0.95);
+}
+
+.github-status-pill.error {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.12);
+  color: rgba(248, 113, 113, 0.98);
+}
+
+.github-status-pill.stale {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: rgba(251, 191, 36, 0.98);
+}
+
+.github-export-fields {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.github-export-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.github-repo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0;
+}
+
+.github-export-meta {
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.github-export-meta p {
+  margin: 0.35rem 0 0;
+  word-break: break-word;
+}
+
+@media (max-width: 840px) {
+  .github-export-grid,
+  .github-export-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .github-export-card-header {
+    flex-direction: column;
+  }
+
+  .github-status-pill {
+    white-space: normal;
+  }
 }
 </style>

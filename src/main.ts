@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { initAuthOnStartup } from './services/api'
 import { clearGeminiCredentialState, type GeminiActionRequiredDetail } from './services/gemini-credentials'
+import { clearGithubCredentialState } from './services/github-credentials'
 import { useToasts } from './services/toast'
 
 initAuthOnStartup()
@@ -17,6 +18,7 @@ router.isReady().then(() => {
 
   window.addEventListener('auth:session-cleared', () => {
     clearGeminiCredentialState()
+    clearGithubCredentialState()
     router.replace('/login')
   })
 

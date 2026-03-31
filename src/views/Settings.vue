@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { User } from 'lucide-vue-next'
+import { User, Github } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
+import GitHubAccountForm from '@/components/GitHubAccountForm.vue'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -99,7 +100,7 @@ onMounted(loadProfile)
     <div class="container fade-in">
       <div class="header">
         <h1 class="animated-gradient-text">Settings</h1>
-        <p class="subtitle">Manage your Gemini credentials and public profile.</p>
+        <p class="subtitle">Manage your Gemini credentials, GitHub connection, and public profile.</p>
       </div>
 
       <main class="settings-content glass">
@@ -109,6 +110,15 @@ onMounted(loadProfile)
         </div>
 
         <GeminiCredentialsForm />
+      </main>
+
+      <main class="settings-content glass">
+        <div class="section-title">
+          <Github :size="18" />
+          <h3>GitHub Connection</h3>
+        </div>
+
+        <GitHubAccountForm />
       </main>
 
       <main class="settings-content glass">

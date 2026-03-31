@@ -18,6 +18,11 @@ import {
     normalizeGeminiRequestError,
     syncGeminiCredentialStatus,
 } from './gemini-credentials'
+import {
+    clearGithubCredentialState,
+    initializeGithubCredentialSession,
+    syncGithubCredentialStatus,
+} from './github-credentials'
 
 // Types
 export interface User {
@@ -81,6 +86,29 @@ export interface SyncsResponse {
     status?: string
 }
 
+export type GithubExportArtifact = 'backend' | 'frontend'
+export type GithubExportVisibility = 'private' | 'public'
+
+export type GithubExportJob = {
+    artifact: GithubExportArtifact
+    repoName?: string
+    visibility?: GithubExportVisibility
+    status?: 'processing' | 'complete' | 'error' | 'stale' | string
+    repoUrl?: string
+    repoOwner?: string
+    repoId?: string
+    remoteExists?: boolean
+    lastRemoteCheckAt?: string
+    logs?: string[]
+    createdAt?: string
+    updatedAt?: string
+}
+
+export type GithubExportStatusResponse = {
+    backend: GithubExportJob | null
+    frontend: GithubExportJob | null
+}
+
 /**
  * Backward-compatible authState shape used across the UI.
  * Internally we store as separate keys (userId/accessToken/refreshToken) like the provided example.
@@ -140,6 +168,11 @@ export async function validateSession(): Promise<void> {
         } catch {
             // Do not block route access if Gemini status refresh fails.
         }
+        try {
+            await syncGithubCredentialStatus()
+        } catch {
+            // Do not block route access if GitHub status refresh fails.
+        }
     } catch {
         // Access token invalid/expired – try to refresh before giving up.
         const refreshToken = getRefreshToken()
@@ -157,6 +190,11 @@ export async function validateSession(): Promise<void> {
                         } catch {
                             // Do not block route access if Gemini status refresh fails.
                         }
+                        try {
+                            await syncGithubCredentialStatus()
+                        } catch {
+                            // Do not block route access if GitHub status refresh fails.
+                        }
                         return // Session recovered successfully
                     } catch {
                         // New token also invalid – fall through to clear
@@ -167,6 +205,7 @@ export async function validateSession(): Promise<void> {
             }
         }
         clearGeminiCredentialState()
+        clearGithubCredentialState()
         clearAuthData()
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('auth:session-cleared'))
@@ -186,6 +225,7 @@ export function initAuthOnStartup() {
     if (!user) {
         // If there's no user id, make sure we clear any stale tokens/usernames.
         clearGeminiCredentialState()
+        clearGithubCredentialState()
         clearAuthData()
         return
     }
@@ -198,6 +238,7 @@ export function initAuthOnStartup() {
     const hasValidTokens = Boolean(accessToken) && Boolean(refreshToken)
     if (hasAnyToken && !hasValidTokens) {
         clearGeminiCredentialState()
+        clearGithubCredentialState()
         clearAuthData()
     }
 }
@@ -222,6 +263,11 @@ export const authApi = {
                 await initializeGeminiCredentialSession(plaintextPassword)
             } catch {
                 // Do not fail login if the Gemini status probe is temporarily unavailable.
+            }
+            try {
+                await initializeGithubCredentialSession(plaintextPassword)
+            } catch {
+                // Do not fail login if the GitHub status probe is temporarily unavailable.
             }
 
             // Never block login completion on profile fetch. Enrich username in background only.
@@ -250,6 +296,7 @@ export const authApi = {
             await authFns.logout(accessToken)
         }
         clearGeminiCredentialState()
+        clearGithubCredentialState()
         authState.clear()
     }
 }
@@ -587,6 +634,53 @@ export const projectApi = {
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
         }
+        return response.data
+    },
+
+    async startGithubExport(
+        projectId: string,
+        artifact: GithubExportArtifact,
+        unwrapKey: string,
+        repoName?: string,
+        visibility: GithubExportVisibility = 'private',
+    ) {
+        const endpoint =
+            artifact === 'backend'
+                ? `/api/projects/${projectId}/export/backend/github`
+                : `/api/projects/${projectId}/export/frontend/github`
+
+        const body: {
+            unwrapKey: string
+            visibility: GithubExportVisibility
+            repoName?: string
+        } = {
+            unwrapKey,
+            visibility,
+        }
+
+        if (repoName?.trim()) {
+            body.repoName = repoName.trim()
+        }
+
+        const response = await api.post<{
+            project: string
+            artifact: GithubExportArtifact
+            status: string
+            repoName?: string
+            visibility?: GithubExportVisibility
+            error?: string
+            message?: string
+        }>(endpoint, body)
+
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+
+        return response.data
+    },
+
+    async getGithubExportStatus(projectId: string): Promise<GithubExportStatusResponse> {
+        const response = await api.get<GithubExportStatusResponse>(`/api/projects/${projectId}/export/github/status`)
         return response.data
     },
 
