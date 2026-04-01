@@ -5,7 +5,7 @@ import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
 import { isHttp524 } from '@/services/http-errors'
-import { isGeminiCredentialError } from '@/services/gemini-credentials'
+import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
 import { getProjectPathForStatus } from '@/services/project-stage-routing'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
@@ -38,6 +38,18 @@ const prefillDescription = computed(() =>
 const prefillAutocomplete = computed(() => route.query.autocomplete === 'true')
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+const ensureGeminiActionReady = () => {
+  try {
+    getGeminiHeadersOrThrow()
+    return null
+  } catch (error) {
+    if (isGeminiCredentialError(error)) {
+      return error.message
+    }
+    throw error
+  }
+}
 
 const selectNewestProjectId = (
   projects: Array<{ _id: string; name: string; description: string; createdAt?: string }>,
@@ -137,6 +149,13 @@ const handleProjectSubmit = async (
     const userId = authState.getUserId()
     if (!userId) {
       done(false, 'You must be signed in to create a project.')
+      return
+    }
+
+    const geminiPreflightError = ensureGeminiActionReady()
+    if (geminiPreflightError) {
+      geminiError.value = geminiPreflightError
+      done(false, geminiPreflightError)
       return
     }
 

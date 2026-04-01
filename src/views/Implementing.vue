@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
 import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
@@ -51,6 +52,18 @@ const revertError = ref('')
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
+
+const ensureGeminiActionReady = () => {
+  try {
+    getGeminiHeadersOrThrow()
+    return null
+  } catch (error) {
+    if (isGeminiCredentialError(error)) {
+      return error.message
+    }
+    throw error
+  }
 }
 
 const isTransientPollingError = (err: unknown) => isHttp524(err)
@@ -224,6 +237,13 @@ onMounted(() => {
 
 const handleGenerateSyncs = async () => {
   generateSyncsError.value = ''
+
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    generateSyncsError.value = geminiPreflightError
+    return
+  }
+
   isGeneratingSyncs.value = true
 
   try {

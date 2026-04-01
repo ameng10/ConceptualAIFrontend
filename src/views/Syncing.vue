@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
 import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
@@ -41,6 +42,18 @@ const syncDoc = ref<any | null>(null)
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
+
+const ensureGeminiActionReady = () => {
+  try {
+    getGeminiHeadersOrThrow()
+    return null
+  } catch (error) {
+    if (isGeminiCredentialError(error)) {
+      return error.message
+    }
+    throw error
+  }
 }
 
 const isTransientPollingError = (err: unknown) => isHttp524(err)
@@ -298,6 +311,21 @@ const handleRevert = async () => {
 onMounted(() => {
   startIfNeeded()
 })
+
+const handleBuild = async () => {
+  syncError.value = ''
+
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    syncError.value = geminiPreflightError
+    return
+  }
+
+  await router.push({
+    path: `/project/${projectId}/assembling`,
+    query: { projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined },
+  })
+}
 </script>
 
 <template>
@@ -335,7 +363,7 @@ onMounted(() => {
               class="btn-primary"
               type="button"
               :disabled="!canBuild"
-              @click="router.push({ path: `/project/${projectId}/assembling`, query: { projectName: projectName ? encodeURIComponent(projectName) : undefined } })"
+              @click="handleBuild"
             >
               Build
             </button>

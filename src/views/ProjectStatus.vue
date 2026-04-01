@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
+import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
 import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
@@ -58,6 +59,18 @@ const canRevert = computed(() => {
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
+}
+
+const ensureGeminiActionReady = () => {
+  try {
+    getGeminiHeadersOrThrow()
+    return null
+  } catch (error) {
+    if (isGeminiCredentialError(error)) {
+      return error.message
+    }
+    throw error
+  }
 }
 
 // Statuses where design has already started or is in progress - don't allow "Accept plan" to start design again
@@ -283,6 +296,13 @@ onMounted(async () => {
 
 const handleAcceptDesign = () => {
   if (!designDoc.value) return
+  designError.value = ''
+
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    designError.value = geminiPreflightError
+    return
+  }
 
   // Move the user to the dedicated implementing page (clean waiting experience).
   // We pass the design payload so the implementing page can kick off the agent.
@@ -297,6 +317,13 @@ const handleAcceptDesign = () => {
 
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
+  planningError.value = ''
+  designError.value = ''
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    planningError.value = geminiPreflightError
+    return
+  }
   const previousAccepted = accepted.value
   const previousPlanningStatus = planningStatus.value
   const previousDesignStatus = designStatus.value
@@ -330,6 +357,12 @@ const handleModifyPlan = async () => {
     return
   }
 
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    modifyError.value = geminiPreflightError
+    return
+  }
+
   isModifying.value = true
   try {
     await projectApi.modifyPlan(projectId, feedback.value.trim(), planningAutocomplete.value)
@@ -356,6 +389,12 @@ const handleModifyDesign = async () => {
   }
   if (!designFeedback.value.trim()) {
     modifyDesignError.value = 'Please describe what you want to change.'
+    return
+  }
+
+  const geminiPreflightError = ensureGeminiActionReady()
+  if (geminiPreflightError) {
+    modifyDesignError.value = geminiPreflightError
     return
   }
 
