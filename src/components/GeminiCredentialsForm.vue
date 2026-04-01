@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import {
   deleteGeminiCredential,
   saveGeminiCredential,
-  unlockStoredGeminiCredential,
   useGeminiCredentials,
   type GeminiTier,
 } from '@/services/gemini-credentials'
@@ -18,12 +17,10 @@ const {
 } = useGeminiCredentials()
 
 const accountPassword = ref('')
-const reconnectPassword = ref('')
 const geminiApiKey = ref('')
 const geminiTier = ref<GeminiTier>('2')
 
 const saving = ref(false)
-const reconnecting = ref(false)
 const deleting = ref(false)
 const error = ref('')
 const success = ref('')
@@ -47,10 +44,10 @@ watch(
 )
 
 watch(
-  [accountPassword, reconnectPassword, geminiApiKey],
-  ([savePassword, reconnect, apiKey]) => {
+  [accountPassword, geminiApiKey],
+  ([savePassword, apiKey]) => {
     if (costWarningShown.value) return
-    if (!savePassword && !reconnect && !apiKey) return
+    if (!savePassword && !apiKey) return
 
     costWarningShown.value = true
     push({
@@ -69,7 +66,6 @@ const resetMessages = () => {
 
 const resetSensitiveInputs = () => {
   accountPassword.value = ''
-  reconnectPassword.value = ''
   geminiApiKey.value = ''
 }
 
@@ -93,22 +89,6 @@ const handleSave = async () => {
     saving.value = false
     accountPassword.value = ''
     geminiApiKey.value = ''
-  }
-}
-
-const handleReconnect = async () => {
-  resetMessages()
-  reconnecting.value = true
-
-  try {
-    await unlockStoredGeminiCredential(reconnectPassword.value)
-    reconnectPassword.value = ''
-    success.value = 'Gemini credential reconnected for this session.'
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reconnect Gemini credential.'
-  } finally {
-    reconnecting.value = false
-    reconnectPassword.value = ''
   }
 }
 
@@ -155,23 +135,7 @@ const handleDelete = async () => {
 
     <div v-if="needsReconnect" class="warning-panel">
       <strong>Reconnect required</strong>
-      <p>After a page reload, the unwrap key is lost on purpose. Re-enter your account password to continue building.</p>
-      <div class="inline-form">
-        <div class="field grow">
-          <label class="label" for="gemini-reconnect-password">Account password</label>
-          <input
-            id="gemini-reconnect-password"
-            v-model="reconnectPassword"
-            type="password"
-            class="input"
-            autocomplete="current-password"
-            placeholder="Enter your account password"
-          />
-        </div>
-        <button class="btn btn-primary action-btn" type="button" :disabled="reconnecting" @click="handleReconnect">
-          {{ reconnecting ? 'Reconnecting...' : 'Reconnect Gemini' }}
-        </button>
-      </div>
+      <p>Use the shared reconnect form at the top of Settings to reconnect your Gemini credential for this session.</p>
     </div>
 
     <div class="save-panel">
@@ -341,21 +305,12 @@ const handleDelete = async () => {
   background: rgba(239, 68, 68, 0.07);
 }
 
-.grid,
-.inline-form {
+.grid {
   margin-top: 1rem;
   display: grid;
   grid-template-columns: 1fr 1fr 180px;
   gap: 1rem;
   align-items: end;
-}
-
-.inline-form {
-  grid-template-columns: 1fr auto;
-}
-
-.grow {
-  min-width: 0;
 }
 
 .field {
@@ -425,8 +380,7 @@ const handleDelete = async () => {
 
 @media (max-width: 780px) {
   .header-row,
-  .grid,
-  .inline-form {
+  .grid {
     grid-template-columns: 1fr;
     display: grid;
   }

@@ -25,15 +25,18 @@ router.isReady().then(() => {
   window.addEventListener('gemini:action-required', (event: Event) => {
     const detail = (event as CustomEvent<GeminiActionRequiredDetail>).detail
     const message = detail?.message || 'Update your Gemini credentials in Settings to continue.'
+    const isReconnectPrompt = detail?.reason === 'missing_unwrap_key' || detail?.reason === 'invalid_unwrap_key'
 
-    push({
-      title: detail?.title || 'Gemini credentials required',
-      message,
-      kind: 'warning',
-      ttlMs: 5000,
-    })
+    if (!isReconnectPrompt) {
+      push({
+        title: detail?.title || 'Gemini credentials required',
+        message,
+        kind: 'warning',
+        ttlMs: 5000,
+      })
+    }
 
-    if (router.currentRoute.value.path !== '/settings') {
+    if (detail?.reason === 'missing_stored_credential' && router.currentRoute.value.path !== '/settings') {
       router.replace('/settings')
     }
   })

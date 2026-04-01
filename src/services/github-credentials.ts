@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { AxiosError } from 'axios'
 import { api } from './http'
+import { requestCredentialReconnect } from './credential-reconnect'
 import { useGeminiCredentials } from './gemini-credentials'
 
 export interface GithubKdfParams {
@@ -382,7 +383,11 @@ export function getSharedVaultUnwrapKey(): string {
 export function getSharedVaultUnwrapKeyOrThrow(): string {
   const unwrapKey = getSharedVaultUnwrapKey()
   if (!unwrapKey) {
-    throw new Error('Reconnect your account credentials in Settings before exporting to GitHub.')
+    requestCredentialReconnect({
+      title: 'Reconnect credentials',
+      message: 'Re-enter your account password to continue exporting to GitHub.',
+    })
+    throw new Error('Reconnect your account credentials by re-entering your password before exporting to GitHub.')
   }
   return unwrapKey
 }

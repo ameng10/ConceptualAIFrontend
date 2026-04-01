@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { AxiosError } from 'axios'
 import { api } from './http'
+import { requestCredentialReconnect } from './credential-reconnect'
 
 export type GeminiTier = '1' | '2' | '3'
 export type GeminiCredentialErrorCode =
@@ -160,12 +161,16 @@ function buildRequiredActionError(
   message: string,
   title = 'Gemini credentials required',
 ) {
+  const shouldRedirectToSettings = code === 'missing_stored_credential'
   const error = new GeminiCredentialError(code, message, {
-    shouldRedirectToSettings: true,
+    shouldRedirectToSettings,
     shouldNotify: true,
   })
 
   emitGeminiActionRequired({ reason: code, title, message })
+  if (code === 'missing_unwrap_key' || code === 'invalid_unwrap_key') {
+    requestCredentialReconnect({ title, message })
+  }
   return error
 }
 
@@ -233,7 +238,7 @@ function maybeMapGeminiCredentialError(error: unknown): GeminiCredentialError | 
     geminiUnwrapKey.value = ''
     return buildRequiredActionError(
       'invalid_unwrap_key',
-      'Your Gemini credentials need to be reconnected. Re-enter your account password in Settings to continue.',
+      'Your Gemini credentials need to be reconnected. Re-enter your account password to continue.',
       'Reconnect Gemini credentials',
     )
   }
@@ -242,7 +247,7 @@ function maybeMapGeminiCredentialError(error: unknown): GeminiCredentialError | 
     geminiUnwrapKey.value = ''
     return buildRequiredActionError(
       'missing_unwrap_key',
-      'Reconnect your Gemini credentials in Settings to continue.',
+      'Reconnect your Gemini credentials by re-entering your account password to continue.',
       'Reconnect Gemini credentials',
     )
   }
@@ -400,7 +405,7 @@ export function getGeminiHeadersOrThrow(): Record<string, string> {
   if (!geminiUnwrapKey.value.trim()) {
     throw buildRequiredActionError(
       'missing_unwrap_key',
-      'Reconnect your Gemini credentials in Settings by re-entering your password to continue.',
+      'Reconnect your Gemini credentials by re-entering your password to continue.',
       'Reconnect Gemini credentials',
     )
   }

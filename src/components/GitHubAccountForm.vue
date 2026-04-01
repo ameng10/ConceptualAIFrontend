@@ -7,7 +7,6 @@ import {
   deleteGithubCredential,
   startGithubLink,
   syncGithubCredentialStatus,
-  unlockStoredGithubCredential,
   type GithubOAuthCallbackCredential,
   useGithubCredentials,
 } from '@/services/github-credentials'
@@ -63,12 +62,11 @@ const loading = ref(true)
 const linking = ref(false)
 const finishing = ref(false)
 const disconnecting = ref(false)
-const reconnecting = ref(false)
 const githubAppInstallUrl = (import.meta.env.VITE_GITHUB_APP_INSTALL_URL || '').trim()
 
 const accountPassword = ref('')
-const reconnectPassword = ref('')
 const pendingCredential = ref<GithubOAuthCallbackCredential | null>(null)
+const showInstallPrompt = ref(false)
 
 const error = ref('')
 const success = ref('')
@@ -111,6 +109,10 @@ const maybeReturnToPendingExport = async () => {
   if (!pending || pending.returnPath !== returnPath) return
 
   await router.replace(returnPath)
+}
+
+const promptGithubAppInstall = () => {
+  showInstallPrompt.value = true
 }
 
 const cleanupPopup = () => {
@@ -190,6 +192,10 @@ const handlePopupMessage = (event: MessageEvent<GithubCallbackMessage>) => {
   pendingCredential.value = normalized
   resetMessages()
   success.value = `GitHub authorized for @${normalized.githubLogin}. Enter your account password to finish linking.`
+
+  if (!normalized.installationId || !Object.keys(normalized.permissions ?? {}).length) {
+    promptGithubAppInstall()
+  }
 }
 
 const beginGithubLink = async () => {
@@ -263,28 +269,6 @@ const finishGithubLink = async () => {
   }
 }
 
-const reconnectGithub = async () => {
-  if (!reconnectPassword.value) {
-    error.value = 'Enter your account password to reconnect GitHub for this session.'
-    success.value = ''
-    return
-  }
-
-  resetMessages()
-  reconnecting.value = true
-  try {
-    await unlockStoredGithubCredential(reconnectPassword.value)
-    reconnectPassword.value = ''
-    success.value = 'GitHub credentials reconnected for this session.'
-    await maybeReturnToPendingExport()
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to reconnect GitHub.'
-  } finally {
-    reconnecting.value = false
-    reconnectPassword.value = ''
-  }
-}
-
 const cancelPendingLink = () => {
   pendingCredential.value = null
   accountPassword.value = ''
@@ -323,6 +307,31 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="github-card glass">
+    <div v-if="showInstallPrompt" class="modal-overlay" @click.self="showInstallPrompt = false">
+      <div class="install-modal glass" role="dialog" aria-modal="true" aria-labelledby="github-install-title">
+        <h3 id="github-install-title">Install the GitHub App to continue</h3>
+        <p>
+          GitHub connected, but ConceptualAI still cannot see an app installation or its permissions. Install the
+          GitHub App on the account or organization you want to use, then reconnect GitHub.
+        </p>
+        <div class="modal-actions">
+          <a
+            v-if="githubAppInstallUrl"
+            class="btn btn-primary action-btn"
+            :href="githubAppInstallUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink :size="16" />
+            <span>Install GitHub App</span>
+          </a>
+          <button class="btn btn-secondary action-btn" type="button" @click="showInstallPrompt = false">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="header-row">
       <div>
         <h2 class="title">GitHub account</h2>
@@ -370,26 +379,9 @@ onBeforeUnmount(() => {
     <div v-if="needsReconnect && !pendingCredential" class="pending-panel">
       <strong>Reconnect required</strong>
       <p>
-        The shared export key is only kept for this signed-in session. Re-enter your account password to reconnect
-        GitHub actions like export.
+        The shared export key is only kept for this signed-in session. Use the shared reconnect form at the top of
+        Settings to reconnect GitHub actions like export.
       </p>
-
-      <div class="inline-form">
-        <div class="field grow">
-          <label class="label" for="github-reconnect-password">Account password</label>
-          <input
-            id="github-reconnect-password"
-            v-model="reconnectPassword"
-            type="password"
-            class="input"
-            autocomplete="current-password"
-            placeholder="Enter your account password"
-          />
-        </div>
-        <button class="btn btn-primary action-btn" type="button" :disabled="reconnecting" @click="reconnectGithub">
-          {{ reconnecting ? 'Reconnecting...' : 'Reconnect GitHub' }}
-        </button>
-      </div>
     </div>
 
     <div v-if="pendingCredential" class="pending-panel">
@@ -424,17 +416,6 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-else class="actions">
-      <a
-        v-if="githubAppInstallUrl"
-        class="btn btn-secondary action-btn"
-        :href="githubAppInstallUrl"
-        target="_blank"
-        rel="noreferrer"
-      >
-        <ExternalLink :size="16" />
-        <span>{{ hasStoredGithubCredential ? 'Install or Manage GitHub App' : 'Install GitHub App' }}</span>
-      </a>
-
       <button class="btn btn-primary action-btn" type="button" :disabled="linking" @click="beginGithubLink">
         <Github :size="16" />
         <span>
@@ -447,6 +428,17 @@ onBeforeUnmount(() => {
           }}
         </span>
       </button>
+
+      <a
+        v-if="githubAppInstallUrl"
+        class="btn btn-secondary action-btn"
+        :href="githubAppInstallUrl"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <ExternalLink :size="16" />
+        <span>{{ hasStoredGithubCredential ? 'Install or Manage GitHub App' : 'Install GitHub App' }}</span>
+      </a>
 
       <button
         v-if="hasStoredGithubCredential"
@@ -550,6 +542,42 @@ onBeforeUnmount(() => {
 .pending-panel strong {
   display: block;
   margin-bottom: 0.35rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.7);
+}
+
+.install-modal {
+  width: min(100%, 34rem);
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.install-modal h3,
+.install-modal p {
+  margin: 0;
+}
+
+.install-modal p {
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .status-grid {

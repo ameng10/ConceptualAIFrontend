@@ -1,19 +1,99 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { User, Github } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
 import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import GitHubAccountForm from '@/components/GitHubAccountForm.vue'
+import { unlockStoredGeminiCredential, useGeminiCredentials } from '@/services/gemini-credentials'
+import { getPendingGithubExport } from '@/services/github-export'
+import { unlockStoredGithubCredential, useGithubCredentials } from '@/services/github-credentials'
 
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const success = ref('')
+const reconnectPassword = ref('')
+const reconnecting = ref(false)
+const reconnectError = ref('')
+const reconnectSuccess = ref('')
+
+const route = useRoute()
+const router = useRouter()
+const { hasStoredGeminiCredential, needsReconnect: geminiNeedsReconnect } = useGeminiCredentials()
+const { hasStoredGithubCredential, needsReconnect: githubNeedsReconnect } = useGithubCredentials()
+
+const needsAnyReconnect = computed(() => geminiNeedsReconnect.value || githubNeedsReconnect.value)
+const reconnectSummary = computed(() => {
+  if (geminiNeedsReconnect.value && githubNeedsReconnect.value) {
+    return 'Your Gemini and GitHub credentials need to be reconnected for this session.'
+  }
+
+  if (geminiNeedsReconnect.value) {
+    return 'Your Gemini credentials need to be reconnected for this session.'
+  }
+
+  return 'Your GitHub credentials need to be reconnected for this session.'
+})
 
 const username = ref('')
 const displayName = ref('')
 const bio = ref('')
+
+const getRequestedReturnPath = () => (typeof route.query.returnPath === 'string' ? route.query.returnPath : '')
+
+const maybeReturnToPendingExport = async () => {
+  const returnPath = getRequestedReturnPath()
+  if (!returnPath) return
+
+  const pending = getPendingGithubExport()
+  if (!pending || pending.returnPath !== returnPath) return
+
+  await router.replace(returnPath)
+}
+
+const reconnectCredentials = async () => {
+  reconnectError.value = ''
+  reconnectSuccess.value = ''
+
+  if (!reconnectPassword.value) {
+    reconnectError.value = 'Enter your account password to reconnect your saved credentials.'
+    return
+  }
+
+  const reconnectGemini = geminiNeedsReconnect.value && hasStoredGeminiCredential.value
+  const reconnectGithub = githubNeedsReconnect.value && hasStoredGithubCredential.value
+
+  if (!reconnectGemini && !reconnectGithub) return
+
+  reconnecting.value = true
+
+  try {
+    await Promise.all([
+      reconnectGemini ? unlockStoredGeminiCredential(reconnectPassword.value) : Promise.resolve(),
+      reconnectGithub ? unlockStoredGithubCredential(reconnectPassword.value) : Promise.resolve(),
+    ])
+
+    reconnectSuccess.value =
+      reconnectGemini && reconnectGithub
+        ? 'Gemini and GitHub credentials reconnected for this session.'
+        : reconnectGemini
+          ? 'Gemini credentials reconnected for this session.'
+          : 'GitHub credentials reconnected for this session.'
+
+    reconnectPassword.value = ''
+
+    if (reconnectGithub) {
+      await maybeReturnToPendingExport()
+    }
+  } catch (err) {
+    reconnectError.value = err instanceof Error ? err.message : 'Failed to reconnect saved credentials.'
+  } finally {
+    reconnecting.value = false
+    reconnectPassword.value = ''
+  }
+}
 
 const loadProfile = async () => {
   loading.value = true
@@ -102,6 +182,36 @@ onMounted(loadProfile)
         <h1 class="animated-gradient-text">Settings</h1>
         <p class="subtitle">Manage your Gemini credentials, GitHub connection, and public profile.</p>
       </div>
+
+      <main v-if="needsAnyReconnect" class="settings-content glass reconnect-card">
+        <div class="section-title">
+          <User :size="18" />
+          <h3>Reconnect saved credentials</h3>
+        </div>
+
+        <p class="reconnect-copy">{{ reconnectSummary }}</p>
+
+        <div class="reconnect-form">
+          <div class="field-group reconnect-field">
+            <label for="settings-reconnect-password">Account password</label>
+            <input
+              id="settings-reconnect-password"
+              v-model="reconnectPassword"
+              type="password"
+              class="input"
+              autocomplete="current-password"
+              placeholder="Enter your account password"
+            />
+          </div>
+
+          <button class="btn btn-primary reconnect-btn" type="button" :disabled="reconnecting" @click="reconnectCredentials">
+            {{ reconnecting ? 'Reconnecting...' : 'Reconnect credentials' }}
+          </button>
+        </div>
+
+        <p v-if="reconnectError" class="error-msg reconnect-message">{{ reconnectError }}</p>
+        <p v-if="reconnectSuccess" class="success-msg reconnect-message">{{ reconnectSuccess }}</p>
+      </main>
 
       <main class="settings-content glass">
         <div class="section-title">
@@ -208,6 +318,12 @@ h1 {
   padding: 1.75rem;
 }
 
+.reconnect-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .section-title {
   display: flex;
   align-items: center;
@@ -217,6 +333,34 @@ h1 {
 
 .section-title h3 {
   font-size: 1.2rem;
+}
+
+.reconnect-copy {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.reconnect-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.reconnect-field {
+  margin-bottom: 0;
+  max-width: none;
+}
+
+.reconnect-btn {
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  width: fit-content;
+}
+
+.reconnect-message {
+  margin: 0;
 }
 
 .profile-form {
@@ -266,5 +410,11 @@ h1 {
 
 .btn-primary {
   align-self: flex-start;
+}
+
+@media (max-width: 780px) {
+  .reconnect-form {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

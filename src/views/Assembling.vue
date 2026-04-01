@@ -12,6 +12,7 @@ import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
+import { requestCredentialReconnect } from '@/services/credential-reconnect'
 import { getSharedVaultUnwrapKeyOrThrow, syncGithubCredentialStatus, useGithubCredentials } from '@/services/github-credentials'
 import {
   clearPendingGithubExport,
@@ -65,12 +66,6 @@ const githubExportStatus = ref<GithubExportStatusResponse>({ backend: null, fron
 
 const backendExportJob = computed(() => githubExportStatus.value.backend)
 const frontendExportJob = computed(() => githubExportStatus.value.frontend)
-const backendExportBlocked = computed(
-  () => backendExportJob.value?.status === 'complete' && backendExportJob.value?.remoteExists === true,
-)
-const frontendExportBlocked = computed(
-  () => frontendExportJob.value?.status === 'complete' && frontendExportJob.value?.remoteExists === true,
-)
 
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
@@ -146,6 +141,12 @@ const routeExportThroughSettings = (artifact: GithubExportArtifact, reason: stri
       returnPath,
     },
   })
+}
+
+const isReconnectableGithubExportError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error)
+  const lowered = message.toLowerCase()
+  return lowered.includes('unwrap key')
 }
 
 const downloadFrontend = async () => {
@@ -456,10 +457,8 @@ const triggerGithubExport = async (artifact: GithubExportArtifact) => {
   try {
     unwrapKey = getSharedVaultUnwrapKeyOrThrow()
   } catch (error) {
-    routeExportThroughSettings(
-      artifact,
-      error instanceof Error ? error.message : 'Reconnect your credentials in Settings before exporting.',
-    )
+    githubStatusError.value =
+      error instanceof Error ? error.message : 'Reconnect your credentials by re-entering your password to continue.'
     return
   }
 
@@ -478,6 +477,12 @@ const triggerGithubExport = async (artifact: GithubExportArtifact) => {
       githubExportPoll.start()
     }
   } catch (e) {
+    if (isReconnectableGithubExportError(e)) {
+      requestCredentialReconnect({
+        title: 'Reconnect credentials',
+        message: 'Re-enter your account password to continue exporting to GitHub.',
+      })
+    }
     githubStatusError.value = toErrorMessage(e, `Failed to export ${artifact} to GitHub.`)
     try {
       await pollGithubExportStatusOnce()
@@ -831,7 +836,7 @@ onMounted(async () => {
             Connect GitHub in Settings before exporting repositories.
           </p>
           <p v-else-if="!hasSharedVaultUnwrapKey" class="muted" style="margin-top: 0.75rem;">
-            Reconnect your credentials in Settings before exporting to GitHub.
+            Re-enter your account password when prompted before exporting to GitHub.
           </p>
           <div v-if="githubStatusError" class="error-msg" style="margin-top: 0.75rem;">{{ githubStatusError }}</div>
 
@@ -872,7 +877,7 @@ onMounted(async () => {
                 <button
                   class="download-btn backend-btn"
                   type="button"
-                  :disabled="!getArtifactDownloadReady('backend') || backendExporting || isExportProcessing(backendExportJob) || backendExportBlocked"
+                  :disabled="!getArtifactDownloadReady('backend') || backendExporting || isExportProcessing(backendExportJob)"
                   @click="triggerGithubExport('backend')"
                 >
                   <span class="download-icon-wrap">
@@ -885,11 +890,9 @@ onMounted(async () => {
                       ? 'Exporting Backend...'
                       : isExportProcessing(backendExportJob)
                         ? 'Backend Export Running...'
-                        : backendExportBlocked
-                          ? 'Backend Already Exported'
-                          : backendExportJob?.status === 'stale'
+                        : backendExportJob?.status === 'stale' || backendExportJob?.status === 'complete'
                             ? 'Re-export Backend to GitHub'
-                            : 'Export Backend to GitHub'
+                          : 'Export Backend to GitHub'
                   }}
                 </button>
 
@@ -953,7 +956,7 @@ onMounted(async () => {
                 <button
                   class="download-btn frontend-btn"
                   type="button"
-                  :disabled="!getArtifactDownloadReady('frontend') || frontendExporting || isExportProcessing(frontendExportJob) || frontendExportBlocked"
+                  :disabled="!getArtifactDownloadReady('frontend') || frontendExporting || isExportProcessing(frontendExportJob)"
                   @click="triggerGithubExport('frontend')"
                 >
                   <span class="download-icon-wrap">
@@ -966,11 +969,9 @@ onMounted(async () => {
                       ? 'Exporting Frontend...'
                       : isExportProcessing(frontendExportJob)
                         ? 'Frontend Export Running...'
-                        : frontendExportBlocked
-                          ? 'Frontend Already Exported'
-                          : frontendExportJob?.status === 'stale'
+                        : frontendExportJob?.status === 'stale' || frontendExportJob?.status === 'complete'
                             ? 'Re-export Frontend to GitHub'
-                            : 'Export Frontend to GitHub'
+                          : 'Export Frontend to GitHub'
                   }}
                 </button>
 

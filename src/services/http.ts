@@ -46,6 +46,22 @@ function isGeminiCredentialUnauthorized(error: AxiosError): boolean {
   return status === 401 && message.includes('gemini unwrap key')
 }
 
+function isGithubInstallationRequired(error: AxiosError, requestUrl = ''): boolean {
+  if (!requestUrl.startsWith('/api/me/github')) return false
+
+  const status = error.response?.status
+  const data = error.response?.data as { error?: string; message?: string } | undefined
+  const message = String(data?.error || data?.message || '').toLowerCase()
+
+  if (status !== 401) return false
+
+  const mentionsGithub = message.includes('github')
+  const mentionsInstallation =
+    message.includes('installation') || message.includes('install') || message.includes('app')
+
+  return mentionsGithub && mentionsInstallation
+}
+
 /** Force-clear auth and notify so the UI redirects to login. */
 function forceSignOut(reason: string) {
   console.warn('[auth] Forcing sign-out:', reason)
@@ -108,8 +124,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
+    const originalUrl = originalRequest?.url || ''
 
     if (isGeminiCredentialUnauthorized(error)) {
+      return Promise.reject(error)
+    }
+
+    if (isGithubInstallationRequired(error, originalUrl)) {
       return Promise.reject(error)
     }
 
@@ -118,7 +139,6 @@ apiClient.interceptors.response.use(
       error.response?.status === 401 &&
       originalRequest?._retry
     ) {
-      const originalUrl = originalRequest.url || ''
       if (!originalUrl.startsWith('/auth/') && !originalUrl.startsWith('/api/auth/')) {
         // The refreshed token was still rejected – session is irrecoverable.
         forceSignOut('Retried request still returned 401 after token refresh')
@@ -132,7 +152,6 @@ apiClient.interceptors.response.use(
       !originalRequest._retry
     ) {
       // Skip refresh for auth endpoints (avoid loops)
-      const originalUrl = originalRequest.url || ''
       if (originalUrl.startsWith('/auth/') || originalUrl.startsWith('/api/auth/')) {
         return Promise.reject(error)
       }

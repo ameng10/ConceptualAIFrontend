@@ -114,7 +114,12 @@ const isPastPlanningStage = computed(() => {
 })
 
 const tryHydrateFromQuery = () => {
-  const statusQ = route.query?.planningStatus
+  const statusQ =
+    typeof route.query?.planningStatus === 'string'
+      ? route.query.planningStatus
+      : typeof route.query?.projectStatus === 'string'
+        ? route.query.projectStatus
+        : null
   if (statusQ && typeof statusQ === 'string') {
     planningStatus.value = statusQ
   }
@@ -268,10 +273,10 @@ const handleClarificationSubmit = async (answers: Record<string, string>, enable
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   tryHydrateFromQuery()
-  void tickProject()
-  if (shouldPollProjectStatus(planningStatus.value)) {
+  await tickProject()
+  if (shouldPollProjectStatus(planningStatus.value ?? project.value?.status)) {
     projectPoll.start()
   }
 })
@@ -292,6 +297,9 @@ const handleAcceptDesign = () => {
 
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
+  const previousAccepted = accepted.value
+  const previousPlanningStatus = planningStatus.value
+  const previousDesignStatus = designStatus.value
   accepted.value = true
   designStatus.value = 'starting'
   designError.value = ''
@@ -306,7 +314,11 @@ const handleAcceptPlan = () => {
     })
     .catch((err) => {
       if (isHttp524(err)) return
-      designStatus.value = 'error'
+      // If the design agent never actually started, restore the review state
+      // so the user can reconnect and immediately try again.
+      accepted.value = previousAccepted
+      planningStatus.value = previousPlanningStatus
+      designStatus.value = previousDesignStatus
       designError.value = err instanceof Error ? err.message : String(err)
     })
 }

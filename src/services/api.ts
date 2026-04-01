@@ -492,11 +492,7 @@ export const projectApi = {
         backend?: { status?: string; downloadUrl?: string | null }
         frontend?: { status?: string; downloadUrl?: string | null }
     }> {
-        const response = await runGeminiRequest(() =>
-            api.get<any>(`/api/projects/${projectId}/build/status`, {
-                headers: getGeminiHeadersOrThrow(),
-            })
-        )
+        const response = await api.get<any>(`/api/projects/${projectId}/build/status`)
         return response.data
     },
 
