@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   projectApi,
@@ -53,6 +53,21 @@ const previewState = ref<PreviewState>('idle')
 const previewUrl = ref<string>('')
 const previewError = ref<string>('')
 const githubStatusError = ref('')
+
+const previewExpiresAt = ref<string | null>(null)
+
+const now = ref(Date.now())
+const timeRefresh = setInterval(() => { now.value = Date.now() }, 1000)
+onUnmounted(() => clearInterval(timeRefresh))
+
+const previewTimeRemaining = computed(() => {
+  if (!previewExpiresAt.value || previewState.value !== 'ready') return null
+  const diff = new Date(previewExpiresAt.value).getTime() - now.value
+  if (diff <= 0) return '0:00'
+  const m = Math.floor(diff / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${m}:${s.toString().padStart(2, '0')}`
+})
 
 const { hasStoredGithubCredential, hasUnwrapKey: hasSharedVaultUnwrapKey } = useGithubCredentials()
 
@@ -513,27 +528,79 @@ const handleRevert = async () => {
   }
 }
 
+const initiateAutoExpire = () => {
+  if (previewState.value === 'stopping') return
+  previewState.value = 'stopping'
+  previewError.value = 'Preview automatically expired after 5 minutes.'
+  previewUrl.value = ''
+  previewExpiresAt.value = null
+
+  // Fire-and-forget to initiate backend reap
+  projectApi.getPreviewStatus(projectId).catch(() => {})
+
+  // Check status again after 2 seconds to transition the UI natively based on DB
+  setTimeout(() => {
+    previewStoppingPoll.start({ immediate: true })
+  }, 2000)
+}
+
+watch(previewTimeRemaining, (newVal) => {
+  if (newVal === '0:00') {
+    initiateAutoExpire()
+  }
+})
+
 const pollPreviewStatusOnce = async () => {
   try {
     const res = await projectApi.getPreviewStatus(projectId)
     if (res.status === 'ready') {
-      previewUrl.value = res.frontendUrl || ''
-      previewState.value = 'ready'
-      previewError.value = ''
-      previewPoll.stop()
+      if (res.expiresAt && Date.now() >= new Date(res.expiresAt).getTime()) {
+        initiateAutoExpire()
+      } else {
+        previewUrl.value = res.frontendUrl || ''
+        previewState.value = 'ready'
+        previewError.value = ''
+        previewExpiresAt.value = res.expiresAt || null
+        if (!previewPoll.isRunning.value && previewState.value !== 'stopping') {
+          previewStoppingPoll.stop()
+          previewPoll.start()
+        }
+      }
     } else if (res.status === 'processing') {
       previewState.value = 'processing'
       previewError.value = ''
+      if (!previewPoll.isRunning.value) {
+        previewStoppingPoll.stop()
+        previewPoll.start()
+      }
     } else if (res.status === 'preview_stopping') {
+      if (previewState.value === 'ready') {
+        previewError.value = 'Preview automatically expired.'
+      }
       previewState.value = 'stopping'
-      previewError.value = ''
+      if (!previewStoppingPoll.isRunning.value) {
+        previewPoll.stop()
+        previewStoppingPoll.start()
+      }
     } else if (res.status === 'error') {
       previewState.value = 'error'
       previewError.value = res.error || 'Preview failed to start.'
       previewPoll.stop()
-    } else if (res.status === 'expired' || res.status === 'none' || res.status === 'preview_stopped') {
+      previewStoppingPoll.stop()
+    } else if (res.status === 'expired') {
+      const wasActive = previewState.value === 'ready' || previewState.value === 'stopping'
       previewState.value = 'idle'
+      if (wasActive && !previewError.value) {
+        previewError.value = 'Preview automatically expired.'
+      }
+      previewExpiresAt.value = null
       previewPoll.stop()
+      previewStoppingPoll.stop()
+    } else if (res.status === 'none' || res.status === 'preview_stopped') {
+      previewState.value = 'idle'
+      previewExpiresAt.value = null
+      previewPoll.stop()
+      previewStoppingPoll.stop()
     }
   } catch (e) {
     console.error('Failed to poll preview status', e)
@@ -541,11 +608,13 @@ const pollPreviewStatusOnce = async () => {
 }
 
 const previewPoll = usePolling(pollPreviewStatusOnce, 30_000)
+const previewStoppingPoll = usePolling(pollPreviewStatusOnce, 15_000)
 
 const handleLaunchPreview = async () => {
   previewState.value = 'launching'
   previewError.value = ''
   previewUrl.value = ''
+  previewExpiresAt.value = null
   try {
     const res = await projectApi.launchPreview(projectId)
     if (res.status === 'previewing') {
@@ -563,7 +632,9 @@ const handleStopPreview = async () => {
   previewState.value = 'stopping'
   previewUrl.value = '' // Hides iframe immediately
   previewError.value = ''
+  previewExpiresAt.value = null
   previewPoll.stop()
+  previewStoppingPoll.stop()
   try {
     const response = await projectApi.teardownPreview(projectId)
     if (response.status === 'preview_stopped') {
@@ -641,23 +712,7 @@ onMounted(async () => {
   if (isAlreadyAssembled || isAlreadyBuilding) {
     await fetchExistingDownloads()
     if (isAlreadyAssembled) {
-      try {
-        const res = await projectApi.getPreviewStatus(projectId)
-        if (res.status === 'processing' || res.status === 'ready' || res.status === 'preview_stopping') {
-          if (res.status === 'ready') {
-            previewState.value = 'ready'
-            previewUrl.value = res.frontendUrl || ''
-          } else if (res.status === 'preview_stopping') {
-            previewState.value = 'stopping'
-            previewPoll.start({ immediate: true })
-          } else {
-            previewState.value = 'processing'
-            previewPoll.start({ immediate: true })
-          }
-        }
-      } catch (e) {
-        // ignore errors on initial load checkout
-      }
+      previewPoll.start({ immediate: true })
     }
     return
   }
@@ -817,6 +872,9 @@ onMounted(async () => {
         <div v-if="previewState === 'ready' && previewUrl" class="preview-iframe-container fade-in">
           <div class="preview-iframe-header">
             <span class="preview-url">{{ previewUrl }}</span>
+            <span v-if="previewTimeRemaining" class="preview-expires" :class="{ 'warning': previewTimeRemaining.startsWith('0:') }">
+              Expires in {{ previewTimeRemaining }}
+            </span>
             <a :href="previewUrl" target="_blank" rel="noopener noreferrer" class="preview-external-link">
               <ExternalLink :size="14" />
             </a>
@@ -1287,6 +1345,20 @@ onMounted(async () => {
   padding: 0.5rem 1rem;
   background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid var(--glass-border);
+}
+
+.preview-expires {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.preview-expires.warning {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
 }
 
 .preview-url {
