@@ -274,6 +274,13 @@ const projectPoll = usePolling(async () => {
 
 const handleClarificationSubmit = async (answers: Record<string, string>, enableAutocomplete: boolean) => {
   try {
+    planningError.value = ''
+    const geminiPreflightError = ensureGeminiActionReady()
+    if (geminiPreflightError) {
+      planningError.value = geminiPreflightError
+      return
+    }
+
     await projectApi.provideClarification(projectId, answers, enableAutocomplete)
     planningAutocomplete.value = enableAutocomplete
     showClarification.value = false

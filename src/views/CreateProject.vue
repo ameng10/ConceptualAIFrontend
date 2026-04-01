@@ -237,6 +237,12 @@ const handleProjectSubmit = async (
 
 const handleClarificationSubmit = async (answers: Record<string, string>) => {
   try {
+    const geminiPreflightError = ensureGeminiActionReady()
+    if (geminiPreflightError) {
+      geminiError.value = geminiPreflightError
+      return
+    }
+
     await projectApi.provideClarification(currentProjectId.value, answers)
     showClarification.value = false
     router.push(`/project/${currentProjectId.value}`)
