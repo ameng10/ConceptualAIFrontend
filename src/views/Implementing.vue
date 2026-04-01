@@ -141,6 +141,7 @@ const implementationPoll = usePolling(async () => {
 }, 30_000)
 
 const startIfNeeded = async () => {
+  const shouldStartImplementation = route.query.startImplementation === '1'
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
     try {
@@ -166,16 +167,18 @@ const startIfNeeded = async () => {
       syncAutocomplete.value = project.autocomplete
     }
 
-    const navigated = await maybeNavigateToAutocompleteStage(
-      router,
-      route.path,
-      projectId,
-      status,
-      project?.autocomplete,
-      project?.name ?? projectName.value,
-    )
-    if (navigated) {
-      return
+    if (!shouldStartImplementation) {
+      const navigated = await maybeNavigateToAutocompleteStage(
+        router,
+        route.path,
+        projectId,
+        status,
+        project?.autocomplete,
+        project?.name ?? projectName.value,
+      )
+      if (navigated) {
+        return
+      }
     }
 
     await loadDesignDoc()
@@ -251,6 +254,7 @@ const handleGenerateSyncs = async () => {
       path: `/project/${projectId}/syncing`,
       query: {
         projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+        startSyncGeneration: '1',
       },
     })
   } catch (e) {

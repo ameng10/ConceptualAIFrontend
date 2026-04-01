@@ -181,6 +181,7 @@ const pollSyncOnce = async () => {
 }
 
 const startIfNeeded = async () => {
+  const shouldStartSyncGeneration = route.query.startSyncGeneration === '1'
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
     try {
@@ -223,16 +224,18 @@ const startIfNeeded = async () => {
       projectName.value = p.name
     }
 
-    const navigated = await maybeNavigateToAutocompleteStage(
-      router,
-      route.path,
-      projectId,
-      apiStatus,
-      p?.autocomplete,
-      p?.name ?? projectName.value,
-    )
-    if (navigated) {
-      return
+    if (!shouldStartSyncGeneration) {
+      const navigated = await maybeNavigateToAutocompleteStage(
+        router,
+        route.path,
+        projectId,
+        apiStatus,
+        p?.autocomplete,
+        p?.name ?? projectName.value,
+      )
+      if (navigated) {
+        return
+      }
     }
 
     // Always trust backend status over query-param fallbacks.

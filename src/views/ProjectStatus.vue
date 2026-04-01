@@ -310,7 +310,8 @@ const handleAcceptDesign = () => {
     path: `/project/${projectId}/implementing`,
     query: {
       projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
-        enableAutocomplete: String(designAutocomplete.value),
+      enableAutocomplete: String(designAutocomplete.value),
+      startImplementation: '1',
     },
   })
 }
