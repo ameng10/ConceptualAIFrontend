@@ -879,7 +879,7 @@ onMounted(async () => {
               <ExternalLink :size="14" />
             </a>
           </div>
-          <iframe :src="previewUrl" class="preview-iframe" title="Application Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+          <iframe :src="previewUrl" class="preview-iframe" title="Application Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
         </div>
 
         <div v-if="hasAnyDownload" class="github-export-section">

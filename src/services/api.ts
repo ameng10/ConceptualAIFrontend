@@ -589,9 +589,12 @@ export const projectApi = {
     },
 
     async launchPreview(projectId: string) {
-        const response = await api.post<{ project: string; status: string; error?: string }>(
-            `/api/projects/${projectId}/preview`,
-            {},
+        const response = await runGeminiRequest(() =>
+            api.post<{ project: string; status: string; error?: string }>(
+                `/api/projects/${projectId}/preview`,
+                {},
+                { headers: getGeminiHeadersOrThrow() },
+            )
         )
         if (response.data?.error) {
             throw new Error(response.data.error)
