@@ -23,13 +23,13 @@ Why these matter:
 In generated frontend:
 
 - Rename `.env.template` to `.env`
-- For local runs, frontend values are usually already set correctly.
-- Only change frontend `.env` values for non-local runs (for example, deployment domains/API URLs).
+- For local runs, the default `VITE_API_URL=http://localhost:8000/api` is usually already correct.
+- Only change frontend `.env` values for non-local runs (for example, pointing `VITE_API_URL` at a deployed backend domain).
 
 Help links:
 
 - [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
-- [Get a Gemini API Key](./get-gemini-api-key.md)
+- [Get an AI Provider Key](./get-ai-provider-key.md) (only if your app uses AI features)
 
 ## 2) Install dependencies
 
@@ -68,4 +68,4 @@ Use: [Troubleshooting](./troubleshooting.md)
 
 ## 7) Ready to publish?
 
-Use: [Deploy Your Generated App with Railway](./deploy-with-railway.md)
+Use: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)

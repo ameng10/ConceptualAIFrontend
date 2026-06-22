@@ -17,7 +17,6 @@ const docsByPath = import.meta.glob('../../documentation/*.md', {
 const docOrder = [
   'README.md',
   'getting-started-beginner.md',
-  'get-gemini-api-key.md',
   'get-mongodb-atlas-url.md',
   'run-generated-app-locally.md',
   'deploy-with-railway.md',

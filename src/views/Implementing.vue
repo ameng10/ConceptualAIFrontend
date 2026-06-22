@@ -4,14 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
-import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
-import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
+import { maybeNavigateToStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
-import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
-import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
-import { ArrowLeft, ChevronDown, RotateCcw } from 'lucide-vue-next'
+import { ArrowLeft, ChevronDown } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,29 +39,14 @@ const implementStatus = ref<'starting' | 'started' | 'error'>('starting')
 const implementError = ref('')
 const implementationDoc = ref<any | null>(null)
 const designDoc = ref<any | null>(null)
-const syncAutocomplete = ref(false)
-const requestedAutocomplete = ref<boolean | null>(null)
 
 const isGeneratingSyncs = ref(false)
 const generateSyncsError = ref('')
-const isReverting = ref(false)
-const revertError = ref('')
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
 
-const ensureGeminiActionReady = () => {
-  try {
-    getGeminiHeadersOrThrow()
-    return null
-  } catch (error) {
-    if (isGeminiCredentialError(error)) {
-      return error.message
-    }
-    throw error
-  }
-}
 
 const isTransientPollingError = (err: unknown) => isHttp524(err)
 
@@ -90,12 +72,11 @@ const pollImplementationOnce = async () => {
     projectName.value = p.name
   }
 
-  const navigated = await maybeNavigateToAutocompleteStage(
+  const navigated = await maybeNavigateToStage(
     router,
     route.path,
     projectId,
     status,
-    p?.autocomplete,
     p?.name ?? projectName.value,
   )
   if (navigated) {
@@ -151,11 +132,6 @@ const startIfNeeded = async () => {
     }
   }
 
-  if (typeof route.query?.enableAutocomplete === 'string') {
-    requestedAutocomplete.value = route.query.enableAutocomplete === 'true'
-    syncAutocomplete.value = requestedAutocomplete.value
-  }
-
   try {
     const project = await projectApi.getProject(projectId)
     const status = project?.status
@@ -163,17 +139,13 @@ const startIfNeeded = async () => {
     if (project?.name) {
       projectName.value = project.name
     }
-    if (typeof project?.autocomplete === 'boolean' && requestedAutocomplete.value === null) {
-      syncAutocomplete.value = project.autocomplete
-    }
 
     if (!shouldStartImplementation) {
-      const navigated = await maybeNavigateToAutocompleteStage(
+      const navigated = await maybeNavigateToStage(
         router,
         route.path,
         projectId,
         status,
-        project?.autocomplete,
         project?.name ?? projectName.value,
       )
       if (navigated) {
@@ -183,15 +155,10 @@ const startIfNeeded = async () => {
 
     await loadDesignDoc()
 
-    const shouldTriggerImplementation = status === 'design_complete'
-
-    if (shouldTriggerImplementation) {
-      implementStatus.value = 'starting'
-      await projectApi.startImplementation(projectId, syncAutocomplete.value)
-      projectStatus.value = 'implementing'
-    } else {
-      implementStatus.value = 'started'
-    }
+    // The backend auto-advances from the design gate onward, so this vestigial page must NEVER
+    // trigger the implement stage itself (doing so would double-provision a sandbox). We only
+    // observe and render whatever the backend has already produced.
+    implementStatus.value = 'started'
 
     try {
       await pollImplementationOnce()
@@ -214,38 +181,12 @@ const startIfNeeded = async () => {
 
 }
 
-const handleRevert = async () => {
-  isReverting.value = true
-  revertError.value = ''
-  try {
-    await projectApi.revertProject(projectId)
-    await projectApi.getProject(projectId)
-    router.push({
-      path: `/project/${projectId}`,
-      query: {
-        projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
-        enableAutocomplete: String(syncAutocomplete.value),
-      },
-    })
-  } catch (err) {
-    if (isHttp524(err)) return
-    revertError.value = err instanceof Error ? err.message : String(err)
-    isReverting.value = false
-  }
-}
-
 onMounted(() => {
   startIfNeeded()
 })
 
 const handleGenerateSyncs = async () => {
   generateSyncsError.value = ''
-
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    generateSyncsError.value = geminiPreflightError
-    return
-  }
 
   isGeneratingSyncs.value = true
 
@@ -286,10 +227,6 @@ const handleGenerateSyncs = async () => {
 
       <ProjectStatusDisplay :status="'implementing'" :projectName="projectName || 'Project'" />
 
-      <div v-if="!implementationDoc" class="play-standalone">
-        <PlayWhileYouWait />
-      </div>
-
       <div class="glass fade-in plan-card">
         <h2 class="section-title">Implementing</h2>
   <p v-if="implementStatus === 'starting'" class="muted">Starting implementation…</p>
@@ -311,28 +248,10 @@ const handleGenerateSyncs = async () => {
               <span v-if="!isGeneratingSyncs">Generate syncs</span>
               <span v-else>Generating…</span>
             </button>
-            <PipelineAutocompleteToggle
-              v-model="syncAutocomplete"
-              compact
-              :disabled="isGeneratingSyncs || !canGenerateSyncs"
-              label="Autocomplete"
-            />
           </div>
 
           <div v-if="generateSyncsError" class="error-msg" style="margin-top: 0.75rem;">{{ generateSyncsError }}</div>
         </div>
-
-        <div class="revert-row">
-          <div class="revert-info">
-            <span class="revert-label">Revert to previous stage</span>
-            <span class="revert-desc">Undo implementation and restore the design.</span>
-          </div>
-          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
-            <RotateCcw :size="15" />
-            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
-          </button>
-        </div>
-        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
       </div>
 
       <details v-if="designDoc" class="glass fade-in design-dropdown">
@@ -503,32 +422,6 @@ const handleGenerateSyncs = async () => {
 .revert-desc {
   font-size: 0.8rem;
   color: var(--text-dim);
-}
-
-.btn-revert {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-  color: rgba(239, 68, 68, 0.9);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.btn-revert:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-.btn-revert:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .design-dropdown {

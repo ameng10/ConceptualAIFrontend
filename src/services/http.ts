@@ -39,13 +39,6 @@ function notifySessionCleared() {
   }
 }
 
-function isGeminiCredentialUnauthorized(error: AxiosError): boolean {
-  const status = error.response?.status
-  const data = error.response?.data as { error?: string; message?: string } | undefined
-  const message = String(data?.error || data?.message || '').toLowerCase()
-  return status === 401 && message.includes('gemini unwrap key')
-}
-
 function isGithubInstallationRequired(error: AxiosError, requestUrl = ''): boolean {
   if (!requestUrl.startsWith('/api/me/github')) return false
 
@@ -125,10 +118,6 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
     const originalUrl = originalRequest?.url || ''
-
-    if (isGeminiCredentialUnauthorized(error)) {
-      return Promise.reject(error)
-    }
 
     if (isGithubInstallationRequired(error, originalUrl)) {
       return Promise.reject(error)

@@ -18,32 +18,50 @@ const emit = defineEmits<{
 
 const steps = [
   { id: 'planning', label: 'Planning' },
-  { id: 'designing', label: 'Designing' },
-  { id: 'implementing', label: 'Implementing' },
-  { id: 'syncing', label: 'Generating Syncs' },
-  { id: 'assembling', label: 'Assembling' },
+  { id: 'building', label: 'Building' },
   { id: 'complete', label: 'Complete' }
 ]
 
+// Map every backend status onto one of the three high-level bubbles.
+const PLANNING_STATUSES = [
+  'planning',
+  'planned',
+  'planning_complete',
+  'awaiting_clarification',
+  'awaiting_input',
+]
+const BUILDING_STATUSES = [
+  'designing',
+  'design_complete',
+  'implementing',
+  'implemented',
+  'sync_generating',
+  'syncs_generated',
+  'syncing',
+  'building',
+  'assembling',
+  'assembled',
+]
+
 const currentStepIndex = computed(() => {
-  const normalizedStatus = props.status === 'building' ? 'assembling' : props.status
-  if (normalizedStatus === 'error') return -1
-  if (normalizedStatus === 'awaiting_clarification' || normalizedStatus === 'awaiting_input') return 0
+  const status = props.status
+  if (status === 'error') return -1
+  // Once the plan is accepted, we are at (or past) the Building bubble.
+  if (props.planAccepted) return 1
   if (props.holdPlanningActive) return 0
-  return steps.findIndex(s => s.id === normalizedStatus)
+  if (PLANNING_STATUSES.includes(status)) return 0
+  if (BUILDING_STATUSES.includes(status)) return 1
+  if (status === 'complete') return 2
+  return -1
 })
 
 const getStepStatus = (index: number) => {
-  const normalizedStatus = props.status === 'building' ? 'assembling' : props.status
-  if (normalizedStatus === 'error') return 'error'
+  const status = props.status
+  if (status === 'error') return 'error'
   // When fully complete, every prior step including "Complete" should render as complete.
-  if (normalizedStatus === 'complete') {
+  if (status === 'complete') {
     return index <= currentStepIndex.value ? 'complete' : 'pending'
   }
-  // Special: if user accepted the plan, Planning is complete.
-  if (props.planAccepted && index === 0) return 'complete'
-  // Special: if user accepted the plan, we should be in designing stage now.
-  if (props.planAccepted && index === 1) return 'active'
   if (index < currentStepIndex.value) return 'complete'
   if (index === currentStepIndex.value) return 'active'
   return 'pending'

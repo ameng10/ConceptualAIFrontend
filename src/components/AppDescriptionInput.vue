@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowRight, Type, MessageSquare } from 'lucide-vue-next'
-import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
 
 const props = withDefaults(
   defineProps<{
     initialName?: string
     initialDescription?: string
-    initialEnableAutocomplete?: boolean
-    showAutocompleteToggle?: boolean
     submitLabel?: string
   }>(),
   {
-    showAutocompleteToggle: true,
     submitLabel: 'Generate Backend',
   },
 )
@@ -22,7 +18,6 @@ const emit = defineEmits<{
     e: 'submit',
     description: string,
     name: string,
-    enableAutocomplete: boolean,
     done: (ok: boolean, errorMessage?: string) => void,
   ): void
 }>()
@@ -30,7 +25,6 @@ const emit = defineEmits<{
 const description = ref('')
 const name = ref('')
 const isSubmitting = ref(false)
-const enableAutocomplete = ref(false)
 
 type TypewriterOptions = {
   startDelayMs: number
@@ -160,7 +154,6 @@ const requirementsPlaceholder = computed(() => pairedTypewriter.rightText.value)
 onMounted(() => {
   if (props.initialName && !name.value) name.value = props.initialName
   if (props.initialDescription && !description.value) description.value = props.initialDescription
-  enableAutocomplete.value = Boolean(props.initialEnableAutocomplete)
   pairedTypewriter.start()
 })
 
@@ -171,7 +164,7 @@ onBeforeUnmount(() => {
 const handleSubmit = () => {
   if (!description.value || !name.value) return
   isSubmitting.value = true
-  emit('submit', description.value, name.value, enableAutocomplete.value, (ok, errorMessage) => {
+  emit('submit', description.value, name.value, (ok, errorMessage) => {
     isSubmitting.value = false
     // If parent reports error, keep inputs intact so the user can retry.
     // (Error presentation is handled by the parent view.)
@@ -217,14 +210,6 @@ const handleSubmit = () => {
       <div class="input-footer">
         <div class="footer-left">
           <p class="hint">Shift + Enter for new line</p>
-          <PipelineAutocompleteToggle
-            v-if="props.showAutocompleteToggle"
-            v-model="enableAutocomplete"
-            compact
-            :disabled="isSubmitting"
-            label="Autocomplete the rest of the pipeline"
-            hint="Automatically continue from planning into later stages."
-          />
         </div>
         <button
           class="btn btn-primary"

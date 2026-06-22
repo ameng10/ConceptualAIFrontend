@@ -84,4 +84,4 @@ Before running an AI-heavy app:
 
 When deploying a generated app, make sure the backend host has the same AI env vars set that worked locally.
 
-Use: [Deploy Your Generated App with Railway](./deploy-with-railway.md)
+Use: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)

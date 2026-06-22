@@ -2,17 +2,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
+import { socialApi } from '@/services/social-api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
-import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
-import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
+import { maybeNavigateToStage } from '@/services/project-stage-routing'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
-import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
-import PipelineAutocompleteToggle from '@/components/PipelineAutocompleteToggle.vue'
-import { ArrowLeft, RotateCcw, Share2 } from 'lucide-vue-next'
+import { ArrowLeft, Share2 } from 'lucide-vue-next'
 import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
 const route = useRoute()
@@ -39,39 +37,19 @@ const designDoc = ref<any | null>(null)
 const designFeedback = ref('')
 const isModifyingDesign = ref(false)
 const modifyDesignError = ref('')
-const planningAutocomplete = ref(false)
-const designAutocomplete = ref(false)
+
+// Advanced setting: only advanced users review/modify the concept design.
+const showConceptDesign = ref(false)
 
 const planToastShown = ref(false)
 const designToastShown = ref(false)
 const planningError = ref('')
-
-// Revert
-const isReverting = ref(false)
-const revertError = ref('')
-const REVERT_BLOCKED_STATUSES = ['planning', 'planning_complete', 'awaiting_clarification', 'awaiting_input']
-const canRevert = computed(() => {
-  const status = planningStatus.value ?? project.value?.status
-  if (!status) return false
-  return !REVERT_BLOCKED_STATUSES.includes(status)
-})
 
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
 }
 
-const ensureGeminiActionReady = () => {
-  try {
-    getGeminiHeadersOrThrow()
-    return null
-  } catch (error) {
-    if (isGeminiCredentialError(error)) {
-      return error.message
-    }
-    throw error
-  }
-}
 
 // Statuses where design has already started or is in progress - don't allow "Accept plan" to start design again
 const IN_PROGRESS_STATUSES = [
@@ -151,8 +129,35 @@ const isPlanInProgressStatus = (status: string) =>
   status === 'planning' || status === 'awaiting_clarification' || status === 'awaiting_input'
 
 const isDesignInProgressStatus = (status: string) => status === 'designing'
-const shouldPollProjectStatus = (status: string | null | undefined) =>
-  Boolean(status) && (isPlanInProgressStatus(String(status)) || isDesignInProgressStatus(String(status)))
+
+// Building statuses that the backend auto-advances through. While in any of these, this page
+// stays mounted as a read-only "Building…" progress view (the 3-bubble indicator with Building
+// active) and keeps polling until the project completes.
+const BUILDING_STATUSES = [
+  'designing',
+  'design_complete',
+  'implementing',
+  'implemented',
+  'sync_generating',
+  'syncs_generated',
+  'syncing',
+  'building',
+  'assembling',
+]
+const isBuildingStatus = (status: string | null | undefined) =>
+  Boolean(status) && BUILDING_STATUSES.includes(String(status))
+
+// Keep polling while planning is in progress, the design gate is active, or the backend is
+// auto-building. We stop once the user is parked at a human gate (plan/design review) or the
+// project reaches a terminal/complete status (which navigates away to the completed page).
+const shouldPollProjectStatus = (status: string | null | undefined) => {
+  if (!status) return false
+  const s = String(status)
+  if (isPlanInProgressStatus(s)) return true
+  // Advanced users pause at design_complete; everyone else keeps building.
+  if (s === 'design_complete') return !showConceptDesign.value
+  return isBuildingStatus(s)
+}
 
 const refreshPlan = async () => {
   const planPayload = await projectApi.getPlan(projectId)
@@ -217,25 +222,35 @@ const tickProject = async () => {
     if (p?.name) {
       projectName.value = p.name
     }
-    if (typeof p.autocomplete === 'boolean') {
-      planningAutocomplete.value = p.autocomplete
-      designAutocomplete.value = p.autocomplete
-    }
     const status = p.status
+    const iterating = Boolean((p as any)?.iterating)
     planningStatus.value = status
     accepted.value = Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
 
-    const navigated = await maybeNavigateToAutocompleteStage(
-      router,
-      route.path,
-      projectId,
-      status,
-      p.autocomplete,
-      p.name ?? projectName.value,
-    )
-    if (navigated) {
-      projectPoll.stop()
-      return
+    // During an iteration the backend re-enters Planning (full_pipeline) or jumps to a building
+    // status (frontend_only). Until it has actually moved off the prior terminal status, keep the
+    // user on the plan-review page instead of bouncing back to the completed page; otherwise the
+    // brief `complete`/`assembled` window would route them straight back out of the editor.
+    const iterationParkedOnPlan =
+      iterating && (status === 'complete' || status === 'assembled')
+
+    // Routing is "always-forward" but plan/design review and the read-only building progress
+    // view all live on this same route, so during the auto-build the user is never bounced
+    // between per-stage pages. The only navigation that fires from here is the final hop to the
+    // completed page once the project reaches complete/assembled.
+    if (!iterationParkedOnPlan) {
+      const navigated = await maybeNavigateToStage(
+        router,
+        route.path,
+        projectId,
+        status,
+        p.name ?? projectName.value,
+        showConceptDesign.value,
+      )
+      if (navigated) {
+        projectPoll.stop()
+        return
+      }
     }
 
     if (isPlanInProgressStatus(status) || status === 'planning_complete') {
@@ -258,8 +273,10 @@ const tickProject = async () => {
       await refreshDesign()
     }
 
-    // Stop polling once this page reaches a stable non-in-progress state.
-    if (!shouldPollProjectStatus(status)) {
+    // Stop polling once this page reaches a stable non-in-progress state. While an iteration is
+    // still settling on the prior terminal status, keep polling so we catch the transition into
+    // Planning (or a building status).
+    if (!shouldPollProjectStatus(status) && !iterationParkedOnPlan) {
       projectPoll.stop()
     }
   } catch (e) {
@@ -272,17 +289,11 @@ const projectPoll = usePolling(async () => {
   await tickProject()
 }, 30_000)
 
-const handleClarificationSubmit = async (answers: Record<string, string>, enableAutocomplete: boolean) => {
+const handleClarificationSubmit = async (answers: Record<string, string>) => {
   try {
     planningError.value = ''
-    const geminiPreflightError = ensureGeminiActionReady()
-    if (geminiPreflightError) {
-      planningError.value = geminiPreflightError
-      return
-    }
 
-    await projectApi.provideClarification(projectId, answers, enableAutocomplete)
-    planningAutocomplete.value = enableAutocomplete
+    await projectApi.provideClarification(projectId, answers)
     showClarification.value = false
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
@@ -295,6 +306,12 @@ const handleClarificationSubmit = async (answers: Record<string, string>, enable
 
 onMounted(async () => {
   tryHydrateFromQuery()
+  try {
+    const profile = await socialApi.getMyProfile()
+    showConceptDesign.value = Boolean(profile?.showConceptDesign)
+  } catch {
+    // Default advanced setting to off if the profile can't be loaded.
+  }
   await tickProject()
   if (shouldPollProjectStatus(planningStatus.value ?? project.value?.status)) {
     projectPoll.start()
@@ -305,33 +322,27 @@ const handleAcceptDesign = () => {
   if (!designDoc.value) return
   designError.value = ''
 
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    designError.value = geminiPreflightError
-    return
-  }
-
-  // Move the user to the dedicated implementing page (clean waiting experience).
-  // We pass the design payload so the implementing page can kick off the agent.
-  router.push({
-    path: `/project/${projectId}/implementing`,
-    query: {
-      projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
-      enableAutocomplete: String(designAutocomplete.value),
-      startImplementation: '1',
-    },
-  })
+  // Advanced "accept design" gate: start implementation, then let polling drive the UI through
+  // the rest of the auto-build (the backend advances implement -> syncs -> build -> complete).
+  const previousPlanningStatus = planningStatus.value
+  planningStatus.value = 'implementing'
+  projectPoll.start()
+  projectApi
+    .startImplementation(projectId)
+    .then(async () => {
+      await tickProject()
+    })
+    .catch((err) => {
+      if (isHttp524(err)) return
+      planningStatus.value = previousPlanningStatus
+      designError.value = err instanceof Error ? err.message : String(err)
+    })
 }
 
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
   planningError.value = ''
   designError.value = ''
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    planningError.value = geminiPreflightError
-    return
-  }
   const previousAccepted = accepted.value
   const previousPlanningStatus = planningStatus.value
   const previousDesignStatus = designStatus.value
@@ -342,9 +353,8 @@ const handleAcceptPlan = () => {
   planningStatus.value = 'designing'
   projectPoll.start()
   projectApi
-    .startDesign(projectId, planDoc.value.plan, planningAutocomplete.value)
+    .startDesign(projectId, planDoc.value.plan)
     .then(async () => {
-      designAutocomplete.value = planningAutocomplete.value
       await tickProject()
     })
     .catch((err) => {
@@ -365,15 +375,9 @@ const handleModifyPlan = async () => {
     return
   }
 
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    modifyError.value = geminiPreflightError
-    return
-  }
-
   isModifying.value = true
   try {
-    await projectApi.modifyPlan(projectId, feedback.value.trim(), planningAutocomplete.value)
+    await projectApi.modifyPlan(projectId, feedback.value.trim())
     planDoc.value = { status: 'processing' }
     planningStatus.value = 'planning'
     projectPoll.start()
@@ -400,15 +404,9 @@ const handleModifyDesign = async () => {
     return
   }
 
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    modifyDesignError.value = geminiPreflightError
-    return
-  }
-
   isModifyingDesign.value = true
   try {
-    await projectApi.modifyDesign(projectId, designFeedback.value.trim(), designAutocomplete.value)
+    await projectApi.modifyDesign(projectId, designFeedback.value.trim())
     designDoc.value = null
     designStatus.value = 'starting'
     planningStatus.value = 'designing'
@@ -421,44 +419,6 @@ const handleModifyDesign = async () => {
     modifyDesignError.value = err instanceof Error ? err.message : String(err)
   } finally {
     isModifyingDesign.value = false
-  }
-}
-
-const handleRevert = async () => {
-  isReverting.value = true
-  revertError.value = ''
-  try {
-    await projectApi.revertProject(projectId)
-    const updatedProject = await projectApi.getProject(projectId)
-    project.value = updatedProject
-    const newStatus = updatedProject.status
-
-    // Reset design state
-    accepted.value = false
-    designDoc.value = null
-    designStatus.value = 'idle'
-    designError.value = ''
-    planDoc.value = null
-    planningStatus.value = newStatus
-    planToastShown.value = false
-    designToastShown.value = false
-
-    // Refetch plan — it persists after reverting from design stage
-    try {
-      const plan = await projectApi.getPlan(projectId)
-      if (plan) {
-        planDoc.value = { status: 'complete', plan }
-        planningStatus.value = 'planning_complete'
-        if (project.value) project.value = { ...project.value, status: 'planning_complete' }
-      }
-    } catch {
-      // Plan may not be available; let the waiting state show
-    }
-  } catch (err) {
-    if (isHttp524(err)) return
-    revertError.value = err instanceof Error ? err.message : String(err)
-  } finally {
-    isReverting.value = false
   }
 }
 </script>
@@ -489,10 +449,6 @@ const handleRevert = async () => {
   :planAccepted="accepted"
       />
 
-  <div v-if="planningStatus !== 'complete'" class="play-standalone">
-        <PlayWhileYouWait />
-      </div>
-
       <div v-if="planDoc && !accepted && !isPastPlanningStage" class="glass fade-in plan-card">
         <h2 class="section-title">Planner</h2>
         <p v-if="planDoc.status === 'processing'" class="muted">Planning agent is working…</p>
@@ -515,12 +471,6 @@ const handleRevert = async () => {
             <button class="btn-primary" type="button" :disabled="accepted || !canStartDesign || designStatus === 'starting'" @click="handleAcceptPlan">
               Accept plan
             </button>
-            <PipelineAutocompleteToggle
-              v-model="planningAutocomplete"
-              compact
-              :disabled="accepted || !canStartDesign || designStatus === 'starting'"
-              label="Autocomplete"
-            />
           </div>
 
           <div class="modify-block">
@@ -538,19 +488,13 @@ const handleRevert = async () => {
                 <span v-if="!isModifying">Modify plan</span>
                 <span v-else>Modifying…</span>
               </button>
-              <PipelineAutocompleteToggle
-                v-model="planningAutocomplete"
-                compact
-                :disabled="isModifying"
-                label="Autocomplete"
-              />
             </div>
           </div>
         </div>
 
       </div>
 
-      <div v-if="accepted || isPastPlanningStage" class="glass fade-in plan-card">
+      <div v-if="showConceptDesign && (accepted || isPastPlanningStage)" class="glass fade-in plan-card">
         <h2 class="section-title">Design</h2>
         <p v-if="designStatus === 'starting'" class="muted">Sending accepted plan to the design agent…</p>
         <p v-else-if="designStatus === 'started'" class="muted">Design agent started.</p>
@@ -575,12 +519,6 @@ const handleRevert = async () => {
             >
               Accept design
             </button>
-            <PipelineAutocompleteToggle
-              v-model="designAutocomplete"
-              compact
-              :disabled="!canAcceptDesign"
-              label="Autocomplete"
-            />
           </div>
 
           <div class="modify-block">
@@ -598,12 +536,6 @@ const handleRevert = async () => {
                 <span v-if="!isModifyingDesign">Modify design</span>
                 <span v-else>Modifying…</span>
               </button>
-              <PipelineAutocompleteToggle
-                v-model="designAutocomplete"
-                compact
-                :disabled="isModifyingDesign"
-                label="Autocomplete"
-              />
             </div>
           </div>
         </div>
@@ -617,25 +549,11 @@ const handleRevert = async () => {
         <p>Planning your backend…</p>
       </div>
 
-      <div v-if="canRevert" class="glass fade-in revert-card">
-        <div class="revert-row">
-          <div class="revert-info">
-            <span class="revert-label">Revert to previous stage</span>
-            <span class="revert-desc">Undo the current stage and clear its artifacts.</span>
-          </div>
-          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
-            <RotateCcw :size="15" />
-            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
-          </button>
-        </div>
-        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
-      </div>
     </div>
 
     <ClarificationDialog
       :show="showClarification"
       :questions="questions"
-      :enableAutocomplete="planningAutocomplete"
       @submit="handleClarificationSubmit"
     />
   </div>
@@ -911,32 +829,6 @@ h1 {
 .revert-desc {
   font-size: 0.8rem;
   color: var(--text-dim);
-}
-
-.btn-revert {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 10px;
-  padding: 0.55rem 0.9rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-  color: rgba(239, 68, 68, 0.9);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.btn-revert:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-.btn-revert:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 @media (max-width: 720px) {

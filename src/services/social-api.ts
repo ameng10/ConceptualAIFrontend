@@ -61,6 +61,9 @@ export interface Profile {
   username: string
   displayName: string
   bio?: string
+  // Advanced setting: when true, the generation pipeline pauses after concept designing so the
+  // user can review/modify the design before the build auto-completes.
+  showConceptDesign?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -204,12 +207,12 @@ export const socialApi = {
     return res.data.profile
   },
 
-  async createProfile(data: { username: string; displayName: string; bio?: string }) {
+  async createProfile(data: { username: string; displayName: string; bio?: string; showConceptDesign?: boolean }) {
     const res = await api.post<{ profile: Profile }>(`${BASE}/me/profile`, data)
     return res.data.profile
   },
 
-  async updateProfile(data: Partial<{ username: string; displayName: string; bio: string }>) {
+  async updateProfile(data: Partial<{ username: string; displayName: string; bio: string; showConceptDesign: boolean }>) {
     const res = await api.patch<{ profile: Profile }>(`${BASE}/me/profile`, data)
     return res.data.profile
   },

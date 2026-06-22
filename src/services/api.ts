@@ -12,13 +12,6 @@ import {
 } from './auth-storage'
 import * as authFns from './auth'
 import {
-    clearGeminiCredentialState,
-    getGeminiHeadersOrThrow,
-    initializeGeminiCredentialSession,
-    normalizeGeminiRequestError,
-    syncGeminiCredentialStatus,
-} from './gemini-credentials'
-import {
     clearGithubCredentialState,
     initializeGithubCredentialSession,
     syncGithubCredentialStatus,
@@ -41,7 +34,7 @@ export interface Project {
     _id: string
     name: string
     description: string
-    autocomplete?: boolean
+    iterating?: boolean
     status:
     | 'planning'
     | 'planned'
@@ -164,11 +157,6 @@ export async function validateSession(): Promise<void> {
     try {
         await authFns.getUserFromToken(accessToken)
         try {
-            await syncGeminiCredentialStatus()
-        } catch {
-            // Do not block route access if Gemini status refresh fails.
-        }
-        try {
             await syncGithubCredentialStatus()
         } catch {
             // Do not block route access if GitHub status refresh fails.
@@ -186,11 +174,6 @@ export async function validateSession(): Promise<void> {
                     try {
                         await authFns.getUserFromToken(result.accessToken)
                         try {
-                            await syncGeminiCredentialStatus()
-                        } catch {
-                            // Do not block route access if Gemini status refresh fails.
-                        }
-                        try {
                             await syncGithubCredentialStatus()
                         } catch {
                             // Do not block route access if GitHub status refresh fails.
@@ -204,7 +187,6 @@ export async function validateSession(): Promise<void> {
                 // Refresh failed – fall through to clear
             }
         }
-        clearGeminiCredentialState()
         clearGithubCredentialState()
         clearAuthData()
         if (typeof window !== 'undefined') {
@@ -224,7 +206,6 @@ export function initAuthOnStartup() {
     const user = getUserId()
     if (!user) {
         // If there's no user id, make sure we clear any stale tokens/usernames.
-        clearGeminiCredentialState()
         clearGithubCredentialState()
         clearAuthData()
         return
@@ -237,7 +218,6 @@ export function initAuthOnStartup() {
     const hasAnyToken = accessToken !== null || refreshToken !== null
     const hasValidTokens = Boolean(accessToken) && Boolean(refreshToken)
     if (hasAnyToken && !hasValidTokens) {
-        clearGeminiCredentialState()
         clearGithubCredentialState()
         clearAuthData()
     }
@@ -259,11 +239,6 @@ export const authApi = {
             const loginUsername = (res as any)?.username as string | undefined
             authState.set({ ...res, username: loginUsername })
 
-            try {
-                await initializeGeminiCredentialSession(plaintextPassword)
-            } catch {
-                // Do not fail login if the Gemini status probe is temporarily unavailable.
-            }
             try {
                 await initializeGithubCredentialSession(plaintextPassword)
             } catch {
@@ -295,29 +270,17 @@ export const authApi = {
         if (accessToken) {
             await authFns.logout(accessToken)
         }
-        clearGeminiCredentialState()
         clearGithubCredentialState()
         authState.clear()
     }
 }
 
-async function runGeminiRequest<T>(execute: () => Promise<T>): Promise<T> {
-    try {
-        return await execute()
-    } catch (error) {
-        normalizeGeminiRequestError(error)
-    }
-}
-
 export const projectApi = {
-    async create(owner: string, name: string, description: string, enableAutocomplete = false) {
+    async create(owner: string, name: string, description: string) {
         // API.md: POST /projects (auth required)
-        const response = await runGeminiRequest(() =>
-            api.post<any>(
-                '/api/projects',
-                { name, description, enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+        const response = await api.post<any>(
+            '/api/projects',
+            { name, description },
         )
 
         if ((response.data as any)?.error || (response.data as any)?.message) {
@@ -366,15 +329,12 @@ export const projectApi = {
         return { project: pid, planning }
     },
 
-    async startDesign(projectId: string, plan: any, enableAutocomplete = false) {
-        // Not yet documented in API.md; aligns with the agent pipeline (planning -> designing).
-        // Expected to return status/progress payload.
-        const response = await runGeminiRequest(() =>
-            api.post<any>(
-                `/api/projects/${projectId}/design`,
-                { plan, enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+    async startDesign(projectId: string, plan: any) {
+        // Accept-plan gate: starts the design stage, after which the pipeline auto-advances
+        // (the backend decides whether to pause at the design gate via the user's settings).
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/design`,
+            { plan },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -386,13 +346,10 @@ export const projectApi = {
      * Placeholder endpoint: start the implementing agent.
      * TODO: Replace with real API docs once available.
      */
-    async startImplementation(projectId: string, enableAutocomplete = false) {
-        const response = await runGeminiRequest(() =>
-            api.post<any>(
-                `/api/projects/${projectId}/implement`,
-                { enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+    async startImplementation(projectId: string) {
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/implement`,
+            {},
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -412,13 +369,10 @@ export const projectApi = {
     /**
      * API.md: POST /projects/:projectId/syncs
      */
-    async startSyncGeneration(projectId: string, enableAutocomplete = false) {
-        const response = await runGeminiRequest(() =>
-            api.post<any>(
-                `/api/projects/${projectId}/syncs`,
-                { enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+    async startSyncGeneration(projectId: string) {
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/syncs`,
+            {},
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -461,13 +415,10 @@ export const projectApi = {
      *   "frontend": { "status": "complete", "downloadUrl": "/api/downloads/:projectId_frontend.zip" }
      * }
      */
-    async startBuild(projectId: string, enableAutocomplete = false) {
-        const response = await runGeminiRequest(() =>
-            api.post<any>(
-                `/api/projects/${projectId}/build`,
-                { enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+    async startBuild(projectId: string) {
+        const response = await api.post<any>(
+            `/api/projects/${projectId}/build`,
+            {},
         )
         const data = response.data as any
         if (data?.error || data?.status === 'error') {
@@ -552,14 +503,11 @@ export const projectApi = {
         return (response.data as any)?.design ?? (response.data as any)?.result ?? response.data
     },
 
-    async modifyDesign(projectId: string, feedback: string, enableAutocomplete = false) {
+    async modifyDesign(projectId: string, feedback: string) {
         // API.md: PUT /projects/:projectId/design
-        const response = await runGeminiRequest(() =>
-            api.put<{ status: string; design?: any; error?: string; message?: string }>(
-                `/api/projects/${projectId}/design`,
-                { feedback, enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+        const response = await api.put<{ status: string; design?: any; error?: string; message?: string }>(
+            `/api/projects/${projectId}/design`,
+            { feedback },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -567,14 +515,25 @@ export const projectApi = {
         return response.data
     },
 
-    async modifyPlan(projectId: string, feedback: string, enableAutocomplete = false) {
+    async modifyPlan(projectId: string, feedback: string) {
         // API.md: PUT /projects/:projectId/plan
-        const response = await runGeminiRequest(() =>
-            api.put<{ status: string; plan?: any; error?: string; message?: string }>(
-                `/api/projects/${projectId}/plan`,
-                { feedback, enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+        const response = await api.put<{ status: string; plan?: any; error?: string; message?: string }>(
+            `/api/projects/${projectId}/plan`,
+            { feedback },
+        )
+        if ((response.data as any)?.error || (response.data as any)?.message) {
+            throw new Error((response.data as any).error || (response.data as any).message)
+        }
+        return response.data
+    },
+
+    async iterate(projectId: string, feedback: string) {
+        // API.md: POST /projects/:projectId/iterate -> { project, iterating: true }
+        // The backend classifies the feedback: full_pipeline re-enters Planning; frontend_only
+        // jumps straight to Building (frontend regen only).
+        const response = await api.post<{ project?: string; iterating?: boolean; error?: string; message?: string }>(
+            `/api/projects/${projectId}/iterate`,
+            { feedback },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)
@@ -589,12 +548,9 @@ export const projectApi = {
     },
 
     async launchPreview(projectId: string) {
-        const response = await runGeminiRequest(() =>
-            api.post<{ project: string; status: string; error?: string }>(
-                `/api/projects/${projectId}/preview`,
-                {},
-                { headers: getGeminiHeadersOrThrow() },
-            )
+        const response = await api.post<{ project: string; status: string; error?: string }>(
+            `/api/projects/${projectId}/preview`,
+            {},
         )
         if (response.data?.error) {
             throw new Error(response.data.error)
@@ -620,18 +576,6 @@ export const projectApi = {
         )
         if (response.data?.error) {
             throw new Error(response.data.error)
-        }
-        return response.data
-    },
-
-    async revertProject(projectId: string) {
-        // API.md: POST /projects/:projectId/revert
-        const response = await api.post<{ project: string; status: string; revertedFrom?: any }>(
-            `/api/projects/${projectId}/revert`,
-            {},
-        )
-        if ((response.data as any)?.error || (response.data as any)?.message) {
-            throw new Error((response.data as any).error || (response.data as any).message)
         }
         return response.data
     },
@@ -691,14 +635,11 @@ export const projectApi = {
 
     // Legacy support or if needed for specific extensions
     // Ideally we transition fully to the new endpoints
-    async provideClarification(projectId: string, answers: Record<string, string>, enableAutocomplete = false) {
+    async provideClarification(projectId: string, answers: Record<string, string>) {
         // API.md: POST /projects/:projectId/clarify
-        const response = await runGeminiRequest(() =>
-            api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
-                `/api/projects/${projectId}/clarify`,
-                { answers, enableAutocomplete },
-                { headers: getGeminiHeadersOrThrow() },
-            )
+        const response = await api.post<{ status: string; plan?: any; questions?: string[]; error?: string; message?: string }>(
+            `/api/projects/${projectId}/clarify`,
+            { answers },
         )
         if ((response.data as any)?.error || (response.data as any)?.message) {
             throw new Error((response.data as any).error || (response.data as any).message)

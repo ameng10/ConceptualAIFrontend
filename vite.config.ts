@@ -11,6 +11,7 @@ export default defineConfig({
         },
     },
     server: {
+        port: 5173,
         allowedHosts: ['conceptual-ai.app'],
         fs: {
             deny: ['**/.git/**'],

@@ -5,7 +5,6 @@ import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
 import { isHttp524 } from '@/services/http-errors'
-import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
 import { getProjectPathForStatus } from '@/services/project-stage-routing'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
@@ -16,8 +15,6 @@ const questions = ref<string[]>([])
 const currentProjectId = ref('')
 const currentUser = ref(null as any) // Simple reactive user state
 const isSignedIn = ref(authState.isSignedIn())
-
-const geminiError = ref('')
 
 const syncAuthFromStorage = () => {
   currentUser.value = authState.get()
@@ -35,21 +32,8 @@ const prefillName = computed(() => (typeof route.query.name === 'string' ? route
 const prefillDescription = computed(() =>
   typeof route.query.description === 'string' ? route.query.description : '',
 )
-const prefillAutocomplete = computed(() => route.query.autocomplete === 'true')
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
-
-const ensureGeminiActionReady = () => {
-  try {
-    getGeminiHeadersOrThrow()
-    return null
-  } catch (error) {
-    if (isGeminiCredentialError(error)) {
-      return error.message
-    }
-    throw error
-  }
-}
 
 const selectNewestProjectId = (
   projects: Array<{ _id: string; name: string; description: string; createdAt?: string }>,
@@ -140,22 +124,13 @@ onUnmounted(() => {
 const handleProjectSubmit = async (
   description: string,
   name: string,
-  enableAutocomplete: boolean,
   done: (ok: boolean, errorMessage?: string) => void,
 ) => {
   try {
-    geminiError.value = ''
     // User must be authenticated (enforced by route guard)
     const userId = authState.getUserId()
     if (!userId) {
       done(false, 'You must be signed in to create a project.')
-      return
-    }
-
-    const geminiPreflightError = ensureGeminiActionReady()
-    if (geminiPreflightError) {
-      geminiError.value = geminiPreflightError
-      done(false, geminiPreflightError)
       return
     }
 
@@ -166,7 +141,7 @@ const handleProjectSubmit = async (
     let createError: unknown = null
 
     void projectApi
-      .create(userId, name, description, enableAutocomplete)
+      .create(userId, name, description)
       .then((result) => {
         createResult = result
       })
@@ -176,7 +151,7 @@ const handleProjectSubmit = async (
 
     // Important: the backend generates the canonical project id.
     // We poll for it immediately instead of waiting for POST /projects to finish,
-    // because autocomplete may keep that request open while the pipeline continues.
+    // because the create request may stay open while the pipeline continues.
     const pid = await waitForCreatedProject(
       userId,
       name,
@@ -224,12 +199,6 @@ const handleProjectSubmit = async (
           ? error.message
           : String(error)
 
-    if (isGeminiCredentialError(error)) {
-      geminiError.value = msg || 'Gemini credentials are required to continue.'
-      done(false, geminiError.value)
-      return
-    }
-
     alert(msg || 'Failed to start project. Please check if the backend is running.')
     done(false, msg || 'Failed to start project.')
   }
@@ -237,12 +206,6 @@ const handleProjectSubmit = async (
 
 const handleClarificationSubmit = async (answers: Record<string, string>) => {
   try {
-    const geminiPreflightError = ensureGeminiActionReady()
-    if (geminiPreflightError) {
-      geminiError.value = geminiPreflightError
-      return
-    }
-
     await projectApi.provideClarification(currentProjectId.value, answers)
     showClarification.value = false
     router.push(`/project/${currentProjectId.value}`)
@@ -273,7 +236,6 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
         <AppDescriptionInput
           :initialName="prefillName"
           :initialDescription="prefillDescription"
-          :initialEnableAutocomplete="prefillAutocomplete"
           @submit="handleProjectSubmit"
         />
       </div>
@@ -281,8 +243,6 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       <div class="quick-tips">
         <p>Try: "A marketplace with items and reviews" or "A social app with following and posting"</p>
       </div>
-
-      <div v-if="geminiError" class="error-msg centered-error">{{ geminiError }}</div>
     </div>
 
     <ClarificationDialog

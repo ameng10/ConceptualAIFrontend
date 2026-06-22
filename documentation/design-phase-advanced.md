@@ -60,5 +60,5 @@ To understand why this structure matters, read:
 
 ## Next steps
 
-- Need setup help: [Get a Gemini API Key](./get-gemini-api-key.md), [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
-- Need run/deploy help: [Run Your Generated App Locally](./run-generated-app-locally.md), [Deploy Your Generated App with Railway](./deploy-with-railway.md)
+- Need setup help: [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md), [Get an AI Provider Key](./get-ai-provider-key.md) (only if your app uses AI)
+- Need run/deploy help: [Run Your Generated App Locally](./run-generated-app-locally.md), [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)

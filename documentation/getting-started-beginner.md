@@ -6,22 +6,19 @@ If you have never done this before, you can still do it.
 
 ## Before You Start
 
-You need:
+To **generate** an app, you just need your app idea and about **30 to 90 minutes** for one full run. You do **not** need to bring your own AI key — the platform supplies the AI used during generation.
 
-- A **Gemini API key** (guide: [Get a Gemini API Key](./get-gemini-api-key.md))
+To later **run** your generated app, you'll need:
+
 - A **MongoDB Atlas URL** (guide: [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md))
 - A **JWT secret** (you can generate one later)
-- About **30 to 90 minutes** for one full run
+- A **provider API key** only if your app includes AI features (guide: [Get an AI Provider Key](./get-ai-provider-key.md))
 
-## Cost Note (Important)
+## Cost Note
 
-Using AI generation costs money.
+Generating an app on ConceptualAI does not require your own AI key — the platform provides the AI used during generation. A credit-based usage system is planned but not yet in effect.
 
-- A small/medium app (around 30 endpoints) can be about **$5** in API usage.
-- A larger app (around 60 endpoints) can be about **$10**.
-- Bigger or more complex apps can cost more.
-
-Treat each run like a real cost decision.
+One cost is still yours: if your **generated app** uses AI-backed features, it calls AI with a provider key **you** supply, and that usage is billed to your provider account when you run or deploy the app. See [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md).
 
 ## Step 1: Start with a clear app prompt
 
@@ -81,8 +78,8 @@ A full run can be quick for small apps or longer for bigger ones.
 
 Important timeout rule:
 
-- Any single sandboxed generation phase has a hard max of **2 hours**.
-- If a phase runs longer than 2 hours, treat it as broken and retry/resume.
+- Any single sandboxed generation phase has a hard max of **4 hours**.
+- If a phase runs longer than 4 hours, treat it as broken and retry/resume.
 - Your project should return to the last persisted state (previous completed outputs remain in storage).
 
 ## Step 5: Configure environment files in generated projects
@@ -145,7 +142,7 @@ Check:
 
 When local testing works, deploy it so other people can use it.
 
-Guide: [Deploy Your Generated App with Railway](./deploy-with-railway.md)
+Guide: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
 
 ## Want to learn the deeper ideas?
 

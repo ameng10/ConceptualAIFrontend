@@ -1,6 +1,6 @@
 # Terms of Service
 
-This document sets the basic terms for using this free bring-your-own-key service.
+This document sets the basic terms for using this service.
 
 Back to docs home: [ConceptualAI User Documentation](./README.md)
 
@@ -10,19 +10,21 @@ By using the service, you agree to these Terms of Service.
 
 If you do not agree, do not use the service.
 
-## 2. Free BYOK service
+## 2. The service
 
-This is a free bring-your-own-key service.
+The service generates applications for you using AI.
 
 That means:
 
-- You provide your own third-party API key
-- The service uses your key to make requests you initiate through the product
-- Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules
+- The AI used to generate apps is provided by the service; you do not need to supply your own AI key to generate apps.
+- The service is currently provided at no charge. A credit-based usage model is planned and, once introduced, may govern future usage.
+- Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you separately use.
 
-## 3. Your API key and provider account
+## 3. Keys you supply for your generated apps
 
-You are responsible for:
+Generated apps may include AI-backed features that require a third-party provider API key **you** supply when you run or deploy your app.
+
+For any such key, you are responsible for:
 
 - Providing a valid API key you are authorized to use
 - Securing your key and your provider account
@@ -31,23 +33,23 @@ You are responsible for:
 
 ## 4. Costs and billing
 
-You are solely responsible for all third-party API charges, usage fees, overages, and related costs incurred through use of your API key.
+You are solely responsible for all third-party API charges, usage fees, overages, and related costs incurred through any provider key you supply for your own generated apps.
 
 This applies regardless of:
 
-- What prompts you submit
+- What inputs your app submits
 - What outputs are returned
 - Whether the output is useful, incorrect, incomplete, harmful, repetitive, or unexpected
 - Whether requests are large, frequent, automated, mistaken, or triggered by generated system behavior using your key
 
-We are never liable for API costs incurred on your API key.
+We are never liable for third-party API costs incurred on a key you supply.
 
 ## 5. Prompts, outputs, and generated results
 
 You understand and agree that:
 
 - You provide prompts and other inputs to the service
-- The service may send those inputs to third-party providers using your key
+- The service may send those inputs to third-party AI providers to fulfill your requests
 - AI output is probabilistic and may be wrong, incomplete, misleading, offensive, or otherwise unsuitable
 - Generated code, plans, documents, or other outputs are provided as-is
 

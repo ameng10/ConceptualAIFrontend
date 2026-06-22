@@ -4,9 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { User, Github } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
-import GeminiCredentialsForm from '@/components/GeminiCredentialsForm.vue'
 import GitHubAccountForm from '@/components/GitHubAccountForm.vue'
-import { unlockStoredGeminiCredential, useGeminiCredentials } from '@/services/gemini-credentials'
 import { getPendingGithubExport } from '@/services/github-export'
 import { unlockStoredGithubCredential, useGithubCredentials } from '@/services/github-credentials'
 
@@ -21,25 +19,17 @@ const reconnectSuccess = ref('')
 
 const route = useRoute()
 const router = useRouter()
-const { hasStoredGeminiCredential, needsReconnect: geminiNeedsReconnect } = useGeminiCredentials()
 const { hasStoredGithubCredential, needsReconnect: githubNeedsReconnect } = useGithubCredentials()
 
-const needsAnyReconnect = computed(() => geminiNeedsReconnect.value || githubNeedsReconnect.value)
-const reconnectSummary = computed(() => {
-  if (geminiNeedsReconnect.value && githubNeedsReconnect.value) {
-    return 'Your Gemini and GitHub credentials need to be reconnected for this session.'
-  }
-
-  if (geminiNeedsReconnect.value) {
-    return 'Your Gemini credentials need to be reconnected for this session.'
-  }
-
-  return 'Your GitHub credentials need to be reconnected for this session.'
-})
+const needsAnyReconnect = computed(() => githubNeedsReconnect.value)
+const reconnectSummary = computed(
+  () => 'Your GitHub credentials need to be reconnected for this session.',
+)
 
 const username = ref('')
 const displayName = ref('')
 const bio = ref('')
+const showConceptDesign = ref(false)
 
 const getRequestedReturnPath = () => (typeof route.query.returnPath === 'string' ? route.query.returnPath : '')
 
@@ -62,31 +52,20 @@ const reconnectCredentials = async () => {
     return
   }
 
-  const reconnectGemini = geminiNeedsReconnect.value && hasStoredGeminiCredential.value
   const reconnectGithub = githubNeedsReconnect.value && hasStoredGithubCredential.value
 
-  if (!reconnectGemini && !reconnectGithub) return
+  if (!reconnectGithub) return
 
   reconnecting.value = true
 
   try {
-    await Promise.all([
-      reconnectGemini ? unlockStoredGeminiCredential(reconnectPassword.value) : Promise.resolve(),
-      reconnectGithub ? unlockStoredGithubCredential(reconnectPassword.value) : Promise.resolve(),
-    ])
+    await unlockStoredGithubCredential(reconnectPassword.value)
 
-    reconnectSuccess.value =
-      reconnectGemini && reconnectGithub
-        ? 'Gemini and GitHub credentials reconnected for this session.'
-        : reconnectGemini
-          ? 'Gemini credentials reconnected for this session.'
-          : 'GitHub credentials reconnected for this session.'
+    reconnectSuccess.value = 'GitHub credentials reconnected for this session.'
 
     reconnectPassword.value = ''
 
-    if (reconnectGithub) {
-      await maybeReturnToPendingExport()
-    }
+    await maybeReturnToPendingExport()
   } catch (err) {
     reconnectError.value = err instanceof Error ? err.message : 'Failed to reconnect saved credentials.'
   } finally {
@@ -104,6 +83,7 @@ const loadProfile = async () => {
     username.value = profile?.username ?? ''
     displayName.value = profile?.displayName ?? ''
     bio.value = profile?.bio ?? ''
+    showConceptDesign.value = Boolean(profile?.showConceptDesign)
   } catch (e: any) {
     const status = e?.response?.status
     if (status === 404) {
@@ -135,6 +115,7 @@ const saveProfile = async () => {
       username: nextUsername,
       displayName: nextDisplayName,
       bio: nextBio || undefined,
+      showConceptDesign: showConceptDesign.value,
     })
 
     // Keep auth display in sync for sidebar/header labels.
@@ -143,6 +124,9 @@ const saveProfile = async () => {
     username.value = profile?.username ?? nextUsername
     displayName.value = profile?.displayName ?? nextDisplayName
     bio.value = profile?.bio ?? nextBio
+    if (typeof profile?.showConceptDesign === 'boolean') {
+      showConceptDesign.value = profile.showConceptDesign
+    }
     success.value = 'Profile updated.'
   } catch (e: any) {
     const status = e?.response?.status
@@ -153,6 +137,7 @@ const saveProfile = async () => {
           username: nextUsername,
           displayName: nextDisplayName,
           bio: nextBio || undefined,
+          showConceptDesign: showConceptDesign.value,
         })
         if (created?.username) setUsername(created.username)
         username.value = created?.username ?? nextUsername
@@ -180,7 +165,7 @@ onMounted(loadProfile)
     <div class="container fade-in">
       <div class="header">
         <h1 class="animated-gradient-text">Settings</h1>
-        <p class="subtitle">Manage your Gemini credentials, GitHub connection, and public profile.</p>
+        <p class="subtitle">Manage your GitHub connection and public profile.</p>
       </div>
 
       <main v-if="needsAnyReconnect" class="settings-content glass reconnect-card">
@@ -211,15 +196,6 @@ onMounted(loadProfile)
 
         <p v-if="reconnectError" class="error-msg reconnect-message">{{ reconnectError }}</p>
         <p v-if="reconnectSuccess" class="success-msg reconnect-message">{{ reconnectSuccess }}</p>
-      </main>
-
-      <main class="settings-content glass">
-        <div class="section-title">
-          <User :size="18" />
-          <h3>Gemini Credentials</h3>
-        </div>
-
-        <GeminiCredentialsForm />
       </main>
 
       <main class="settings-content glass">
@@ -273,6 +249,21 @@ onMounted(loadProfile)
               rows="4"
               placeholder="Tell people a bit about yourself (optional)."
             />
+          </div>
+
+          <div class="field-group toggle-field">
+            <label class="toggle-row" for="profile-show-concept-design">
+              <input
+                id="profile-show-concept-design"
+                v-model="showConceptDesign"
+                type="checkbox"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-copy">
+                <span class="toggle-label">Show concept-design review step (advanced)</span>
+                <span class="toggle-hint">Pause the pipeline after the design stage so you can review and modify the concept design before the build finishes.</span>
+              </span>
+            </label>
           </div>
 
           <p v-if="error" class="error-msg">{{ error }}</p>
@@ -392,6 +383,45 @@ h1 {
 .bio-input {
   resize: vertical;
   min-height: 96px;
+}
+
+.toggle-field {
+  max-width: 520px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-checkbox {
+  margin-top: 0.2rem;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.toggle-copy {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.toggle-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.toggle-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.4;
 }
 
 .muted {

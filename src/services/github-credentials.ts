@@ -2,7 +2,6 @@ import { computed, ref } from 'vue'
 import { AxiosError } from 'axios'
 import { api } from './http'
 import { requestCredentialReconnect } from './credential-reconnect'
-import { useGeminiCredentials } from './gemini-credentials'
 
 export interface GithubKdfParams {
   algorithm: 'PBKDF2'
@@ -68,8 +67,6 @@ const githubCredentialMetadata = ref<StoredGithubCredentialMetadata | null>(null
 const githubUnwrapKey = ref('')
 const githubCredentialStatusLoaded = ref(false)
 
-const geminiCredentials = useGeminiCredentials()
-
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = ''
   for (const byte of bytes) {
@@ -132,27 +129,6 @@ function normalizePermissions(value: unknown): GithubPermissions {
   )
 }
 
-function getGeminiVaultMetadata(): SharedVaultMetadata | null {
-  const metadata = geminiCredentials.geminiCredentialMetadata.value
-  if (!metadata) return null
-  return {
-    kdfSalt: metadata.kdfSalt,
-    kdfParams: normalizeKdfParams(metadata.kdfParams),
-    encryptionVersion: metadata.encryptionVersion,
-  }
-}
-
-function sameVaultMetadata(left: SharedVaultMetadata | null, right: SharedVaultMetadata | null): boolean {
-  if (!left || !right) return false
-  return (
-    left.kdfSalt === right.kdfSalt &&
-    left.encryptionVersion === right.encryptionVersion &&
-    left.kdfParams.iterations === right.kdfParams.iterations &&
-    (left.kdfParams.hash ?? DEFAULT_KDF_HASH) === (right.kdfParams.hash ?? DEFAULT_KDF_HASH) &&
-    (left.kdfParams.keyLength ?? DEFAULT_KEY_LENGTH_BYTES) === (right.kdfParams.keyLength ?? DEFAULT_KEY_LENGTH_BYTES)
-  )
-}
-
 function getExistingVaultMetadata(): SharedVaultMetadata | null {
   if (githubCredentialMetadata.value) {
     return {
@@ -162,7 +138,7 @@ function getExistingVaultMetadata(): SharedVaultMetadata | null {
     }
   }
 
-  return getGeminiVaultMetadata()
+  return null
 }
 
 function applyGithubCredentialStatus(status: GithubCredentialStatusResponse) {
@@ -192,18 +168,6 @@ function applyGithubCredentialStatus(status: GithubCredentialStatusResponse) {
 
   hasStoredGithubCredential.value = true
   githubCredentialMetadata.value = nextMetadata
-
-  const geminiVaultMetadata = getGeminiVaultMetadata()
-  if (
-    geminiCredentials.geminiUnwrapKey.value.trim() &&
-    sameVaultMetadata(geminiVaultMetadata, {
-      kdfSalt: nextMetadata.kdfSalt,
-      kdfParams: nextMetadata.kdfParams,
-      encryptionVersion: nextMetadata.encryptionVersion,
-    })
-  ) {
-    githubUnwrapKey.value = geminiCredentials.geminiUnwrapKey.value.trim()
-  }
 }
 
 async function deriveUnwrapKeyFromMetadata(password: string, metadata: SharedVaultMetadata): Promise<string> {
@@ -377,7 +341,7 @@ export async function deleteGithubCredential(): Promise<void> {
 }
 
 export function getSharedVaultUnwrapKey(): string {
-  return githubUnwrapKey.value.trim() || geminiCredentials.geminiUnwrapKey.value.trim()
+  return githubUnwrapKey.value.trim()
 }
 
 export function getSharedVaultUnwrapKeyOrThrow(): string {
@@ -394,7 +358,7 @@ export function getSharedVaultUnwrapKeyOrThrow(): string {
 
 export function useGithubCredentials() {
   const hasUnwrapKey = computed(
-    () => githubUnwrapKey.value.trim().length > 0 || geminiCredentials.geminiUnwrapKey.value.trim().length > 0,
+    () => githubUnwrapKey.value.trim().length > 0,
   )
   const needsReconnect = computed(() => hasStoredGithubCredential.value && !hasUnwrapKey.value)
 

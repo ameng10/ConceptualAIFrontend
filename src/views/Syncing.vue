@@ -4,14 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
-import { getGeminiHeadersOrThrow, isGeminiCredentialError } from '@/services/gemini-credentials'
-import { maybeNavigateToAutocompleteStage } from '@/services/project-stage-routing'
+import { maybeNavigateToStage } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import SyncExplorer from '@/components/SyncExplorer.vue'
-import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
-import { ArrowLeft, ChevronDown, Clipboard, ClipboardCheck, RotateCcw } from 'lucide-vue-next'
+import { ArrowLeft, ChevronDown, Clipboard, ClipboardCheck } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,18 +40,6 @@ const syncDoc = ref<any | null>(null)
 const toErrorMessage = (err: unknown, fallback: string) => {
   const anyErr = err as any
   return anyErr?.response?.data?.error || anyErr?.response?.data?.message || (err instanceof Error ? err.message : fallback)
-}
-
-const ensureGeminiActionReady = () => {
-  try {
-    getGeminiHeadersOrThrow()
-    return null
-  } catch (error) {
-    if (isGeminiCredentialError(error)) {
-      return error.message
-    }
-    throw error
-  }
 }
 
 const isTransientPollingError = (err: unknown) => isHttp524(err)
@@ -151,12 +137,11 @@ const pollSyncOnce = async () => {
     projectName.value = p.name
   }
 
-  const navigated = await maybeNavigateToAutocompleteStage(
+  const navigated = await maybeNavigateToStage(
     router,
     route.path,
     projectId,
     status,
-    p?.autocomplete,
     p?.name ?? projectName.value,
   )
   if (navigated) {
@@ -214,23 +199,20 @@ const startIfNeeded = async () => {
   ])
 
   let resolvedStatus = initialProjectStatus.value || ''
-  let enableAutocomplete = false
   try {
     const p = await projectApi.getProject(projectId)
     const apiStatus = p?.status ? String(p.status) : ''
-    enableAutocomplete = Boolean(p?.autocomplete)
     projectStatus.value = apiStatus || null
     if (p?.name) {
       projectName.value = p.name
     }
 
     if (!shouldStartSyncGeneration) {
-      const navigated = await maybeNavigateToAutocompleteStage(
+      const navigated = await maybeNavigateToStage(
         router,
         route.path,
         projectId,
         apiStatus,
-        p?.autocomplete,
         p?.name ?? projectName.value,
       )
       if (navigated) {
@@ -244,23 +226,9 @@ const startIfNeeded = async () => {
     // ignore
   }
 
-  if (resolvedStatus === 'implemented') {
-    try {
-      syncStatus.value = 'starting'
-      await projectApi.startSyncGeneration(projectId, enableAutocomplete)
-      projectStatus.value = 'sync_generating'
-      resolvedStatus = 'sync_generating'
-    } catch (e) {
-      if (isHttp524(e)) {
-        syncPoll.start()
-        return
-      }
-      syncStatus.value = 'error'
-      syncError.value = toErrorMessage(e, 'Failed to generate syncs.')
-      return
-    }
-  }
-
+  // The backend auto-advances from implement -> syncs -> build, so this vestigial page must
+  // NEVER trigger sync generation itself (that would double-provision a sandbox). We only poll
+  // and render whatever the backend has already produced.
   if (resolvedStatus === 'sync_generating') {
     syncStatus.value = 'starting'
     // Always start polling in active generation stage.
@@ -289,40 +257,12 @@ const startIfNeeded = async () => {
   }
 }
 
-const isReverting = ref(false)
-const revertError = ref('')
-
-const handleRevert = async () => {
-  isReverting.value = true
-  revertError.value = ''
-  try {
-    await projectApi.revertProject(projectId)
-    await projectApi.getProject(projectId)
-    router.push({
-      path: `/project/${projectId}/implementing`,
-      query: {
-        projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
-      },
-    })
-  } catch (err) {
-    if (isHttp524(err)) return
-    revertError.value = err instanceof Error ? err.message : String(err)
-    isReverting.value = false
-  }
-}
-
 onMounted(() => {
   startIfNeeded()
 })
 
 const handleBuild = async () => {
   syncError.value = ''
-
-  const geminiPreflightError = ensureGeminiActionReady()
-  if (geminiPreflightError) {
-    syncError.value = geminiPreflightError
-    return
-  }
 
   await router.push({
     path: `/project/${projectId}/assembling`,
@@ -346,10 +286,6 @@ const handleBuild = async () => {
       </div>
 
       <ProjectStatusDisplay :status="'syncing'" :projectName="projectName || 'Project'" />
-
-      <div v-if="!syncDoc" class="play-standalone">
-        <PlayWhileYouWait />
-      </div>
 
       <div class="glass fade-in plan-card">
         <h2 class="section-title">Sync Generation</h2>
@@ -401,17 +337,6 @@ const handleBuild = async () => {
           </details>
         </div>
 
-        <div class="revert-row">
-          <div class="revert-info">
-            <span class="revert-label">Revert to previous stage</span>
-            <span class="revert-desc">Undo sync generation and restore the implementation.</span>
-          </div>
-          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
-            <RotateCcw :size="15" />
-            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
-          </button>
-        </div>
-        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
       </div>
 
       <details v-if="implementationDoc" class="glass fade-in dropdown">
@@ -623,29 +548,4 @@ const handleBuild = async () => {
   color: var(--text-dim);
 }
 
-.btn-revert {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-  color: rgba(239, 68, 68, 0.9);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.btn-revert:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-.btn-revert:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

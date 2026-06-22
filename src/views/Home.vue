@@ -72,12 +72,10 @@ const demoVideoUrl = '/demos/simplesocialv2.mp4'
 const handleLandingPromptSubmit = (
   description: string,
   name: string,
-  _enableAutocomplete: boolean,
   done: (ok: boolean, errorMessage?: string) => void,
 ) => {
   // Keep UX minimal: take the user into the existing /build flow,
   // while preserving what they typed (including through login redirect).
-  // Autocomplete belongs on the actual builder page where generation starts.
   router.push({
     path: '/build',
     query: {
@@ -283,7 +281,6 @@ onBeforeUnmount(() => {
             <div class="hero-prompt">
               <AppDescriptionInput
                 submitLabel="Continue to Builder"
-                :showAutocompleteToggle="false"
                 @submit="handleLandingPromptSubmit"
               />
             </div>

@@ -11,7 +11,6 @@ import {
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
-import PlayWhileYouWait from '@/components/PlayWhileYouWait.vue'
 import { requestCredentialReconnect } from '@/services/credential-reconnect'
 import { getSharedVaultUnwrapKeyOrThrow, syncGithubCredentialStatus, useGithubCredentials } from '@/services/github-credentials'
 import {
@@ -19,7 +18,7 @@ import {
   getPendingGithubExport,
   setPendingGithubExport,
 } from '@/services/github-export'
-import { ArrowDownToLine, ArrowLeft, RotateCcw, MonitorPlay, Square, ExternalLink, Github } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowLeft, MonitorPlay, Square, ExternalLink, Github, Wand2 } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
@@ -36,6 +35,7 @@ const router = useRouter()
 const projectId = route.params.id as string
 const projectName = ref<string>('')
 const projectLifecycleStatus = ref<string | null>(null)
+const projectIterating = ref(false)
 
 const frontendState = ref<AgentState>('loading')
 const backendState = ref<AgentState>('loading')
@@ -45,8 +45,12 @@ const backendDownloadUrl = ref<string>('')
 
 const buildError = ref('')
 const buildInfo = ref('')
-const isReverting = ref(false)
-const revertError = ref('')
+
+// Iteration ("Modify" on the completed project): submit feedback, then follow polled status.
+const showModifyDialog = ref(false)
+const modifyFeedback = ref('')
+const isIterating = ref(false)
+const iterateError = ref('')
 
 type PreviewState = 'idle' | 'launching' | 'processing' | 'ready' | 'stopping' | 'error'
 const previewState = ref<PreviewState>('idle')
@@ -97,6 +101,32 @@ const hasTerminalProjectStatus = computed(
 const displayStatus = computed(() =>
   allDone.value || hasTerminalProjectStatus.value ? 'complete' : 'assembling',
 )
+
+// A build that fails inside the sandbox rolls the project's lifecycle status BACK to a
+// sync-stage status (e.g. `syncs_generated`). If that happens while we are on this Build
+// page we must not keep showing "Building" forever — detect the rollback and send the user
+// back to the (intact) syncing page instead, where they can retry the build safely.
+const SYNC_STAGE_STATUSES = [
+  'syncs_generated', 'sync_generating', 'syncing', 'implemented', 'implementing',
+]
+const buildRolledBack = computed(
+  () => !!projectLifecycleStatus.value && SYNC_STAGE_STATUSES.includes(projectLifecycleStatus.value),
+)
+// Only treat a sync-stage status as a ROLLBACK once we've actually seen the build active —
+// otherwise the brief `syncs_generated` window while a fresh build is being triggered would
+// be misread as a failure and bounce the user out before the build even starts.
+const sawBuildActive = ref(false)
+const rollbackHandled = ref(false)
+
+const returnToSyncing = (failed: boolean) => {
+  router.replace({
+    path: `/project/${projectId}/syncing`,
+    query: {
+      projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+      ...(failed ? { buildFailed: '1' } : {}),
+    },
+  })
+}
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
@@ -270,8 +300,22 @@ const buildPoll = usePolling(async () => {
 const pollProjectStateOnce = async () => {
   const project = await projectApi.getProject(projectId)
   projectLifecycleStatus.value = project?.status ?? null
+  projectIterating.value = Boolean(project?.iterating)
   if (project?.name) {
     projectName.value = project.name
+  }
+  if (hasTerminalProjectStatus.value || projectLifecycleStatus.value === 'building') {
+    sawBuildActive.value = true
+  }
+
+  // Build failed/rolled back to the sync stage while we were watching: stop polling and
+  // return to the syncing page (syncs are intact) instead of getting stuck on "Building".
+  if (sawBuildActive.value && buildRolledBack.value && !allDone.value && !rollbackHandled.value) {
+    rollbackHandled.value = true
+    buildPoll.stop()
+    projectPoll.stop()
+    returnToSyncing(true)
+    return
   }
 
   if (hasTerminalProjectStatus.value) {
@@ -385,47 +429,6 @@ const applyBuildPayload = (payload: BuildStatus | any): boolean => {
   return Boolean(frontendUrl || backendUrl)
 }
 
-const startBuild = async () => {
-  buildError.value = ''
-  buildInfo.value = ''
-  frontendDownloadUrl.value = ''
-  backendDownloadUrl.value = ''
-
-  frontendState.value = 'starting'
-  backendState.value = 'starting'
-
-  try {
-    await projectApi.startBuild(projectId)
-    frontendState.value = 'running'
-    backendState.value = 'running'
-    buildInfo.value = 'Build started. Polling every 30 seconds...'
-    try {
-      await pollBuildStatusOnce()
-    } catch (e) {
-      if (!isTransientPollingError(e)) throw e
-    }
-    if (!allDone.value && !buildError.value) {
-      buildPoll.start()
-      projectPoll.start()
-    }
-  } catch (e) {
-    if (isTransientPollingError(e)) {
-      // Treat 524 on trigger as transient: build may already be in-flight.
-      frontendState.value = 'running'
-      backendState.value = 'running'
-      buildInfo.value = 'Build request timed out, continuing to poll every 30 seconds...'
-      buildPoll.start({ immediate: true })
-      projectPoll.start({ immediate: true })
-      return
-    }
-    frontendState.value = 'error'
-    backendState.value = 'error'
-    buildInfo.value = ''
-    buildError.value = toErrorMessage(e, 'Failed to start build.')
-    return
-  }
-}
-
 const fetchExistingDownloads = async (): Promise<boolean> => {
   // Returns true if at least one download URL was found.
   buildInfo.value = ''
@@ -509,22 +512,52 @@ const triggerGithubExport = async (artifact: GithubExportArtifact) => {
   }
 }
 
-const handleRevert = async () => {
-  isReverting.value = true
-  revertError.value = ''
+const openModifyDialog = () => {
+  iterateError.value = ''
+  modifyFeedback.value = ''
+  showModifyDialog.value = true
+}
+
+const closeModifyDialog = () => {
+  if (isIterating.value) return
+  showModifyDialog.value = false
+}
+
+const submitModify = async () => {
+  iterateError.value = ''
+  const feedback = modifyFeedback.value.trim()
+  if (!feedback) {
+    iterateError.value = 'Please describe what you want to change.'
+    return
+  }
+
+  isIterating.value = true
   try {
-    await projectApi.revertProject(projectId)
-    await projectApi.getProject(projectId)
-    router.push({
-      path: `/project/${projectId}/syncing`,
+    await projectApi.iterate(projectId, feedback)
+    showModifyDialog.value = false
+    // The backend classifies the feedback and updates the project status. Navigate to the
+    // project status route and let polling drive the UI (full_pipeline -> planning;
+    // frontend_only -> a building status).
+    await router.push({
+      path: `/project/${projectId}`,
       query: {
         projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
       },
     })
-  } catch (err) {
-    if (isHttp524(err)) return
-    revertError.value = err instanceof Error ? err.message : String(err)
-    isReverting.value = false
+  } catch (e) {
+    if (isHttp524(e)) {
+      showModifyDialog.value = false
+      await router.push({
+        path: `/project/${projectId}`,
+        query: {
+          projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+        },
+      })
+      return
+    }
+    iterateError.value = toErrorMessage(e, 'Failed to start iteration.')
+  } finally {
+    isIterating.value = false
   }
 }
 
@@ -561,7 +594,7 @@ const pollPreviewStatusOnce = async () => {
         previewState.value = 'ready'
         previewError.value = ''
         previewExpiresAt.value = res.expiresAt || null
-        if (!previewPoll.isRunning.value && previewState.value !== 'stopping') {
+        if (!previewPoll.isRunning.value) {
           previewStoppingPoll.stop()
           previewPoll.start()
         }
@@ -698,6 +731,7 @@ onMounted(async () => {
   try {
     const project = await projectApi.getProject(projectId)
     projectLifecycleStatus.value = project?.status ?? null
+    projectIterating.value = Boolean(project?.iterating)
     if (project?.name) {
       projectName.value = project.name
     }
@@ -710,6 +744,7 @@ onMounted(async () => {
   const isAlreadyAssembled = lifecycleStatus === 'assembled' || lifecycleStatus === 'complete'
 
   if (isAlreadyAssembled || isAlreadyBuilding) {
+    sawBuildActive.value = true
     await fetchExistingDownloads()
     if (isAlreadyAssembled) {
       previewPoll.start({ immediate: true })
@@ -752,8 +787,10 @@ onMounted(async () => {
     return
   }
 
-  // No existing build artifacts found -> trigger a new build.
-  await startBuild()
+  // No existing build artifacts yet. The backend auto-advances the build itself now, so this
+  // page must NOT trigger a build (that would double-provision a sandbox). fetchExistingDownloads
+  // has already started polling, so we simply wait for the backend to finish and surface the
+  // download artifacts.
 })
 
 </script>
@@ -777,10 +814,6 @@ onMounted(async () => {
         :projectName="projectName || 'Project'"
         :showDownloadButton="false"
       />
-
-      <div v-if="!allDone" class="play-standalone">
-        <PlayWhileYouWait />
-      </div>
 
       <div class="glass fade-in plan-card">
         <h2 class="section-title">{{ allDone || hasAnyDownload || hasTerminalProjectStatus ? 'Downloads Ready' : 'Build' }}</h2>
@@ -1059,17 +1092,49 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="revert-row" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
+        <!-- Modify (iterate) the completed project -->
+        <div v-if="hasTerminalProjectStatus || allDone" class="revert-row" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
           <div class="revert-info">
-            <span class="revert-label">Revert to previous stage</span>
-            <span class="revert-desc">Undo the build and restore sync artifacts.</span>
+            <span class="revert-label">Modify this app</span>
+            <span class="revert-desc">Describe a change and we'll regenerate the affected parts.</span>
           </div>
-          <button class="btn-revert" type="button" :disabled="isReverting" @click="handleRevert">
-            <RotateCcw :size="15" />
-            <span>{{ isReverting ? 'Reverting…' : 'Revert' }}</span>
+          <button class="btn-modify" type="button" :disabled="projectIterating || isIterating" @click="openModifyDialog">
+            <Wand2 :size="15" />
+            <span>{{ projectIterating ? 'Iterating…' : 'Modify' }}</span>
           </button>
         </div>
-        <div v-if="revertError" class="error-msg" style="margin-top: 0.5rem;">{{ revertError }}</div>
+
+      </div>
+    </div>
+
+    <!-- Modify / iterate dialog -->
+    <div v-if="showModifyDialog" class="modal-overlay" @click.self="closeModifyDialog">
+      <div class="modal glass fade-in">
+        <div class="modal-header">
+          <Wand2 :size="22" class="modal-icon" />
+          <div>
+            <h3 class="modal-title">Modify this app</h3>
+            <p class="modal-subtitle">Tell us what to change. We'll figure out whether to replan or just regenerate the frontend.</p>
+          </div>
+        </div>
+
+        <textarea
+          v-model="modifyFeedback"
+          class="modify-input"
+          rows="4"
+          placeholder="Example: Add a dark mode toggle and let users edit their profile."
+          :disabled="isIterating"
+        ></textarea>
+
+        <div v-if="iterateError" class="error-msg" style="margin-top: 0.5rem;">{{ iterateError }}</div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" :disabled="isIterating" @click="closeModifyDialog">Cancel</button>
+          <button class="btn-modify" type="button" :disabled="isIterating" @click="submitModify">
+            <Wand2 :size="15" />
+            <span>{{ isIterating ? 'Submitting…' : 'Submit changes' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1233,7 +1298,7 @@ onMounted(async () => {
   color: var(--text-dim);
 }
 
-.btn-revert {
+.btn-modify {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -1241,22 +1306,99 @@ onMounted(async () => {
   padding: 0.55rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 600;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
-  color: rgba(239, 68, 68, 0.9);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(45, 212, 191, 0.08);
+  color: var(--accent);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s, border-color 0.2s;
 }
 
-.btn-revert:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: rgba(239, 68, 68, 0.5);
+.btn-modify:hover:not(:disabled) {
+  background: rgba(45, 212, 191, 0.14);
+  border-color: rgba(45, 212, 191, 0.5);
 }
 
-.btn-revert:disabled {
+.btn-modify:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-secondary {
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-header {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.modal-icon {
+  color: var(--accent);
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.modal-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.modal-subtitle {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.modify-input {
+  width: 100%;
+  resize: vertical;
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .btn-preview {

@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CREDENTIAL_RECONNECT_EVENT, type CredentialReconnectDetail } from '@/services/credential-reconnect'
-import { unlockStoredGeminiCredential, useGeminiCredentials } from '@/services/gemini-credentials'
 import { unlockStoredGithubCredential, useGithubCredentials } from '@/services/github-credentials'
 import { useToasts } from '@/services/toast'
 
 const { push } = useToasts()
-const { hasStoredGeminiCredential, needsReconnect: geminiNeedsReconnect } = useGeminiCredentials()
 const { hasStoredGithubCredential, needsReconnect: githubNeedsReconnect } = useGithubCredentials()
 
 const show = ref(false)
@@ -17,16 +15,13 @@ const title = ref('Reconnect credentials')
 const message = ref('Re-enter your account password to continue.')
 
 const reconnectTargets = computed(() => {
-  const targets: Array<'gemini' | 'github'> = []
-  if (hasStoredGeminiCredential.value && geminiNeedsReconnect.value) targets.push('gemini')
+  const targets: Array<'github'> = []
   if (hasStoredGithubCredential.value && githubNeedsReconnect.value) targets.push('github')
   return targets
 })
 
 const buttonLabel = computed(() => {
   if (reconnecting.value) return 'Reconnecting...'
-  if (reconnectTargets.value.length === 2) return 'Reconnect credentials'
-  if (reconnectTargets.value[0] === 'gemini') return 'Reconnect Gemini'
   if (reconnectTargets.value[0] === 'github') return 'Reconnect GitHub'
   return 'Reconnect'
 })
@@ -69,19 +64,11 @@ const reconnect = async () => {
   reconnecting.value = true
 
   try {
-    await Promise.all([
-      nextTargets.includes('gemini') ? unlockStoredGeminiCredential(password.value) : Promise.resolve(),
-      nextTargets.includes('github') ? unlockStoredGithubCredential(password.value) : Promise.resolve(),
-    ])
+    await unlockStoredGithubCredential(password.value)
 
     push({
       title: 'Credentials reconnected',
-      message:
-        nextTargets.length === 2
-          ? 'Gemini and GitHub credentials are ready again for this session.'
-          : nextTargets[0] === 'gemini'
-            ? 'Gemini credentials are ready again for this session.'
-            : 'GitHub credentials are ready again for this session.',
+      message: 'GitHub credentials are ready again for this session.',
       kind: 'success',
       ttlMs: 4000,
     })
@@ -105,7 +92,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="show" class="modal-overlay fade-in" @click.self="close">
+  <div v-if="show" class="modal-overlay fade-in" @click.self="close()">
     <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="credential-reconnect-title">
       <div class="modal-header">
         <h2 id="credential-reconnect-title">{{ title }}</h2>
@@ -131,7 +118,7 @@ onBeforeUnmount(() => {
         <button class="btn btn-primary" type="button" :disabled="reconnecting" @click="reconnect">
           {{ buttonLabel }}
         </button>
-        <button class="btn btn-secondary" type="button" :disabled="reconnecting" @click="close">
+        <button class="btn btn-secondary" type="button" :disabled="reconnecting" @click="close()">
           Cancel
         </button>
       </div>

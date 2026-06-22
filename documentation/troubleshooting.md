@@ -10,12 +10,12 @@ What is normal:
 - Implementation can be **instant** when there are no custom concepts
 - Sync generation can take up to **60 minutes**
 - Large apps can take longer than small apps
-- Any single sandboxed generation phase has a hard max of **2 hours**
+- Any single sandboxed generation phase has a hard max of **4 hours**
 
 What to do:
 
 - Wait a little longer
-- If a single phase passes 2 hours, treat it as broken and restart/resume that phase
+- If a single phase passes 4 hours, treat it as broken and restart/resume that phase
 - Avoid launching many parallel runs for the same project
 - Retry with a simpler initial scope if needed
 
@@ -33,34 +33,30 @@ What happens to your project state:
 
 See also: [Beginner App-Building Guide](./getting-started-beginner.md)
 
-## Gemini errors
+## Generation errors
+
+You do **not** supply an AI key to generate apps — the platform provides the AI used during generation. So most generation failures are not caused by a key on your side.
+
+What to do:
+
+- Retry the failing phase (see the slow/stuck section above).
+- If a single phase passes 4 hours, treat it as broken and restart/resume that phase.
+- Try a simpler initial scope if a phase keeps failing.
+- If generation consistently fails across projects, it is likely a platform-side issue rather than your configuration.
+
+## AI errors in your generated app
+
+These apply only when **your generated app** uses AI-backed features and you run it with your own provider key.
 
 Checks:
 
-- Did you save a Gemini credential successfully?
-- Is your stored Gemini credential still present?
-- Did your frontend lose the in-memory unwrap key after a reload or session reset?
-- Is your API key valid?
-- Did you provide an allowed tier (`1`, `2`, or `3`)?
-- Is your provider quota/rate limit exhausted?
-
-Guide: [Get a Gemini API Key](./get-gemini-api-key.md)
-
-Security model: [How Gemini Key Security Works](./gemini-key-security.md)
-
-If generation fails after a reload or long pause:
-
-- Re-enter your password if the app needs it to re-derive the Gemini unwrap key.
-- Re-save the Gemini credential if the backend no longer has a stored wrapped credential.
-- Rotate and replace the Gemini key if you suspect exposure.
-
-If your generated app uses AI-backed features, also check:
-
-- `AI_PROVIDER` and `AI_MODEL` are set in backend `.env`
-- The provider key matches the configured provider
+- `AI_PROVIDER` and `AI_MODEL` are set in the generated backend `.env`
+- The provider key matches the configured provider (e.g. `GEMINI_API_KEY` when `AI_PROVIDER=gemini`)
+- The provider key is valid and not revoked
+- Your provider quota / rate limit is not exhausted
 - The AI output issue is not actually caused by missing context or an unrealistic input
 
-Use: [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md)
+Guides: [Get an AI Provider Key](./get-ai-provider-key.md) · [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md)
 
 ## Database connection errors
 
@@ -85,11 +81,11 @@ Checks:
 
 Checks:
 
-- Production env vars are set in your host (Railway)
-- Frontend API URL points to the deployed backend domain
-- Backend CORS/domain settings allow frontend domain
+- Production env vars are set in your host (Deno Deploy)
+- Frontend `VITE_API_URL` points to the deployed backend's `/api` URL (and was set before building)
+- Backend `REQUESTING_ALLOWED_DOMAIN` allows the frontend domain (CORS)
 
-Guide: [Deploy Your Generated App with Railway](./deploy-with-railway.md)
+Guide: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
 
 ## Troubleshooting a generated project (Advanced)
 
