@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectApi } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
-import { maybeNavigateToStage } from '@/services/project-stage-routing'
+import { navigateOnCompletion } from '@/services/project-stage-routing'
 import ImplementationExplorer from '@/components/ImplementationExplorer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import SyncExplorer from '@/components/SyncExplorer.vue'
@@ -137,14 +137,8 @@ const pollSyncOnce = async () => {
     projectName.value = p.name
   }
 
-  const navigated = await maybeNavigateToStage(
-    router,
-    route.path,
-    projectId,
-    status,
-    p?.name ?? projectName.value,
-  )
-  if (navigated) {
+  // Only forward to downloads when THIS project (the one in the URL) has completed.
+  if (await navigateOnCompletion(router, route, projectId, status, p?.name ?? projectName.value)) {
     syncPoll.stop()
     return
   }
@@ -166,7 +160,6 @@ const pollSyncOnce = async () => {
 }
 
 const startIfNeeded = async () => {
-  const shouldStartSyncGeneration = route.query.startSyncGeneration === '1'
   const qName = route.query?.projectName
   if (typeof qName === 'string') {
     try {
@@ -205,19 +198,6 @@ const startIfNeeded = async () => {
     projectStatus.value = apiStatus || null
     if (p?.name) {
       projectName.value = p.name
-    }
-
-    if (!shouldStartSyncGeneration) {
-      const navigated = await maybeNavigateToStage(
-        router,
-        route.path,
-        projectId,
-        apiStatus,
-        p?.name ?? projectName.value,
-      )
-      if (navigated) {
-        return
-      }
     }
 
     // Always trust backend status over query-param fallbacks.

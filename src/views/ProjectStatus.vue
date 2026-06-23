@@ -5,7 +5,7 @@ import { projectApi, type Project } from '@/services/api'
 import { socialApi } from '@/services/social-api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
-import { maybeNavigateToStage } from '@/services/project-stage-routing'
+import { navigateOnCompletion } from '@/services/project-stage-routing'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
@@ -234,18 +234,18 @@ const tickProject = async () => {
     const iterationParkedOnPlan =
       iterating && (status === 'complete' || status === 'assembled')
 
-    // Routing is "always-forward" but plan/design review and the read-only building progress
-    // view all live on this same route, so during the auto-build the user is never bounced
-    // between per-stage pages. The only navigation that fires from here is the final hop to the
-    // completed page once the project reaches complete/assembled.
+    // Polling refreshes the on-page state (progress indicator, plan/design docs). The only route
+    // change it drives is the final hop to the completed/downloads page once THIS project finishes
+    // — and `navigateOnCompletion` only fires for the project currently in the URL, so a poll for
+    // another sandbox can't yank the user between projects. (During an iteration the brief
+    // complete/assembled window is parked on the plan, so we skip it.)
     if (!iterationParkedOnPlan) {
-      const navigated = await maybeNavigateToStage(
+      const navigated = await navigateOnCompletion(
         router,
-        route.path,
+        route,
         projectId,
         status,
         p.name ?? projectName.value,
-        showConceptDesign.value,
       )
       if (navigated) {
         projectPoll.stop()
@@ -304,6 +304,44 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
   }
 }
 
+// Auto-continue when a project is opened sitting at a stage checkpoint (e.g. a later stage
+// failed and the status rolled back, and there's no "continue" button). Re-fires the next
+// pipeline step:
+//   design_complete -> implement   (unless the user reviews design first via showConceptDesign)
+//   implemented      -> syncs
+//   syncs_generated  -> build
+// If the backend is still actively building, its per-project guard rejects the duplicate
+// call harmlessly and polling just shows the real progress.
+const maybeAutoContinue = async (status: string | null | undefined): Promise<boolean> => {
+  const s = String(status ?? '')
+  const fire = async (next: string, call: () => Promise<unknown>) => {
+    planningStatus.value = next
+    projectPoll.start()
+    try {
+      await call()
+    } catch (err) {
+      // 524 (gateway) is expected on long calls; any other rejection (e.g. a run already
+      // active) is harmless here — the next poll reconciles the displayed status.
+      if (!isHttp524(err)) { /* leave optimistic status; polling corrects it */ }
+    }
+    await tickProject()
+  }
+  if (s === 'design_complete') {
+    if (showConceptDesign.value) return false // advanced users review the design first
+    await fire('implementing', () => projectApi.startImplementation(projectId))
+    return true
+  }
+  if (s === 'implemented') {
+    await fire('sync_generating', () => projectApi.startSyncGeneration(projectId))
+    return true
+  }
+  if (s === 'syncs_generated') {
+    await fire('building', () => projectApi.startBuild(projectId))
+    return true
+  }
+  return false
+}
+
 onMounted(async () => {
   tryHydrateFromQuery()
   try {
@@ -313,7 +351,9 @@ onMounted(async () => {
     // Default advanced setting to off if the profile can't be loaded.
   }
   await tickProject()
-  if (shouldPollProjectStatus(planningStatus.value ?? project.value?.status)) {
+  const status = planningStatus.value ?? project.value?.status
+  const continued = await maybeAutoContinue(status)
+  if (!continued && shouldPollProjectStatus(status)) {
     projectPoll.start()
   }
 })

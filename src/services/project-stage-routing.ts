@@ -1,4 +1,4 @@
-import type { Router } from 'vue-router'
+import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import type { Project } from './api'
 
 /**
@@ -52,22 +52,35 @@ export function getProjectPathForStatus(
 }
 
 /**
- * Navigate to the page that matches the project's current status.
+ * Forward the user to the completed/downloads page (Assembling.vue) when a build finishes — but
+ * ONLY for the project currently shown in the URL.
  *
- * Returns true if a navigation was triggered. The plan/design review page and the building
- * progress page share the same route (`/project/:id`), so during the auto-build the user is
- * never bounced between per-stage pages — they only move once, to the completed page.
+ * Background polls used to drive the route on every status change. When several sandboxes were
+ * building at once, a poll for project A could fire while the user was viewing project B and
+ * `router.replace` would yank them onto A's page — the builder appeared to "jump around" between
+ * projects. Gating on `route.params.id === projectId` makes a poll incapable of navigating away
+ * from the project on screen: a stale or cross-project tick simply does nothing.
+ *
+ * Completion is the only transition that navigates now; all the in-flight building statuses share
+ * the `/project/:id` route, so there is nothing else to move between. (This whole mechanism will be
+ * replaced by server-pushed SSE updates — see docs/REALTIME_CHANNELING_PLAN.md.)
+ *
+ * Returns true if a navigation was triggered.
  */
-export async function maybeNavigateToStage(
+export async function navigateOnCompletion(
   router: Router,
-  currentPath: string,
+  route: RouteLocationNormalizedLoaded,
   projectId: string,
   status: Project['status'] | string | null | undefined,
   projectName?: string | null,
-  showConceptDesign = false,
 ): Promise<boolean> {
-  const targetPath = getProjectPathForStatus(projectId, status, showConceptDesign)
-  if (!targetPath || targetPath === currentPath) return false
+  if (!status || !COMPLETE_STATUSES.includes(String(status))) return false
+
+  // Only the project on screen may be navigated — never a different one from a background poll.
+  if (String(route.params.id) !== projectId) return false
+
+  const targetPath = `/project/${projectId}/assembling`
+  if (route.path === targetPath) return false
 
   await router.replace({
     path: targetPath,

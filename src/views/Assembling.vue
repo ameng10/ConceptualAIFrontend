@@ -119,10 +119,13 @@ const sawBuildActive = ref(false)
 const rollbackHandled = ref(false)
 
 const returnToSyncing = (failed: boolean) => {
+  // The old Syncing.vue view is retired — send the user to the unified project view, which
+  // shows progress and re-attempts the build on open (auto-continue runs once on mount).
   router.replace({
-    path: `/project/${projectId}/syncing`,
+    path: `/project/${projectId}`,
     query: {
       projectName: projectName.value ? encodeURIComponent(projectName.value) : undefined,
+      planningStatus: projectLifecycleStatus.value || undefined,
       ...(failed ? { buildFailed: '1' } : {}),
     },
   })

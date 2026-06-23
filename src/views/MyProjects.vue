@@ -60,18 +60,14 @@ const handleViewDetails = async (project: Project) => {
     return
   }
 
-  if (isSyncStage) {
+  // The old per-stage views (Syncing.vue / Implementing.vue) are retired — users shouldn't
+  // see them. Open the unified project view instead, which auto-continues the pipeline
+  // (implemented -> syncs, syncs_generated -> build) and only pauses at the design step when
+  // the "show concept design" setting is on.
+  if (isSyncStage || isImplementationStage) {
     await router.push({
-      path: `/project/${project._id}/syncing`,
-      query: { projectName: projectNameQ, projectStatus: project.status },
-    })
-    return
-  }
-
-  if (isImplementationStage) {
-    await router.push({
-      path: `/project/${project._id}/implementing`,
-      query: { projectName: projectNameQ },
+      path: `/project/${project._id}`,
+      query: { projectName: projectNameQ, planningStatus: project.status },
     })
     return
   }
