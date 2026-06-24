@@ -31,7 +31,7 @@ export interface StoredGithubCredentialMetadata extends SharedVaultMetadata {
 }
 
 export type GithubCredentialStatusResponse =
-  | { hasGithubCredential: false }
+  | ({ hasGithubCredential: false } & Partial<SharedVaultMetadata>)
   | ({ hasGithubCredential: true } & StoredGithubCredentialMetadata)
 
 export type GithubLinkStartResponse = {
@@ -64,6 +64,10 @@ const DEFAULT_KEY_LENGTH_BYTES = 32
 
 const hasStoredGithubCredential = ref(false)
 const githubCredentialMetadata = ref<StoredGithubCredentialMetadata | null>(null)
+// Shared per-user vault KDF metadata. Tracked separately from the GitHub-specific
+// metadata so it survives even when GitHub itself is not linked yet (a vault may
+// already exist for another provider), letting linking reuse the vault's salt.
+const sharedVaultMetadata = ref<SharedVaultMetadata | null>(null)
 const githubUnwrapKey = ref('')
 const githubCredentialStatusLoaded = ref(false)
 
@@ -130,6 +134,12 @@ function normalizePermissions(value: unknown): GithubPermissions {
 }
 
 function getExistingVaultMetadata(): SharedVaultMetadata | null {
+  // Prefer the shared vault metadata: it is present whenever a vault exists, even
+  // if GitHub is not the linked provider, so linking reuses the vault's salt.
+  if (sharedVaultMetadata.value) {
+    return sharedVaultMetadata.value
+  }
+
   if (githubCredentialMetadata.value) {
     return {
       kdfSalt: githubCredentialMetadata.value.kdfSalt,
@@ -148,6 +158,19 @@ function applyGithubCredentialStatus(status: GithubCredentialStatusResponse) {
     hasStoredGithubCredential.value = false
     githubCredentialMetadata.value = null
     githubUnwrapKey.value = ''
+    // A vault may already exist for another provider. Keep its shared KDF salt so
+    // a subsequent GitHub link reuses it rather than minting a mismatching one.
+    const sharedSalt = typeof status.kdfSalt === 'string' ? status.kdfSalt.trim() : ''
+    sharedVaultMetadata.value = sharedSalt
+      ? {
+          kdfSalt: sharedSalt,
+          kdfParams: normalizeKdfParams(status.kdfParams),
+          encryptionVersion:
+            typeof status.encryptionVersion === 'string' && status.encryptionVersion
+              ? status.encryptionVersion
+              : DEFAULT_ENCRYPTION_VERSION,
+        }
+      : null
     return
   }
 
@@ -168,6 +191,11 @@ function applyGithubCredentialStatus(status: GithubCredentialStatusResponse) {
 
   hasStoredGithubCredential.value = true
   githubCredentialMetadata.value = nextMetadata
+  sharedVaultMetadata.value = {
+    kdfSalt: nextMetadata.kdfSalt,
+    kdfParams: nextMetadata.kdfParams,
+    encryptionVersion: nextMetadata.encryptionVersion,
+  }
 }
 
 async function deriveUnwrapKeyFromMetadata(password: string, metadata: SharedVaultMetadata): Promise<string> {
@@ -219,6 +247,7 @@ async function fetchGithubCredentialStatus(): Promise<GithubCredentialStatusResp
 export function clearGithubCredentialState() {
   hasStoredGithubCredential.value = false
   githubCredentialMetadata.value = null
+  sharedVaultMetadata.value = null
   githubUnwrapKey.value = ''
   githubCredentialStatusLoaded.value = false
 }
