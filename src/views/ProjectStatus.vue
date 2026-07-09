@@ -99,6 +99,13 @@ const canAcceptDesign = computed(() => {
   return true
 })
 
+// Parked at the advanced design-review gate: the backend stopped at design_complete and is
+// waiting for the user to accept (build) or modify the design.
+const parkedAtDesignReview = computed(() => {
+  const status = planningStatus.value ?? project.value?.status
+  return showConceptDesign.value && status === 'design_complete'
+})
+
 const isPastPlanningStage = computed(() => {
   const status = planningStatus.value ?? project.value?.status
   return Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
@@ -487,6 +494,7 @@ const handleModifyDesign = async () => {
         :projectName="projectName || 'Project'"
   :holdPlanningActive="!accepted"
   :planAccepted="accepted"
+  :showConceptsStep="showConceptDesign"
       />
 
       <div v-if="planDoc && !accepted && !isPastPlanningStage" class="glass fade-in plan-card">
@@ -536,8 +544,9 @@ const handleModifyDesign = async () => {
 
       <div v-if="showConceptDesign && (accepted || isPastPlanningStage)" class="glass fade-in plan-card">
         <h2 class="section-title">Design</h2>
-        <p v-if="designStatus === 'starting'" class="muted">Sending accepted plan to the design agent…</p>
-        <p v-else-if="designStatus === 'started'" class="muted">Design agent started.</p>
+        <p v-if="designStatus === 'starting'" class="muted">Design agent is working…</p>
+        <p v-else-if="parkedAtDesignReview" class="muted">Concept design is ready — review it below, then accept to start the build.</p>
+        <p v-else-if="designStatus === 'started'" class="muted">Design accepted — build in progress.</p>
         <p v-else-if="designStatus === 'error'" class="muted">Failed to start design.</p>
         <div v-if="designError" class="error-msg">{{ designError }}</div>
 
@@ -545,7 +554,9 @@ const handleModifyDesign = async () => {
             <DesignViewer :design="designDoc" />
           </div>
 
-        <div v-if="designDoc" class="review-actions">
+        <!-- Accept/modify only while parked at the gate: once the build starts, a design
+             modification would provision a competing design sandbox. -->
+        <div v-if="designDoc && canAcceptDesign" class="review-actions">
           <div class="review-header">
             <h3 class="review-title">Is this design good?</h3>
           </div>
@@ -557,7 +568,7 @@ const handleModifyDesign = async () => {
               :disabled="!canAcceptDesign"
               @click="handleAcceptDesign"
             >
-              Accept design
+              Accept design &amp; build
             </button>
           </div>
 
