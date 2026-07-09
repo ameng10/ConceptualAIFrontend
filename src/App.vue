@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
-import CredentialReconnectModal from '@/components/CredentialReconnectModal.vue'
 import GradientToastHost from '@/components/GradientToastHost.vue'
 
 const route = useRoute()
@@ -44,7 +43,6 @@ onMounted(() => {
 
     <main class="main-content" :class="{ marketing: hideSidebar }">
       <GradientToastHost />
-      <CredentialReconnectModal />
       <router-view />
     </main>
   </div>

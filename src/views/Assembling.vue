@@ -11,8 +11,7 @@ import {
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
-import { requestCredentialReconnect } from '@/services/credential-reconnect'
-import { getSharedVaultUnwrapKeyOrThrow, syncGithubCredentialStatus, useGithubCredentials } from '@/services/github-credentials'
+import { syncGithubCredentialStatus, useGithubCredentials } from '@/services/github-credentials'
 import {
   clearPendingGithubExport,
   getPendingGithubExport,
@@ -73,7 +72,7 @@ const previewTimeRemaining = computed(() => {
   return `${m}:${s.toString().padStart(2, '0')}`
 })
 
-const { hasStoredGithubCredential, hasUnwrapKey: hasSharedVaultUnwrapKey } = useGithubCredentials()
+const { hasStoredGithubCredential } = useGithubCredentials()
 
 const backendRepoName = ref('')
 const frontendRepoName = ref('')
@@ -189,12 +188,6 @@ const routeExportThroughSettings = (artifact: GithubExportArtifact, reason: stri
       returnPath,
     },
   })
-}
-
-const isReconnectableGithubExportError = (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  const lowered = message.toLowerCase()
-  return lowered.includes('unwrap key')
 }
 
 const downloadFrontend = async () => {
@@ -474,21 +467,12 @@ const triggerGithubExport = async (artifact: GithubExportArtifact) => {
     return
   }
 
-  let unwrapKey = ''
-  try {
-    unwrapKey = getSharedVaultUnwrapKeyOrThrow()
-  } catch (error) {
-    githubStatusError.value =
-      error instanceof Error ? error.message : 'Reconnect your credentials by re-entering your password to continue.'
-    return
-  }
-
   setArtifactExporting(artifact, true)
   try {
+    // Token resolution/refresh happens server-side (GitHubConnecting) — no key material here.
     await projectApi.startGithubExport(
       projectId,
       artifact,
-      unwrapKey,
       getArtifactRepoName(artifact),
       getArtifactVisibility(artifact),
     )
@@ -498,12 +482,6 @@ const triggerGithubExport = async (artifact: GithubExportArtifact) => {
       githubExportPoll.start()
     }
   } catch (e) {
-    if (isReconnectableGithubExportError(e)) {
-      requestCredentialReconnect({
-        title: 'Reconnect credentials',
-        message: 'Re-enter your account password to continue exporting to GitHub.',
-      })
-    }
     githubStatusError.value = toErrorMessage(e, `Failed to export ${artifact} to GitHub.`)
     try {
       await pollGithubExportStatusOnce()
@@ -928,9 +906,6 @@ onMounted(async () => {
 
           <p v-if="!hasStoredGithubCredential" class="muted" style="margin-top: 0.75rem;">
             Connect GitHub in Settings before exporting repositories.
-          </p>
-          <p v-else-if="!hasSharedVaultUnwrapKey" class="muted" style="margin-top: 0.75rem;">
-            Re-enter your account password when prompted before exporting to GitHub.
           </p>
           <div v-if="githubStatusError" class="error-msg" style="margin-top: 0.75rem;">{{ githubStatusError }}</div>
 

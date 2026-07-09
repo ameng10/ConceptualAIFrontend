@@ -13,7 +13,6 @@ import {
 import * as authFns from './auth'
 import {
     clearGithubCredentialState,
-    initializeGithubCredentialSession,
     syncGithubCredentialStatus,
 } from './github-credentials'
 
@@ -240,7 +239,8 @@ export const authApi = {
             authState.set({ ...res, username: loginUsername })
 
             try {
-                await initializeGithubCredentialSession(plaintextPassword)
+                // Tokens live server-side now — login just refreshes the redacted status.
+                await syncGithubCredentialStatus()
             } catch {
                 // Do not fail login if the GitHub status probe is temporarily unavailable.
             }
@@ -583,7 +583,6 @@ export const projectApi = {
     async startGithubExport(
         projectId: string,
         artifact: GithubExportArtifact,
-        unwrapKey: string,
         repoName?: string,
         visibility: GithubExportVisibility = 'private',
     ) {
@@ -592,12 +591,12 @@ export const projectApi = {
                 ? `/api/projects/${projectId}/export/backend/github`
                 : `/api/projects/${projectId}/export/frontend/github`
 
+        // The backend resolves (and refreshes) the GitHub token server-side via
+        // GitHubConnecting — no key material leaves the browser.
         const body: {
-            unwrapKey: string
             visibility: GithubExportVisibility
             repoName?: string
         } = {
-            unwrapKey,
             visibility,
         }
 

@@ -1,78 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
 import { User, Github } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
 import GitHubAccountForm from '@/components/GitHubAccountForm.vue'
-import { getPendingGithubExport } from '@/services/github-export'
-import { unlockStoredGithubCredential, useGithubCredentials } from '@/services/github-credentials'
 
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const success = ref('')
-const reconnectPassword = ref('')
-const reconnecting = ref(false)
-const reconnectError = ref('')
-const reconnectSuccess = ref('')
-
-const route = useRoute()
-const router = useRouter()
-const { hasStoredGithubCredential, needsReconnect: githubNeedsReconnect } = useGithubCredentials()
-
-const needsAnyReconnect = computed(() => githubNeedsReconnect.value)
-const reconnectSummary = computed(
-  () => 'Your GitHub credentials need to be reconnected for this session.',
-)
 
 const username = ref('')
 const displayName = ref('')
 const bio = ref('')
 const showConceptDesign = ref(false)
-
-const getRequestedReturnPath = () => (typeof route.query.returnPath === 'string' ? route.query.returnPath : '')
-
-const maybeReturnToPendingExport = async () => {
-  const returnPath = getRequestedReturnPath()
-  if (!returnPath) return
-
-  const pending = getPendingGithubExport()
-  if (!pending || pending.returnPath !== returnPath) return
-
-  await router.replace(returnPath)
-}
-
-const reconnectCredentials = async () => {
-  reconnectError.value = ''
-  reconnectSuccess.value = ''
-
-  if (!reconnectPassword.value) {
-    reconnectError.value = 'Enter your account password to reconnect your saved credentials.'
-    return
-  }
-
-  const reconnectGithub = githubNeedsReconnect.value && hasStoredGithubCredential.value
-
-  if (!reconnectGithub) return
-
-  reconnecting.value = true
-
-  try {
-    await unlockStoredGithubCredential(reconnectPassword.value)
-
-    reconnectSuccess.value = 'GitHub credentials reconnected for this session.'
-
-    reconnectPassword.value = ''
-
-    await maybeReturnToPendingExport()
-  } catch (err) {
-    reconnectError.value = err instanceof Error ? err.message : 'Failed to reconnect saved credentials.'
-  } finally {
-    reconnecting.value = false
-    reconnectPassword.value = ''
-  }
-}
 
 const loadProfile = async () => {
   loading.value = true
@@ -167,36 +108,6 @@ onMounted(loadProfile)
         <h1 class="animated-gradient-text">Settings</h1>
         <p class="subtitle">Manage your GitHub connection and public profile.</p>
       </div>
-
-      <main v-if="needsAnyReconnect" class="settings-content glass reconnect-card">
-        <div class="section-title">
-          <User :size="18" />
-          <h3>Reconnect saved credentials</h3>
-        </div>
-
-        <p class="reconnect-copy">{{ reconnectSummary }}</p>
-
-        <div class="reconnect-form">
-          <div class="field-group reconnect-field">
-            <label for="settings-reconnect-password">Account password</label>
-            <input
-              id="settings-reconnect-password"
-              v-model="reconnectPassword"
-              type="password"
-              class="input"
-              autocomplete="current-password"
-              placeholder="Enter your account password"
-            />
-          </div>
-
-          <button class="btn btn-primary reconnect-btn" type="button" :disabled="reconnecting" @click="reconnectCredentials">
-            {{ reconnecting ? 'Reconnecting...' : 'Reconnect credentials' }}
-          </button>
-        </div>
-
-        <p v-if="reconnectError" class="error-msg reconnect-message">{{ reconnectError }}</p>
-        <p v-if="reconnectSuccess" class="success-msg reconnect-message">{{ reconnectSuccess }}</p>
-      </main>
 
       <main class="settings-content glass">
         <div class="section-title">

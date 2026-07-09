@@ -1,128 +1,54 @@
-import { computed, ref } from 'vue'
+// GitHub connection service — thin driver over the backend's GitHubConnecting flow.
+// Tokens are encrypted SERVER-SIDE and never reach the browser: there is no client
+// crypto, no account-password step, no unwrap key, and no reconnect flow. The link
+// handshake is backend-issued (the frontend holds zero GitHub constants): open the
+// returned authorizationUrl in a popup and await a postMessage whose type/nonce match
+// the returned messageType/messageNonce, then refetch status.
+import { ref } from 'vue'
 import { AxiosError } from 'axios'
 import { api } from './http'
-import { requestCredentialReconnect } from './credential-reconnect'
-
-export interface GithubKdfParams {
-  algorithm: 'PBKDF2'
-  iterations: number
-  hash?: 'SHA-256' | 'SHA-384' | 'SHA-512'
-  keyLength?: number
-}
-
-type SharedVaultMetadata = {
-  kdfSalt: string
-  kdfParams: GithubKdfParams
-  encryptionVersion: string
-}
 
 export interface GithubPermissions {
   [permission: string]: string
 }
 
-export interface StoredGithubCredentialMetadata extends SharedVaultMetadata {
-  githubLogin: string
+export interface GithubConnectionMetadata {
+  login: string
   externalAccountId: string
-  githubInstallationId?: string
-  githubPermissions?: GithubPermissions
-  githubTokenType?: string
-  githubAccessTokenExpiresAt?: string
-  githubRefreshTokenExpiresAt?: string
+  installationId: string
+  permissions: GithubPermissions
+  tokenType: string
+  accessTokenExpiresAt: string
+  refreshTokenExpiresAt: string
 }
 
-export type GithubCredentialStatusResponse =
-  | ({ hasGithubCredential: false } & Partial<SharedVaultMetadata>)
-  | ({ hasGithubCredential: true } & StoredGithubCredentialMetadata)
+export type GithubConnectionStatusResponse = {
+  hasConnection: boolean
+  // Server-configured GitHub App install/manage URL — the frontend holds zero
+  // GitHub constants, so even this link comes from the backend.
+  installUrl?: string
+} & Partial<GithubConnectionMetadata>
 
 export type GithubLinkStartResponse = {
-  statusCode: number
   authorizationUrl: string
+  messageType: string
+  messageNonce: string
   stateExpiresAt?: string
 }
 
-export type GithubOAuthCallbackCredential = {
-  accessToken: string
-  refreshToken?: string
-  tokenType?: string
-  accessTokenExpiresAt?: string
-  refreshTokenExpiresAt?: string
-  githubLogin: string
-  externalAccountId: string
-  installationId?: string
-  permissions?: GithubPermissions
+/** Shape of the postMessage the backend's popup callback emits (typed + nonced). */
+export type GithubLinkCallbackMessage = {
+  type: string
+  nonce: string
+  ok: boolean
+  returnPath?: string
+  error?: string
 }
-
-type CompleteGithubLinkInput = {
-  accountPassword: string
-  githubCredential: GithubOAuthCallbackCredential
-}
-
-const DEFAULT_ENCRYPTION_VERSION = 'v1'
-const DEFAULT_KDF_ITERATIONS = 600_000
-const DEFAULT_KDF_HASH: GithubKdfParams['hash'] = 'SHA-256'
-const DEFAULT_KEY_LENGTH_BYTES = 32
 
 const hasStoredGithubCredential = ref(false)
-const githubCredentialMetadata = ref<StoredGithubCredentialMetadata | null>(null)
-// Shared per-user vault KDF metadata. Tracked separately from the GitHub-specific
-// metadata so it survives even when GitHub itself is not linked yet (a vault may
-// already exist for another provider), letting linking reuse the vault's salt.
-const sharedVaultMetadata = ref<SharedVaultMetadata | null>(null)
-const githubUnwrapKey = ref('')
+const githubCredentialMetadata = ref<GithubConnectionMetadata | null>(null)
 const githubCredentialStatusLoaded = ref(false)
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
-  }
-  return btoa(binary)
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
-  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4))
-  const binary = atob(normalized + padding)
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0))
-}
-
-function randomBase64(byteLength: number): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(byteLength))
-  return bytesToBase64(bytes)
-}
-
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-}
-
-function normalizeKdfParams(input: unknown): GithubKdfParams {
-  const raw = typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : {}
-  const iterations = Number(raw.iterations)
-  const hash = raw.hash === 'SHA-384' || raw.hash === 'SHA-512' ? raw.hash : DEFAULT_KDF_HASH
-  const keyLengthRaw = Number(raw.keyLength)
-  const keyLength =
-    Number.isFinite(keyLengthRaw) && keyLengthRaw > 0
-      ? keyLengthRaw > 64
-        ? Math.round(keyLengthRaw / 8)
-        : Math.round(keyLengthRaw)
-      : DEFAULT_KEY_LENGTH_BYTES
-
-  return {
-    algorithm: 'PBKDF2',
-    iterations: Number.isFinite(iterations) && iterations > 0 ? Math.round(iterations) : DEFAULT_KDF_ITERATIONS,
-    hash,
-    keyLength,
-  }
-}
-
-function createDefaultKdfParams(): GithubKdfParams {
-  return {
-    algorithm: 'PBKDF2',
-    iterations: DEFAULT_KDF_ITERATIONS,
-    hash: DEFAULT_KDF_HASH,
-    keyLength: DEFAULT_KEY_LENGTH_BYTES,
-  }
-}
+const githubAppInstallUrl = ref('')
 
 function normalizePermissions(value: unknown): GithubPermissions {
   if (!value || typeof value !== 'object') return {}
@@ -133,101 +59,30 @@ function normalizePermissions(value: unknown): GithubPermissions {
   )
 }
 
-function getExistingVaultMetadata(): SharedVaultMetadata | null {
-  // Prefer the shared vault metadata: it is present whenever a vault exists, even
-  // if GitHub is not the linked provider, so linking reuses the vault's salt.
-  if (sharedVaultMetadata.value) {
-    return sharedVaultMetadata.value
-  }
-
-  if (githubCredentialMetadata.value) {
-    return {
-      kdfSalt: githubCredentialMetadata.value.kdfSalt,
-      kdfParams: normalizeKdfParams(githubCredentialMetadata.value.kdfParams),
-      encryptionVersion: githubCredentialMetadata.value.encryptionVersion,
-    }
-  }
-
-  return null
-}
-
-function applyGithubCredentialStatus(status: GithubCredentialStatusResponse) {
+function applyGithubConnectionStatus(status: GithubConnectionStatusResponse) {
   githubCredentialStatusLoaded.value = true
+  if (typeof status.installUrl === 'string') {
+    githubAppInstallUrl.value = status.installUrl.trim()
+  }
 
-  if (!status.hasGithubCredential) {
+  if (!status.hasConnection) {
     hasStoredGithubCredential.value = false
     githubCredentialMetadata.value = null
-    githubUnwrapKey.value = ''
-    // A vault may already exist for another provider. Keep its shared KDF salt so
-    // a subsequent GitHub link reuses it rather than minting a mismatching one.
-    const sharedSalt = typeof status.kdfSalt === 'string' ? status.kdfSalt.trim() : ''
-    sharedVaultMetadata.value = sharedSalt
-      ? {
-          kdfSalt: sharedSalt,
-          kdfParams: normalizeKdfParams(status.kdfParams),
-          encryptionVersion:
-            typeof status.encryptionVersion === 'string' && status.encryptionVersion
-              ? status.encryptionVersion
-              : DEFAULT_ENCRYPTION_VERSION,
-        }
-      : null
     return
   }
 
-  const nextMetadata: StoredGithubCredentialMetadata = {
-    kdfSalt: status.kdfSalt,
-    kdfParams: normalizeKdfParams(status.kdfParams),
-    encryptionVersion: status.encryptionVersion,
-    githubLogin: status.githubLogin,
-    externalAccountId: status.externalAccountId,
-    githubInstallationId: status.githubInstallationId,
-    githubPermissions: normalizePermissions(status.githubPermissions),
-    githubTokenType: typeof status.githubTokenType === 'string' ? status.githubTokenType : '',
-    githubAccessTokenExpiresAt:
-      typeof status.githubAccessTokenExpiresAt === 'string' ? status.githubAccessTokenExpiresAt : '',
-    githubRefreshTokenExpiresAt:
-      typeof status.githubRefreshTokenExpiresAt === 'string' ? status.githubRefreshTokenExpiresAt : '',
-  }
-
   hasStoredGithubCredential.value = true
-  githubCredentialMetadata.value = nextMetadata
-  sharedVaultMetadata.value = {
-    kdfSalt: nextMetadata.kdfSalt,
-    kdfParams: nextMetadata.kdfParams,
-    encryptionVersion: nextMetadata.encryptionVersion,
+  githubCredentialMetadata.value = {
+    login: typeof status.login === 'string' ? status.login : '',
+    externalAccountId: typeof status.externalAccountId === 'string' ? status.externalAccountId : '',
+    installationId: typeof status.installationId === 'string' ? status.installationId : '',
+    permissions: normalizePermissions(status.permissions),
+    tokenType: typeof status.tokenType === 'string' ? status.tokenType : '',
+    accessTokenExpiresAt:
+      typeof status.accessTokenExpiresAt === 'string' ? status.accessTokenExpiresAt : '',
+    refreshTokenExpiresAt:
+      typeof status.refreshTokenExpiresAt === 'string' ? status.refreshTokenExpiresAt : '',
   }
-}
-
-async function deriveUnwrapKeyFromMetadata(password: string, metadata: SharedVaultMetadata): Promise<string> {
-  const passwordBytes = new TextEncoder().encode(password)
-  const saltBytes = base64ToBytes(metadata.kdfSalt)
-  const baseKey = await crypto.subtle.importKey('raw', toArrayBuffer(passwordBytes), 'PBKDF2', false, ['deriveBits'])
-  const keyLengthBits = (metadata.kdfParams.keyLength ?? DEFAULT_KEY_LENGTH_BYTES) * 8
-  const hash = metadata.kdfParams.hash ?? DEFAULT_KDF_HASH
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: toArrayBuffer(saltBytes),
-      iterations: metadata.kdfParams.iterations,
-      hash,
-    },
-    baseKey,
-    keyLengthBits,
-  )
-
-  return bytesToBase64(new Uint8Array(bits))
-}
-
-async function encryptGithubCredentialPayload(payloadJson: string, unwrapKeyB64: string, ivB64: string): Promise<string> {
-  const keyBytes = base64ToBytes(unwrapKeyB64)
-  const ivBytes = base64ToBytes(ivB64)
-  const cryptoKey = await crypto.subtle.importKey('raw', toArrayBuffer(keyBytes), { name: 'AES-GCM' }, false, ['encrypt'])
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: toArrayBuffer(ivBytes) },
-    cryptoKey,
-    new TextEncoder().encode(payloadJson),
-  )
-  return bytesToBase64(new Uint8Array(encrypted))
 }
 
 function toGithubErrorMessage(error: unknown, fallback: string): string {
@@ -238,165 +93,48 @@ function toGithubErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
-async function fetchGithubCredentialStatus(): Promise<GithubCredentialStatusResponse> {
-  const response = await api.get<GithubCredentialStatusResponse>('/api/me/github')
-  applyGithubCredentialStatus(response.data)
-  return response.data
-}
-
 export function clearGithubCredentialState() {
   hasStoredGithubCredential.value = false
   githubCredentialMetadata.value = null
-  sharedVaultMetadata.value = null
-  githubUnwrapKey.value = ''
   githubCredentialStatusLoaded.value = false
 }
 
-export async function syncGithubCredentialStatus(): Promise<GithubCredentialStatusResponse> {
-  return await fetchGithubCredentialStatus()
+export async function syncGithubCredentialStatus(): Promise<GithubConnectionStatusResponse> {
+  const response = await api.get<GithubConnectionStatusResponse>('/api/me/github')
+  applyGithubConnectionStatus(response.data)
+  return response.data
 }
 
-export async function initializeGithubCredentialSession(password: string): Promise<void> {
-  const status = await fetchGithubCredentialStatus()
-  if (!status.hasGithubCredential) {
-    githubUnwrapKey.value = ''
-    return
-  }
-
-  githubUnwrapKey.value = await deriveUnwrapKeyFromMetadata(password, {
-    kdfSalt: status.kdfSalt,
-    kdfParams: normalizeKdfParams(status.kdfParams),
-    encryptionVersion: status.encryptionVersion,
-  })
-}
-
-export async function unlockStoredGithubCredential(accountPassword: string): Promise<void> {
-  if (!githubCredentialMetadata.value) {
-    await fetchGithubCredentialStatus()
-  }
-
-  if (!hasStoredGithubCredential.value || !githubCredentialMetadata.value) {
-    throw new Error('Link a GitHub account before reconnecting it.')
-  }
-
-  githubUnwrapKey.value = await deriveUnwrapKeyFromMetadata(accountPassword, {
-    kdfSalt: githubCredentialMetadata.value.kdfSalt,
-    kdfParams: normalizeKdfParams(githubCredentialMetadata.value.kdfParams),
-    encryptionVersion: githubCredentialMetadata.value.encryptionVersion,
-  })
-}
-
-export async function startGithubLink(frontendOrigin: string, returnPath = '/settings'): Promise<GithubLinkStartResponse> {
+export async function startGithubLink(
+  frontendOrigin: string,
+  returnPath = '/settings',
+): Promise<GithubLinkStartResponse> {
   const trimmedOrigin = frontendOrigin.trim()
   if (!trimmedOrigin) {
     throw new Error('Frontend origin is required to start GitHub linking.')
   }
 
-  const response = await api.post<GithubLinkStartResponse>('/api/me/github/link/start', {
-    frontendOrigin: trimmedOrigin,
-    returnPath,
-  })
-  return response.data
-}
-
-export async function completeGithubLink({
-  accountPassword,
-  githubCredential,
-}: CompleteGithubLinkInput): Promise<GithubCredentialStatusResponse> {
-  const trimmedPassword = accountPassword
-  const accessToken = githubCredential.accessToken.trim()
-  const githubLogin = githubCredential.githubLogin.trim()
-  const externalAccountId = githubCredential.externalAccountId.trim()
-
-  if (!trimmedPassword) {
-    throw new Error('Account password is required to finish linking GitHub.')
-  }
-
-  if (!accessToken || !githubLogin || !externalAccountId) {
-    throw new Error('GitHub authorization is incomplete. Please retry the connect flow.')
-  }
-
-  const existingVaultMetadata = getExistingVaultMetadata()
-  const vaultMetadata: SharedVaultMetadata = existingVaultMetadata ?? {
-    kdfSalt: randomBase64(16),
-    kdfParams: createDefaultKdfParams(),
-    encryptionVersion: DEFAULT_ENCRYPTION_VERSION,
-  }
-
-  const unwrapKey = await deriveUnwrapKeyFromMetadata(trimmedPassword, vaultMetadata)
-  const iv = randomBase64(12)
-  const permissions = normalizePermissions(githubCredential.permissions)
-  const plaintextCredential = JSON.stringify({
-    accessToken,
-    refreshToken: githubCredential.refreshToken?.trim() || '',
-    tokenType: githubCredential.tokenType?.trim() || '',
-    login: githubLogin,
-    externalAccountId,
-    installationId: githubCredential.installationId?.trim() || '',
-    permissions,
-    accessTokenExpiresAt: githubCredential.accessTokenExpiresAt?.trim() || '',
-    refreshTokenExpiresAt: githubCredential.refreshTokenExpiresAt?.trim() || '',
-  })
-  const ciphertext = await encryptGithubCredentialPayload(plaintextCredential, unwrapKey, iv)
-
   try {
-    const response = await api.post<GithubCredentialStatusResponse>('/api/me/github/link/complete', {
-      accountPassword: trimmedPassword,
-      ciphertext,
-      iv,
-      kdfSalt: vaultMetadata.kdfSalt,
-      kdfParams: vaultMetadata.kdfParams,
-      encryptionVersion: vaultMetadata.encryptionVersion,
-      externalAccountId,
-      githubLogin,
-      installationId: githubCredential.installationId?.trim() || undefined,
-      permissions,
-      tokenType: githubCredential.tokenType?.trim() || undefined,
-      accessTokenExpiresAt: githubCredential.accessTokenExpiresAt?.trim() || undefined,
-      refreshTokenExpiresAt: githubCredential.refreshTokenExpiresAt?.trim() || undefined,
+    const response = await api.post<GithubLinkStartResponse>('/api/me/github/link/start', {
+      frontendOrigin: trimmedOrigin,
+      returnPath,
     })
-
-    applyGithubCredentialStatus(response.data)
-    githubUnwrapKey.value = unwrapKey
     return response.data
   } catch (error) {
-    throw new Error(toGithubErrorMessage(error, 'Failed to store the linked GitHub account.'))
+    throw new Error(toGithubErrorMessage(error, 'Failed to start GitHub linking.'))
   }
 }
 
 export async function deleteGithubCredential(): Promise<void> {
   await api.delete('/api/me/github')
-  applyGithubCredentialStatus({ hasGithubCredential: false })
-}
-
-export function getSharedVaultUnwrapKey(): string {
-  return githubUnwrapKey.value.trim()
-}
-
-export function getSharedVaultUnwrapKeyOrThrow(): string {
-  const unwrapKey = getSharedVaultUnwrapKey()
-  if (!unwrapKey) {
-    requestCredentialReconnect({
-      title: 'Reconnect credentials',
-      message: 'Re-enter your account password to continue exporting to GitHub.',
-    })
-    throw new Error('Reconnect your account credentials by re-entering your password before exporting to GitHub.')
-  }
-  return unwrapKey
+  applyGithubConnectionStatus({ hasConnection: false })
 }
 
 export function useGithubCredentials() {
-  const hasUnwrapKey = computed(
-    () => githubUnwrapKey.value.trim().length > 0,
-  )
-  const needsReconnect = computed(() => hasStoredGithubCredential.value && !hasUnwrapKey.value)
-
   return {
     hasStoredGithubCredential,
     githubCredentialMetadata,
-    githubUnwrapKey,
     githubCredentialStatusLoaded,
-    hasUnwrapKey,
-    needsReconnect,
+    githubAppInstallUrl,
   }
 }

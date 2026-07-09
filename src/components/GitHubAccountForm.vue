@@ -3,50 +3,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Github, ExternalLink } from 'lucide-vue-next'
 import {
-  completeGithubLink,
   deleteGithubCredential,
   startGithubLink,
   syncGithubCredentialStatus,
-  type GithubOAuthCallbackCredential,
+  type GithubLinkCallbackMessage,
   useGithubCredentials,
 } from '@/services/github-credentials'
 import { getPendingGithubExport } from '@/services/github-export'
 import { useToasts } from '@/services/toast'
-
-type GithubCallbackMessage =
-  | {
-      type: 'conceptualai:github-link-callback'
-      ok: true
-      returnPath?: string
-      githubCredential?: {
-        accessToken?: string
-        refreshToken?: string
-        tokenType?: string
-        accessTokenExpiresAt?: string
-        refreshTokenExpiresAt?: string
-        githubLogin?: string
-        externalAccountId?: string
-        installationId?: string
-        permissions?: Record<string, string>
-      }
-    }
-  | {
-      type: 'conceptualai:github-link-callback'
-      ok: false
-      error?: string
-    }
-
-type GithubCallbackCredentialDraft = {
-  accessToken?: string
-  refreshToken?: string
-  tokenType?: string
-  accessTokenExpiresAt?: string
-  refreshTokenExpiresAt?: string
-  githubLogin?: string
-  externalAccountId?: string
-  installationId?: string
-  permissions?: Record<string, string>
-}
 
 const { push } = useToasts()
 const route = useRoute()
@@ -55,17 +19,13 @@ const {
   hasStoredGithubCredential,
   githubCredentialMetadata,
   githubCredentialStatusLoaded,
-  needsReconnect,
+  githubAppInstallUrl, // backend-configured (GET /me/github) — no GitHub constants client-side
 } = useGithubCredentials()
 
 const loading = ref(true)
 const linking = ref(false)
-const finishing = ref(false)
 const disconnecting = ref(false)
-const githubAppInstallUrl = (import.meta.env.VITE_GITHUB_APP_INSTALL_URL || '').trim()
 
-const accountPassword = ref('')
-const pendingCredential = ref<GithubOAuthCallbackCredential | null>(null)
 const showInstallPrompt = ref(false)
 
 const error = ref('')
@@ -73,15 +33,15 @@ const success = ref('')
 
 let popupWindow: Window | null = null
 let popupClosedPollId: number | null = null
+// Backend-issued handshake contract (from link/start): the popup's postMessage must
+// carry this exact type and nonce. The frontend holds no GitHub constants.
+let expectedMessageType = ''
+let expectedMessageNonce = ''
 
-const statusLabel = computed(() => {
-  if (pendingCredential.value) return 'Finish linking'
-  if (hasStoredGithubCredential.value) return 'Linked'
-  return 'Not linked'
-})
+const statusLabel = computed(() => (hasStoredGithubCredential.value ? 'Linked' : 'Not linked'))
 
 const permissionsText = computed(() => {
-  const permissions = githubCredentialMetadata.value?.githubPermissions ?? {}
+  const permissions = githubCredentialMetadata.value?.permissions ?? {}
   const entries = Object.entries(permissions).filter(([name, value]) => name && value)
   if (!entries.length) return 'Unknown'
   return entries.map(([name, value]) => `${name}: ${value}`).join(', ')
@@ -111,10 +71,6 @@ const maybeReturnToPendingExport = async () => {
   await router.replace(returnPath)
 }
 
-const promptGithubAppInstall = () => {
-  showInstallPrompt.value = true
-}
-
 const cleanupPopup = () => {
   if (popupClosedPollId !== null) {
     window.clearInterval(popupClosedPollId)
@@ -140,34 +96,18 @@ const loadStatus = async () => {
   }
 }
 
-const normalizeCallbackCredential = (raw?: GithubCallbackCredentialDraft): GithubOAuthCallbackCredential | null => {
-  const accessToken = String(raw?.accessToken ?? '').trim()
-  const githubLogin = String(raw?.githubLogin ?? '').trim()
-  const externalAccountId = String(raw?.externalAccountId ?? '').trim()
-  if (!accessToken || !githubLogin || !externalAccountId) return null
-
-  return {
-    accessToken,
-    refreshToken: String(raw?.refreshToken ?? '').trim() || undefined,
-    tokenType: String(raw?.tokenType ?? '').trim() || undefined,
-    accessTokenExpiresAt: String(raw?.accessTokenExpiresAt ?? '').trim() || undefined,
-    refreshTokenExpiresAt: String(raw?.refreshTokenExpiresAt ?? '').trim() || undefined,
-    githubLogin,
-    externalAccountId,
-    installationId: String(raw?.installationId ?? '').trim() || undefined,
-    permissions: raw?.permissions ?? {},
-  }
-}
-
-const handlePopupMessage = (event: MessageEvent<GithubCallbackMessage>) => {
-  const payload = event.data
-  if (!payload || payload.type !== 'conceptualai:github-link-callback') return
-  // The callback HTML can be served from the backend callback origin in dev,
-  // so do not require the sender origin to match the frontend origin here.
-  // Instead, trust the message only when it comes from the popup we opened.
+const handlePopupMessage = async (event: MessageEvent) => {
+  const payload = event.data as GithubLinkCallbackMessage | undefined
+  // Match ONLY the backend-issued handshake for the link we initiated.
+  if (!payload || !expectedMessageType || payload.type !== expectedMessageType) return
+  if (payload.nonce !== expectedMessageNonce) return
+  // The callback HTML is served from the backend origin; trust the message only
+  // when it comes from the popup we opened.
   if (popupWindow && event.source !== popupWindow) return
 
   linking.value = false
+  expectedMessageType = ''
+  expectedMessageNonce = ''
   cleanupPopup()
 
   if (!payload.ok) {
@@ -182,29 +122,35 @@ const handlePopupMessage = (event: MessageEvent<GithubCallbackMessage>) => {
     return
   }
 
-  const normalized = normalizeCallbackCredential(payload.githubCredential)
-  if (!normalized) {
-    resetMessages()
-    error.value = 'GitHub authorization finished, but the callback payload was incomplete.'
+  // Connection was completed server-side — just refetch the redacted status.
+  resetMessages()
+  try {
+    await syncGithubCredentialStatus()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to refresh GitHub status.'
     return
   }
 
-  pendingCredential.value = normalized
-  resetMessages()
-  success.value = `GitHub authorized for @${normalized.githubLogin}. Enter your account password to finish linking.`
+  const login = githubCredentialMetadata.value?.login
+  success.value = login ? `GitHub account @${login} linked successfully.` : 'GitHub account linked successfully.'
 
-  if (!normalized.installationId || !Object.keys(normalized.permissions ?? {}).length) {
-    promptGithubAppInstall()
+  const meta = githubCredentialMetadata.value
+  if (meta && (!meta.installationId || !Object.keys(meta.permissions ?? {}).length)) {
+    showInstallPrompt.value = true
   }
+
+  await maybeReturnToPendingExport()
 }
 
 const beginGithubLink = async () => {
   resetMessages()
-  pendingCredential.value = null
   linking.value = true
 
   try {
     const response = await startGithubLink(window.location.origin, getRequestedReturnPath() || '/settings')
+    expectedMessageType = response.messageType
+    expectedMessageNonce = response.messageNonce
+
     const popup = window.open(
       response.authorizationUrl,
       'conceptualai-github-link',
@@ -227,6 +173,9 @@ const beginGithubLink = async () => {
         popupWindow = null
         if (linking.value) {
           linking.value = false
+          // The user may have completed linking and closed a failure page manually —
+          // refetch so the card reflects reality either way.
+          void syncGithubCredentialStatus()
         }
       }
     }, 500)
@@ -234,45 +183,6 @@ const beginGithubLink = async () => {
     linking.value = false
     error.value = err instanceof Error ? err.message : 'Failed to start GitHub linking.'
   }
-}
-
-const finishGithubLink = async () => {
-  if (!pendingCredential.value) {
-    error.value = 'Start the GitHub link flow before finishing it.'
-    return
-  }
-
-  if (!accountPassword.value) {
-    error.value = 'Your account password is required to finish linking GitHub.'
-    success.value = ''
-    return
-  }
-
-  resetMessages()
-  finishing.value = true
-
-  try {
-    const status = await completeGithubLink({
-      accountPassword: accountPassword.value,
-      githubCredential: pendingCredential.value,
-    })
-    pendingCredential.value = null
-    accountPassword.value = ''
-    success.value = status.hasGithubCredential
-      ? `GitHub account @${status.githubLogin} linked successfully.`
-      : 'GitHub account linked successfully.'
-    await maybeReturnToPendingExport()
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to finish linking GitHub.'
-  } finally {
-    finishing.value = false
-  }
-}
-
-const cancelPendingLink = () => {
-  pendingCredential.value = null
-  accountPassword.value = ''
-  resetMessages()
 }
 
 const disconnectGithub = async () => {
@@ -284,8 +194,6 @@ const disconnectGithub = async () => {
   disconnecting.value = true
   try {
     await deleteGithubCredential()
-    pendingCredential.value = null
-    accountPassword.value = ''
     success.value = 'GitHub account disconnected.'
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to disconnect GitHub.'
@@ -294,13 +202,17 @@ const disconnectGithub = async () => {
   }
 }
 
+const onPopupMessage = (event: MessageEvent) => {
+  void handlePopupMessage(event)
+}
+
 onMounted(async () => {
-  window.addEventListener('message', handlePopupMessage as EventListener)
+  window.addEventListener('message', onPopupMessage)
   await loadStatus()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('message', handlePopupMessage as EventListener)
+  window.removeEventListener('message', onPopupMessage)
   cleanupPopup()
 })
 </script>
@@ -337,9 +249,10 @@ onBeforeUnmount(() => {
         <h2 class="title">GitHub account</h2>
         <p class="subtitle">
           Link your GitHub account so ConceptualAI can export generated projects to repositories when you ask it to.
+          Tokens are encrypted on the server and never touch your browser.
         </p>
       </div>
-      <div class="status-chip" :class="{ ready: hasStoredGithubCredential, pending: pendingCredential }">
+      <div class="status-chip" :class="{ ready: hasStoredGithubCredential }">
         {{ statusLabel }}
       </div>
     </div>
@@ -350,12 +263,12 @@ onBeforeUnmount(() => {
       </template>
       <template v-else-if="hasStoredGithubCredential && githubCredentialMetadata">
         <p class="status-copy">
-          Linked GitHub account: <strong>@{{ githubCredentialMetadata.githubLogin }}</strong>
+          Linked GitHub account: <strong>@{{ githubCredentialMetadata.login }}</strong>
         </p>
         <div class="status-grid">
           <div>
             <span class="meta-label">Installation</span>
-            <span class="meta-value">{{ githubCredentialMetadata.githubInstallationId || 'Unknown' }}</span>
+            <span class="meta-value">{{ githubCredentialMetadata.installationId || 'Unknown' }}</span>
           </div>
           <div>
             <span class="meta-label">Permissions</span>
@@ -363,11 +276,11 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <span class="meta-label">Access token expires</span>
-            <span class="meta-value">{{ formatDate(githubCredentialMetadata.githubAccessTokenExpiresAt) }}</span>
+            <span class="meta-value">{{ formatDate(githubCredentialMetadata.accessTokenExpiresAt) }}</span>
           </div>
           <div>
             <span class="meta-label">Refresh token expires</span>
-            <span class="meta-value">{{ formatDate(githubCredentialMetadata.githubRefreshTokenExpiresAt) }}</span>
+            <span class="meta-value">{{ formatDate(githubCredentialMetadata.refreshTokenExpiresAt) }}</span>
           </div>
         </div>
       </template>
@@ -376,46 +289,7 @@ onBeforeUnmount(() => {
       </template>
     </div>
 
-    <div v-if="needsReconnect && !pendingCredential" class="pending-panel">
-      <strong>Reconnect required</strong>
-      <p>
-        The shared export key is only kept for this signed-in session. Use the shared reconnect form at the top of
-        Settings to reconnect GitHub actions like export.
-      </p>
-    </div>
-
-    <div v-if="pendingCredential" class="pending-panel">
-      <strong>Finish linking GitHub</strong>
-      <p>
-        GitHub authorization succeeded for <strong>@{{ pendingCredential.githubLogin }}</strong>. Enter your account
-        password so the credential can be stored securely.
-      </p>
-
-      <div class="inline-form">
-        <div class="field grow">
-          <label class="label" for="github-account-password">Account password</label>
-          <input
-            id="github-account-password"
-            v-model="accountPassword"
-            type="password"
-            class="input"
-            autocomplete="current-password"
-            placeholder="Enter your account password"
-          />
-        </div>
-        <button class="btn btn-primary action-btn" type="button" :disabled="finishing" @click="finishGithubLink">
-          {{ finishing ? 'Linking...' : 'Finish linking' }}
-        </button>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-secondary action-btn" type="button" :disabled="finishing" @click="cancelPendingLink">
-          Cancel
-        </button>
-      </div>
-    </div>
-
-    <div v-else class="actions">
+    <div class="actions">
       <button class="btn btn-primary action-btn" type="button" :disabled="linking" @click="beginGithubLink">
         <Github :size="16" />
         <span>
@@ -452,14 +326,14 @@ onBeforeUnmount(() => {
     </div>
 
     <a
-      v-if="hasStoredGithubCredential && githubCredentialMetadata?.githubLogin"
+      v-if="hasStoredGithubCredential && githubCredentialMetadata?.login"
       class="account-link"
-      :href="`https://github.com/${githubCredentialMetadata.githubLogin}`"
+      :href="`https://github.com/${githubCredentialMetadata.login}`"
       target="_blank"
       rel="noreferrer"
     >
       <ExternalLink :size="16" />
-      <span>View @{{ githubCredentialMetadata.githubLogin }} on GitHub</span>
+      <span>View @{{ githubCredentialMetadata.login }} on GitHub</span>
     </a>
 
     <p v-if="error" class="error-msg">{{ error }}</p>
@@ -513,35 +387,17 @@ onBeforeUnmount(() => {
   color: rgba(16, 185, 129, 0.95);
 }
 
-.status-chip.pending {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.28);
-  color: rgba(96, 165, 250, 0.95);
-}
-
-.status-panel,
-.pending-panel {
+.status-panel {
   border: 1px solid var(--glass-border);
   border-radius: 14px;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.03);
 }
 
-.pending-panel {
-  border-color: rgba(59, 130, 246, 0.28);
-  background: rgba(59, 130, 246, 0.08);
-}
-
-.status-copy,
-.pending-panel p {
+.status-copy {
   margin: 0;
   color: var(--text-dim);
   font-size: 0.9rem;
-}
-
-.pending-panel strong {
-  display: block;
-  margin-bottom: 0.35rem;
 }
 
 .modal-overlay {
@@ -603,30 +459,6 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.inline-form {
-  margin-top: 1rem;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem;
-  align-items: end;
-}
-
-.grow {
-  min-width: 0;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
 .actions {
   margin-top: 0.2rem;
   display: flex;
@@ -669,7 +501,6 @@ onBeforeUnmount(() => {
 
 @media (max-width: 780px) {
   .header-row,
-  .inline-form,
   .status-grid {
     grid-template-columns: 1fr;
     display: grid;
