@@ -65,15 +65,17 @@ function forceSignOut(reason: string) {
 /**
  * Axios client used by this Vite app.
  *
- * Important: we use relative baseURL so Vite proxy can route:
- * - /api -> http://localhost:3001 (legacy)
- * - /auth -> http://localhost:8000 with rewrite to ''
- *
- * We set baseURL to '/auth' so requests reach the backend via the /auth proxy,
- * while still allowing calling '/api/...' paths.
+ * Cross-origin backend (build-time): VITE_API_URL points at the deployed
+ * gateway (e.g. https://conceptualai-backend.rdavislee.deno.net/api). Every
+ * call site already prefixes paths with /api, so a trailing /api on the
+ * configured value is stripped and the ORIGIN becomes baseURL. Unset (local
+ * dev) falls back to relative URLs served through the Vite /api proxy.
  */
+const configuredApiUrl = ((import.meta as any).env?.VITE_API_URL as string | undefined)?.trim() ?? ''
+const apiOrigin = configuredApiUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: '/',
+  baseURL: apiOrigin || '/',
   // Planning can take a while (LLM + tool calls). Disable the axios timeout so we wait for the backend.
   timeout: 0,
   headers: {
