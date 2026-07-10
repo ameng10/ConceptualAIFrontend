@@ -17,15 +17,11 @@ export default defineConfig({
             deny: ['**/.git/**'],
         },
         proxy: {
+            // Backend routes all live under /api (REQUESTING_BASE_URL). Do NOT add
+            // bare SPA-route prefixes here: a proxied '/auth' swallowed the OAuth
+            // callback's full-page redirect (/auth/callback → backend 404), and
+            // '/projects' would 404 any hard refresh of the projects page.
             '/api': {
-                target: 'http://localhost:8000',
-                changeOrigin: true,
-            },
-            '/auth': {
-                target: 'http://localhost:8000',
-                changeOrigin: true,
-            },
-            '/projects': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,
             },

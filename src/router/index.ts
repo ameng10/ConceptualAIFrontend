@@ -11,6 +11,7 @@ import Library from '@/views/Library.vue'
 import Settings from '@/views/Settings.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
+import AuthCallback from '@/views/AuthCallback.vue'
 import BugReportFeed from '@/views/BugReportFeed.vue'
 import PostDetail from '@/views/PostDetail.vue'
 import CreateBugReport from '@/views/CreateBugReport.vue'
@@ -44,6 +45,13 @@ const router = createRouter({
             path: REGISTER_PATH,
             name: 'register',
             component: Register,
+            meta: { public: true, hideSidebar: true }
+        },
+        {
+            // Federated sign-in redirect target: consumes #access/#refresh (or #error).
+            path: '/auth/callback',
+            name: 'auth-callback',
+            component: AuthCallback,
             meta: { public: true, hideSidebar: true }
         },
         {

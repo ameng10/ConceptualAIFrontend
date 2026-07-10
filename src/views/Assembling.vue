@@ -545,7 +545,7 @@ const submitModify = async () => {
 const initiateAutoExpire = () => {
   if (previewState.value === 'stopping') return
   previewState.value = 'stopping'
-  previewError.value = 'Preview automatically expired after 5 minutes.'
+  previewError.value = 'Preview expired.'
   previewUrl.value = ''
   previewExpiresAt.value = null
 

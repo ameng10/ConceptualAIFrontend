@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { User, Github } from 'lucide-vue-next'
+import { User, Github, KeyRound } from 'lucide-vue-next'
 import { socialApi } from '@/services/social-api'
 import { setUsername } from '@/services/auth-storage'
 import GitHubAccountForm from '@/components/GitHubAccountForm.vue'
+import { getAuthMethods, setPassword, type AuthMethods } from '@/services/federated-auth'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -98,7 +99,60 @@ const saveProfile = async () => {
   }
 }
 
-onMounted(loadProfile)
+// --- Sign-in methods (password + linked Google/GitHub) ---
+const methods = ref<AuthMethods | null>(null)
+const methodsError = ref('')
+const pwSaving = ref(false)
+const pwError = ref('')
+const pwSuccess = ref('')
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+
+const loadAuthMethods = async () => {
+  methodsError.value = ''
+  try {
+    methods.value = await getAuthMethods()
+  } catch (e: any) {
+    methodsError.value = e?.message || 'Failed to load sign-in methods.'
+  }
+}
+
+const submitPassword = async () => {
+  pwError.value = ''
+  pwSuccess.value = ''
+  if (newPassword.value.length < 8) {
+    pwError.value = 'New password must be at least 8 characters.'
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    pwError.value = 'Passwords do not match.'
+    return
+  }
+  const hadPassword = methods.value?.hasPassword === true
+  if (hadPassword && !currentPassword.value) {
+    pwError.value = 'Current password is required.'
+    return
+  }
+  pwSaving.value = true
+  try {
+    await setPassword(newPassword.value, hadPassword ? currentPassword.value : undefined)
+    pwSuccess.value = hadPassword ? 'Password changed.' : 'Password set. You can now sign in with email + password.'
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+    await loadAuthMethods() // flips the form to change-mode without a reload
+  } catch (e: any) {
+    pwError.value = e?.message || 'Could not update password.'
+  } finally {
+    pwSaving.value = false
+  }
+}
+
+onMounted(() => {
+  void loadProfile()
+  void loadAuthMethods()
+})
 </script>
 
 <template>
@@ -108,6 +162,62 @@ onMounted(loadProfile)
         <h1 class="animated-gradient-text">Settings</h1>
         <p class="subtitle">Manage your GitHub connection and public profile.</p>
       </div>
+
+      <main class="settings-content glass">
+        <div class="section-title">
+          <KeyRound :size="18" />
+          <h3>Sign-in Methods</h3>
+        </div>
+
+        <div v-if="methodsError" class="error-msg">{{ methodsError }}</div>
+        <div v-else-if="!methods" class="muted">Loading sign-in methods...</div>
+        <template v-else>
+          <ul class="methods-list">
+            <li>
+              <span class="method-name">Password</span>
+              <span :class="['method-state', methods.hasPassword ? 'on' : 'off']">
+                {{ methods.hasPassword ? 'Set' : 'Not set' }}
+              </span>
+            </li>
+            <li>
+              <span class="method-name">Google</span>
+              <span :class="['method-state', methods.google ? 'on' : 'off']">
+                {{ methods.google ? 'Linked' : 'Not linked' }}
+              </span>
+            </li>
+            <li>
+              <span class="method-name">GitHub</span>
+              <span :class="['method-state', methods.github ? 'on' : 'off']">
+                {{ methods.github ? 'Linked' : 'Not linked' }}
+              </span>
+            </li>
+          </ul>
+          <p class="muted hint">
+            Signing in with Google or GitHub using {{ methods.email }} always lands in this account.
+          </p>
+
+          <form class="password-form" @submit.prevent="submitPassword">
+            <h4>{{ methods.hasPassword ? 'Change password' : 'Set a password' }}</h4>
+            <div v-if="methods.hasPassword" class="field-group">
+              <label>Current password</label>
+              <input v-model="currentPassword" type="password" autocomplete="current-password" />
+            </div>
+            <div class="field-group">
+              <label>New password</label>
+              <input v-model="newPassword" type="password" autocomplete="new-password" />
+            </div>
+            <div class="field-group">
+              <label>Confirm new password</label>
+              <input v-model="confirmPassword" type="password" autocomplete="new-password" />
+            </div>
+            <div v-if="pwError" class="error-msg">{{ pwError }}</div>
+            <div v-if="pwSuccess" class="success-msg">{{ pwSuccess }}</div>
+            <button type="submit" class="btn btn-primary" :disabled="pwSaving">
+              {{ pwSaving ? 'Saving…' : methods.hasPassword ? 'Change Password' : 'Set Password' }}
+            </button>
+          </form>
+        </template>
+      </main>
 
       <main class="settings-content glass">
         <div class="section-title">
@@ -351,6 +461,64 @@ h1 {
 
 .btn-primary {
   align-self: flex-start;
+}
+
+.methods-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.methods-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.method-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.method-state {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.method-state.on {
+  color: rgba(16, 185, 129, 0.95);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.method-state.off {
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hint {
+  font-size: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.password-form h4 {
+  font-size: 0.95rem;
+  margin: 0;
 }
 
 @media (max-width: 780px) {
