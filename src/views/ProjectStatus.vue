@@ -70,8 +70,14 @@ const IN_PROGRESS_STATUSES = [
   'awaiting_input',
 ] as const
 
-// Statuses where we're past planning - design already started or complete
-const PAST_PLANNING_STATUSES = IN_PROGRESS_STATUSES.filter((s) => s !== 'planning')
+// Statuses where we're past planning - design already started or complete. The awaiting_*
+// statuses are NOT past planning: the plan isn't accepted yet, we're parked waiting on the
+// user's clarification answers, so they stay on the planning side. Otherwise `accepted` /
+// `isPastPlanningStage` flip on during clarification and the pipeline graphic wrongly jumps to
+// "Building" behind the clarification dialog.
+const PAST_PLANNING_STATUSES = IN_PROGRESS_STATUSES.filter(
+  (s) => s !== 'planning' && s !== 'awaiting_clarification' && s !== 'awaiting_input',
+)
 
 const canStartDesign = computed(() => {
   const status = planningStatus.value ?? project.value?.status
