@@ -63,18 +63,36 @@ const restingLeft = (cell: HTMLElement) => {
 }
 
 /**
- * Teleport back into the middle copy by an exact period (visually a no-op).
- * Must never run while a programmatic smooth scroll is in flight — assigning
- * scrollLeft cancels the animation mid-glide (the old bubble-4→5 glitch) —
- * so it waits for settle() unless forced by a caller about to scroll anyway.
+ * Teleport by whole periods back into a window centered in the track, leaving
+ * balanced runway (~1.5 copies) to each hard end for long flings.
+ * Assigning scrollLeft cancels ANY in-flight scroll animation — a touch fling,
+ * the post-wheel snap glide, or our own smooth scroll — so this only runs at
+ * moments when none can be live: at settle, on finger-down, during self-driven
+ * drift, or right before we start a programmatic scroll.
  */
 const normalize = (force = false) => {
   const el = track.value
   if (!el || !looping || (animating && !force)) return
   const w = period()
   if (w <= 0) return
-  while (el.scrollLeft < w * 0.5) el.scrollLeft += w
-  while (el.scrollLeft > w * 1.5) el.scrollLeft -= w
+  const lo = Math.max(0, w - el.clientWidth / 2)
+  while (el.scrollLeft < lo) el.scrollLeft += w
+  while (el.scrollLeft > lo + w) el.scrollLeft -= w
+}
+
+/**
+ * Mid-fling wrap of last resort, once a hard end is less than a card away:
+ * cutting the fling short there beats letting it slam into the wall.
+ */
+const emergencyWrap = () => {
+  const el = track.value
+  if (!el || !looping || animating) return
+  const w = period()
+  if (w <= 0) return
+  const margin = cardStep()
+  const max = el.scrollWidth - el.clientWidth
+  if (el.scrollLeft < margin) el.scrollLeft += w
+  else if (el.scrollLeft > max - margin) el.scrollLeft -= w
 }
 
 /** Active bubble = the cell whose center sits closest to the viewport center. */
@@ -115,9 +133,16 @@ const onScroll = () => {
   scrollTicking = true
   requestAnimationFrame(() => {
     scrollTicking = false
-    normalize()
+    emergencyWrap()
     updateDot()
   })
+}
+
+/** Finger-down pins the scroll — no animation is live, so wrapping is safe. */
+const onGrab = () => {
+  stopDrift()
+  animating = false
+  normalize(true)
 }
 
 const drift = () => {
@@ -203,9 +228,9 @@ onBeforeUnmount(() => {
     role="region"
     aria-roledescription="carousel"
     aria-label="Demo apps"
-    @pointerdown="stopDrift"
+    @pointerdown="onGrab"
     @wheel.passive="stopDrift"
-    @touchstart.passive="stopDrift"
+    @touchstart.passive="onGrab"
     @keydown="onKeydown"
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
