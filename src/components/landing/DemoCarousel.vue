@@ -10,9 +10,11 @@ import DemoCard from './DemoCard.vue'
  * - slow ambient drift until the FIRST user interaction, then manual forever
  * - pause on hover/focus; no drift at all under prefers-reduced-motion
  * - arrows + dots + native swipe; everything keyboard-reachable
+ *
+ * Loop geometry is measured from the cells themselves (getBoundingClientRect),
+ * never derived from scrollWidth: the track's own padding made scrollWidth/3
+ * a few px short of the true repeat distance, so every wrap teleport jolted.
  */
-
-const GAP = 20
 
 const prefersReducedMotion =
   typeof window !== 'undefined' &&
@@ -28,39 +30,87 @@ const snapping = ref(prefersReducedMotion)
 const hovered = ref(false)
 let rafId = 0
 let scrollTicking = false
+let settleTimer = 0
+let animating = false
 
 const copies = looping ? [0, 1, 2] : [1]
 
-const setWidth = () => {
+const cells = (): HTMLElement[] => {
   const el = track.value
-  if (!el) return 0
-  return el.scrollWidth / copies.length
+  return el ? Array.from(el.querySelectorAll<HTMLElement>('.cell')) : []
+}
+
+/** Exact loop period: distance between the same card in adjacent copies. */
+const period = () => {
+  const c = cells()
+  if (c.length <= DEMOS.length) return 0
+  return c[DEMOS.length].getBoundingClientRect().left - c[0].getBoundingClientRect().left
 }
 
 const cardStep = () => {
-  const el = track.value
-  const first = el?.querySelector<HTMLElement>('.demo-card')
-  return first ? first.offsetWidth + GAP : 480
+  const c = cells()
+  if (c.length < 2) return 480
+  return c[1].getBoundingClientRect().left - c[0].getBoundingClientRect().left
 }
 
-const normalize = () => {
+/** scrollLeft at which a cell rests under `scroll-snap-align: center`. */
+const restingLeft = (cell: HTMLElement) => {
   const el = track.value
-  if (!el || !looping) return
-  const w = setWidth()
+  if (!el) return 0
+  const t = el.getBoundingClientRect()
+  const r = cell.getBoundingClientRect()
+  return el.scrollLeft + (r.left + r.width / 2) - (t.left + t.width / 2)
+}
+
+/**
+ * Teleport back into the middle copy by an exact period (visually a no-op).
+ * Must never run while a programmatic smooth scroll is in flight — assigning
+ * scrollLeft cancels the animation mid-glide (the old bubble-4→5 glitch) —
+ * so it waits for settle() unless forced by a caller about to scroll anyway.
+ */
+const normalize = (force = false) => {
+  const el = track.value
+  if (!el || !looping || (animating && !force)) return
+  const w = period()
   if (w <= 0) return
-  if (el.scrollLeft < w * 0.5) el.scrollLeft += w
-  else if (el.scrollLeft > w * 1.5) el.scrollLeft -= w
+  while (el.scrollLeft < w * 0.5) el.scrollLeft += w
+  while (el.scrollLeft > w * 1.5) el.scrollLeft -= w
 }
 
+/** Active bubble = the cell whose center sits closest to the viewport center. */
 const updateDot = () => {
   const el = track.value
   if (!el) return
-  const w = looping ? setWidth() : el.scrollWidth
-  const offset = looping ? el.scrollLeft % w : el.scrollLeft
-  activeDot.value = Math.round(offset / cardStep()) % DEMOS.length
+  const t = el.getBoundingClientRect()
+  const center = t.left + t.width / 2
+  let best = 0
+  let bestDist = Infinity
+  cells().forEach((cell, i) => {
+    const r = cell.getBoundingClientRect()
+    const dist = Math.abs(r.left + r.width / 2 - center)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = i
+    }
+  })
+  activeDot.value = best % DEMOS.length
+}
+
+/** Scrolling has come to rest: now wrapping is safe. */
+const settle = () => {
+  if (settleTimer) {
+    window.clearTimeout(settleTimer)
+    settleTimer = 0
+  }
+  animating = false
+  normalize()
+  updateDot()
 }
 
 const onScroll = () => {
+  // Debounced fallback for browsers without the `scrollend` event.
+  if (settleTimer) window.clearTimeout(settleTimer)
+  settleTimer = window.setTimeout(settle, 150)
   if (scrollTicking) return
   scrollTicking = true
   requestAnimationFrame(() => {
@@ -89,15 +139,33 @@ const stopDrift = () => {
 
 const scrollByCards = (dir: 1 | -1) => {
   stopDrift()
-  track.value?.scrollBy({ left: dir * cardStep(), behavior: 'smooth' })
+  const el = track.value
+  if (!el) return
+  // Wrap BEFORE moving so a one-card glide can never cross the wrap threshold.
+  normalize(true)
+  animating = true
+  el.scrollBy({ left: dir * cardStep(), behavior: 'smooth' })
 }
 
 const goToDot = (idx: number) => {
   stopDrift()
   const el = track.value
   if (!el) return
-  const base = looping ? setWidth() : 0
-  el.scrollTo({ left: base + idx * cardStep(), behavior: 'smooth' })
+  normalize(true)
+  // Aim for whichever copy of this card is nearest (may glide through clones).
+  const all = cells()
+  let target: number | null = null
+  for (let copy = 0; copy < copies.length; copy++) {
+    const cell = all[copy * DEMOS.length + idx]
+    if (!cell) continue
+    const left = restingLeft(cell)
+    if (target === null || Math.abs(left - el.scrollLeft) < Math.abs(target - el.scrollLeft)) {
+      target = left
+    }
+  }
+  if (target === null) return
+  animating = true
+  el.scrollTo({ left: target, behavior: 'smooth' })
 }
 
 const onKeydown = (e: KeyboardEvent) => {
@@ -114,7 +182,8 @@ onMounted(async () => {
   await nextTick()
   const el = track.value
   if (el && looping) {
-    el.scrollLeft = setWidth()
+    const firstMiddle = cells()[DEMOS.length]
+    el.scrollLeft = firstMiddle ? Math.max(0, restingLeft(firstMiddle)) : 0
   }
   updateDot()
   if (!prefersReducedMotion) {
@@ -124,6 +193,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (rafId) cancelAnimationFrame(rafId)
+  if (settleTimer) window.clearTimeout(settleTimer)
 })
 </script>
 
@@ -142,7 +212,14 @@ onBeforeUnmount(() => {
     @focusin="hovered = true; stopDrift()"
     @focusout="hovered = false"
   >
-    <div ref="track" class="track" :class="{ snapping }" tabindex="0" @scroll="onScroll">
+    <div
+      ref="track"
+      class="track"
+      :class="{ snapping }"
+      tabindex="0"
+      @scroll="onScroll"
+      @scrollend="settle"
+    >
       <template v-for="copy in copies" :key="copy">
         <div
           v-for="demo in DEMOS"
