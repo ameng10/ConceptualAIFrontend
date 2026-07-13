@@ -13,7 +13,7 @@ const steps = [
   {
     num: '3',
     title: 'It’s yours',
-    body: 'A full-stack app — Deno backend, React frontend, tests, OpenAPI docs, Dockerfile. Preview it live, export both repos to GitHub, deploy anywhere, and iterate on it any time with plain-language feedback.',
+    body: 'A full-stack app — Deno backend, React frontend, tests, OpenAPI docs, Dockerfile. Preview it live, export both repos to GitHub, deploy anywhere. Iterate any time in plain language: we patch our copy, re-run the suite, and re-export both repos — with a diff receipt showing exactly what changed and what didn’t. Edits in your own repos stay yours.',
   },
 ]
 </script>

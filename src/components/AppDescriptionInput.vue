@@ -123,15 +123,15 @@ const createPairedTypewriterPlaceholders = (
 }
 
 const namePlaceholderPhrases = [
-  'Stuffed Animal Social',
-  'Dental Office Scheduler',
-  'Restaurant Reservations',
+  'Agency Client Portal',
+  'Membership Community',
+  'Booking Marketplace',
 ]
 
 const requirementsPlaceholderPhrases = [
-  'Build me a social media app for my stuffed animals...',
-  'Build me an app for my dental office for scheduling patients...',
-  'Create a website for my restaurant to manage reservations...',
+  'Build a client portal for my design agency — project status, file approvals, Stripe invoices...',
+  'Build a paid community with supporter subscriptions and a members-only feed...',
+  'Build a marketplace where hosts list classes and guests book paid time slots...',
 ]
 
 const typewriterOptions: TypewriterOptions = {

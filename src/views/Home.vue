@@ -9,6 +9,9 @@ import HowItWorks from '@/components/landing/HowItWorks.vue'
 import ProofReceipts from '@/components/landing/ProofReceipts.vue'
 import OwnershipSection from '@/components/landing/OwnershipSection.vue'
 import IntegrationsWall from '@/components/landing/IntegrationsWall.vue'
+import LibrarySection from '@/components/landing/LibrarySection.vue'
+import CodingAgentSection from '@/components/landing/CodingAgentSection.vue'
+import FaqSection from '@/components/landing/FaqSection.vue'
 import FinalCta from '@/components/landing/FinalCta.vue'
 
 const router = useRouter()
@@ -112,6 +115,12 @@ onBeforeUnmount(() => {
             >
               Own the Code
             </a>
+            <a
+              href="#faq"
+              class="rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-text-dim transition hover:border-glass-border hover:bg-white/5 hover:text-text"
+            >
+              FAQ
+            </a>
           </nav>
         </div>
 
@@ -151,11 +160,11 @@ onBeforeUnmount(() => {
     <!-- 2) THE GALLERY — five real apps, one prompt each -->
     <DemoShowcase />
 
-    <!-- 3) HOW IT WORKS — three steps -->
-    <HowItWorks />
-
-    <!-- 4) THE RECEIPTS — test output, diff receipt, scale stats -->
+    <!-- 3) THE RECEIPTS — test, diff & security receipts, scale stats -->
     <ProofReceipts />
+
+    <!-- 4) HOW IT WORKS — three steps -->
+    <HowItWorks />
 
     <!-- 5) OWNERSHIP — both repos, yours -->
     <OwnershipSection />
@@ -163,7 +172,16 @@ onBeforeUnmount(() => {
     <!-- 6) INTEGRATIONS — every badge links to the demo that proves it -->
     <IntegrationsWall />
 
-    <!-- 7) FINAL CTA + support-is-a-demo + footer links -->
+    <!-- 7) THE LIBRARY — versioned blocks; one utils file adds a provider -->
+    <LibrarySection />
+
+    <!-- 8) THE OBVIOUS QUESTION — why not a coding agent -->
+    <CodingAgentSection />
+
+    <!-- 9) FAQ — Deno, self-hosting, secrets, databases, hand-edits -->
+    <FaqSection />
+
+    <!-- 10) FINAL CTA + support-is-a-demo + footer links -->
     <FinalCta />
   </div>
 </template>

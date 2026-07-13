@@ -76,8 +76,68 @@ const stats = [
       </div>
     </div>
 
+    <!-- Security receipt -->
+    <div class="mt-8">
+      <div class="receipt-head">
+        <span class="receipt-title">Security receipt</span>
+        <span class="receipt-sub">the failure modes AI-built apps are famous for, closed by construction</span>
+      </div>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <div class="sec-pane">
+          <div class="sec-title">No keys in the browser</div>
+          <div class="terminal">
+            <div class="term-cmd">$ grep -r "sk_live" frontend/dist | wc -l</div>
+            <div class="term-summary"><span class="term-ok">0</span></div>
+          </div>
+          <p class="receipt-caption">
+            Keys live in <code>backend/.env</code>, documented by a generated <code>.env.template</code>. The browser
+            gets a session cookie — never a secret.
+          </p>
+        </div>
+        <div class="sec-pane">
+          <div class="sec-title">No database exposed to the client</div>
+          <div class="terminal">
+            <div>browser <span class="term-muted">▸</span> backend API <span class="term-muted">▸</span> your database</div>
+            <div class="term-muted">direct client → database access: none</div>
+          </div>
+          <p class="receipt-caption">
+            No client-side database access means no row-level security to misconfigure. The rules live in the backend
+            you own.
+          </p>
+        </div>
+        <div class="sec-pane">
+          <div class="sec-title">No admin signup route</div>
+          <div class="terminal">
+            <div>ADMIN_USERNAME= <span class="term-muted"># set on your server</span></div>
+            <div>ADMIN_PASSWORD=</div>
+          </div>
+          <p class="receipt-caption">
+            Operators sign in with environment credentials — there is no admin registration endpoint to discover.
+          </p>
+        </div>
+        <div class="sec-pane">
+          <div class="sec-title">Verification is never AI-written</div>
+          <div class="terminal">
+            <div class="term-cmd">POST /webhooks/stripe</div>
+            <div>signature <span class="term-ok">verified ✓</span> <span class="term-muted">(raw body)</span></div>
+            <div>evt_9f3k2 replayed <span class="term-muted">→ ignored</span></div>
+            <div>applied <span class="term-muted">→ syncs fire</span></div>
+          </div>
+          <p class="receipt-caption">
+            Untrusted events are verified, deduped, and applied exactly once by a human-authored, tested block.
+            Generated code only reacts to the verified result.
+          </p>
+        </div>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-text-dim">
+        Everywhere the industry's horror stories come from — secrets, auth, webhooks, database exposure — is
+        human-authored library code that was tested before your app existed. The AI composes it; it doesn't reinvent
+        it.
+      </p>
+    </div>
+
     <!-- Scale stats (megroup receipts) -->
-    <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div v-for="stat in stats" :key="stat.label" class="stat glass">
         <div class="stat-value">{{ stat.value }}</div>
         <div class="stat-label">{{ stat.label }}</div>
@@ -189,6 +249,28 @@ const stats = [
 .receipt-caption {
   color: var(--text-dim);
   font-size: 0.85rem;
+}
+
+.sec-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sec-pane .terminal {
+  flex: 0 0 auto;
+}
+
+.sec-title {
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+
+.sec-pane code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--text);
 }
 
 .stat {
