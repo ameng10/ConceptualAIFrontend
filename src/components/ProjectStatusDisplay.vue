@@ -78,6 +78,15 @@ const awaitingDesignReview = computed(
   () => Boolean(props.showConceptsStep) && props.status === 'design_complete',
 )
 
+// Parked at the plan-review gate: the plan is finished and waiting for the user to
+// accept it — same "waiting on you" treatment as the design gate, not a spinner.
+const PLAN_PARKED_STATUSES = ['planning_complete', 'planned']
+const awaitingPlanReview = computed(
+  () => PLAN_PARKED_STATUSES.includes(props.status) && !props.planAccepted,
+)
+
+const awaitingReview = computed(() => awaitingDesignReview.value || awaitingPlanReview.value)
+
 const getStepStatus = (index: number) => {
   const status = props.status
   if (status === 'error') return 'error'
@@ -86,7 +95,7 @@ const getStepStatus = (index: number) => {
     return index <= currentStepIndex.value ? 'complete' : 'pending'
   }
   if (index < currentStepIndex.value) return 'complete'
-  if (index === currentStepIndex.value) return awaitingDesignReview.value ? 'review' : 'active'
+  if (index === currentStepIndex.value) return awaitingReview.value ? 'review' : 'active'
   return 'pending'
 }
 </script>
@@ -101,7 +110,7 @@ const getStepStatus = (index: number) => {
       <div v-else-if="status === 'error'" class="badge badge-error">
         <AlertCircle :size="14" /> System Error
       </div>
-      <div v-else-if="awaitingDesignReview" class="badge badge-review">
+      <div v-else-if="awaitingReview" class="badge badge-review">
         <Eye :size="14" /> Awaiting your review
       </div>
       <div v-else class="badge badge-info">
@@ -169,7 +178,7 @@ const getStepStatus = (index: number) => {
 .badge-info { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
 .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--accent); }
 .badge-error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
-.badge-review { background: rgba(245, 158, 11, 0.2); color: rgb(245, 158, 11); }
+.badge-review { background: var(--await-bg); color: var(--await); }
 
 .steps-container {
   display: flex;
@@ -214,12 +223,12 @@ const getStepStatus = (index: number) => {
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
 }
 
-/* Parked at the design-review gate: waiting on the user, not processing. */
+/* Parked at a review gate (plan or design): waiting on the user, not processing. */
 .step.review .step-icon {
-  background: rgb(245, 158, 11);
-  border-color: rgb(245, 158, 11);
+  background: var(--await);
+  border-color: var(--await);
   color: white;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.45);
+  box-shadow: var(--await-glow);
 }
 
 .step.review .step-label {
