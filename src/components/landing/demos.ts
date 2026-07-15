@@ -72,6 +72,68 @@ Logged-in agents see an inbox list of all requests sorted by priority, with the 
 Agents get a notification when a new High or Urgent request arrives.`,
   },
   {
+    slug: 'stride',
+    name: 'Stride',
+    tagline:
+      'An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback.',
+    badges: ['Live web research + citations', 'AI plan adjustments', 'Daily check-ins', 'Notifications'],
+    image: '/demos/stride.png',
+    liveUrl: 'https://stride.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Stride-frontend',
+      backend: 'https://github.com/rdavislee/Stride-backend',
+    },
+    tryList: [
+      'Set a goal like "run a sub-20-minute 5K by October 1st" with your stats',
+      'The calendar fills with a day-by-day plan — open a day to see the cited sources behind it',
+      'Rate today’s workout "too easy" — future days adjust, past days never change',
+    ],
+    prompt: `Build an AI training coach app.
+
+Users register with email and password, log in, and have a profile with a display name and an avatar image they can upload.
+
+A user sets a training goal by telling the coach, in their own words, what they want to achieve, the date they want to achieve it by (for example "run a sub-20-minute 5K by October 1st"), and their athletic stats (for example age, weight, experience level, and recent performance numbers). A user can have only one active goal at a time; they can abandon their active goal, and only then set a new one.
+
+When a goal is set, the AI builds a day-by-day workout plan running from today through the goal date, optimized toward the goal given the user's stats. The plan must be grounded in real research: the AI runs web research on the training approach for this kind of goal and attaches the cited sources it relied on, so the user can see the evidence behind the plan's structure and exercise choices.
+
+The main view is a calendar showing each day's workout. Opening a day shows that workout's details — the exercises with sets and reps, or duration and intensity — plus the research-backed rationale and its cited sources.
+
+After doing (or skipping) a day's workout, the user gives feedback on that day: a quick rating of how it went and an optional written note (for example "this was too easy" or "my knee hurt on the lunges"). The AI then adjusts the remaining future days of the plan based on the feedback — past days are never changed.
+
+The user gets a notification when their plan is generated and whenever the plan is adjusted after feedback.`,
+  },
+  {
+    slug: 'shopfront',
+    name: 'Shopfront',
+    tagline:
+      'A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once.',
+    badges: ['Stripe checkout', 'Order emails', 'Inventory integrity', 'Owner admin', 'Media'],
+    testCard: true,
+    image: '/demos/shopfront.png',
+    liveUrl: 'https://shopfront.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Shopfront-frontend',
+      backend: 'https://github.com/rdavislee/Shopfront-backend',
+    },
+    tryList: [
+      'Add 2 of an item with stock 3 to your cart and check out with the Stripe test card',
+      'Stock drops to 1 and two confirmation emails go out — customer and owner',
+      'Buy the last unit — the card grays out "Sold out"; the server enforces stock, not the page',
+      'Replayed payment webhooks can’t decrement stock twice or double-send email',
+    ],
+    prompt: `Build an online store app for a single business.
+
+The business owner signs in with operator credentials configured in the environment — there is no owner signup page. The owner manages the store's catalog: each item has a name, a description, a price, one or more photos the owner uploads, and a stock count. The owner can add stock to any item at any time.
+
+Customers do not need an account. They browse a visual grid of the items with photos and prices. An item whose stock is zero is shown grayed out as sold out and cannot be purchased.
+
+Customers add items to a cart, choosing a quantity for each, and check out the whole cart in one payment through a secure hosted checkout page. At checkout the customer provides their email address and their shipping address. Checkout must not go through for a quantity larger than an item's available stock, and sold-out items can't be checked out at all — the stock rules are enforced by the server, not just the page.
+
+When an order's payment completes, exactly once: each purchased item's stock goes down by the quantity bought (an item that reaches zero becomes sold out), the order is recorded with its items, quantities, the customer's email, and the shipping address, and a confirmation email listing the order's contents and shipping address is sent from the store's own email address to both the customer and the business owner. A duplicate or replayed payment notification must not decrement stock twice or send the emails twice.
+
+The owner has an orders page listing orders newest-first with their items, quantities, shipping details, and payment status, and gets a notification when a new order arrives.`,
+  },
+  {
     slug: 'atelier',
     name: 'Atelier',
     tagline:
@@ -148,68 +210,6 @@ There is a site operator (admin) who signs in with operator credentials configur
 
 A user gets a notification when someone likes their post, comments on their post, or follows them.`,
     iterationPrompt: `Add AI moderation that screens every new post and every new comment before it becomes public. If the content violates community guidelines — harassment, hate, sexually explicit material, or spam — block it from the feeds and show the author a clear message explaining which rule it broke. Add a moderation queue page to the admin dashboard that lists every flagged item together with the AI's written rationale, and lets the admin approve an item back onto the feed or permanently remove it.`,
-  },
-  {
-    slug: 'stride',
-    name: 'Stride',
-    tagline:
-      'An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback.',
-    badges: ['Live web research + citations', 'AI plan adjustments', 'Daily check-ins', 'Notifications'],
-    image: '/demos/stride.png',
-    liveUrl: 'https://stride.conceptual-ai.app',
-    repos: {
-      frontend: 'https://github.com/rdavislee/Stride-frontend',
-      backend: 'https://github.com/rdavislee/Stride-backend',
-    },
-    tryList: [
-      'Set a goal like "run a sub-20-minute 5K by October 1st" with your stats',
-      'The calendar fills with a day-by-day plan — open a day to see the cited sources behind it',
-      'Rate today’s workout "too easy" — future days adjust, past days never change',
-    ],
-    prompt: `Build an AI training coach app.
-
-Users register with email and password, log in, and have a profile with a display name and an avatar image they can upload.
-
-A user sets a training goal by telling the coach, in their own words, what they want to achieve, the date they want to achieve it by (for example "run a sub-20-minute 5K by October 1st"), and their athletic stats (for example age, weight, experience level, and recent performance numbers). A user can have only one active goal at a time; they can abandon their active goal, and only then set a new one.
-
-When a goal is set, the AI builds a day-by-day workout plan running from today through the goal date, optimized toward the goal given the user's stats. The plan must be grounded in real research: the AI runs web research on the training approach for this kind of goal and attaches the cited sources it relied on, so the user can see the evidence behind the plan's structure and exercise choices.
-
-The main view is a calendar showing each day's workout. Opening a day shows that workout's details — the exercises with sets and reps, or duration and intensity — plus the research-backed rationale and its cited sources.
-
-After doing (or skipping) a day's workout, the user gives feedback on that day: a quick rating of how it went and an optional written note (for example "this was too easy" or "my knee hurt on the lunges"). The AI then adjusts the remaining future days of the plan based on the feedback — past days are never changed.
-
-The user gets a notification when their plan is generated and whenever the plan is adjusted after feedback.`,
-  },
-  {
-    slug: 'shopfront',
-    name: 'Shopfront',
-    tagline:
-      'A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once.',
-    badges: ['Stripe checkout', 'Order emails', 'Inventory integrity', 'Owner admin', 'Media'],
-    testCard: true,
-    image: '/demos/shopfront.png',
-    liveUrl: 'https://shopfront.conceptual-ai.app',
-    repos: {
-      frontend: 'https://github.com/rdavislee/Shopfront-frontend',
-      backend: 'https://github.com/rdavislee/Shopfront-backend',
-    },
-    tryList: [
-      'Add 2 of an item with stock 3 to your cart and check out with the Stripe test card',
-      'Stock drops to 1 and two confirmation emails go out — customer and owner',
-      'Buy the last unit — the card grays out "Sold out"; the server enforces stock, not the page',
-      'Replayed payment webhooks can’t decrement stock twice or double-send email',
-    ],
-    prompt: `Build an online store app for a single business.
-
-The business owner signs in with operator credentials configured in the environment — there is no owner signup page. The owner manages the store's catalog: each item has a name, a description, a price, one or more photos the owner uploads, and a stock count. The owner can add stock to any item at any time.
-
-Customers do not need an account. They browse a visual grid of the items with photos and prices. An item whose stock is zero is shown grayed out as sold out and cannot be purchased.
-
-Customers add items to a cart, choosing a quantity for each, and check out the whole cart in one payment through a secure hosted checkout page. At checkout the customer provides their email address and their shipping address. Checkout must not go through for a quantity larger than an item's available stock, and sold-out items can't be checked out at all — the stock rules are enforced by the server, not just the page.
-
-When an order's payment completes, exactly once: each purchased item's stock goes down by the quantity bought (an item that reaches zero becomes sold out), the order is recorded with its items, quantities, the customer's email, and the shipping address, and a confirmation email listing the order's contents and shipping address is sent from the store's own email address to both the customer and the business owner. A duplicate or replayed payment notification must not decrement stock twice or send the emails twice.
-
-The owner has an orders page listing orders newest-first with their items, quantities, shipping details, and payment status, and gets a notification when a new order arrives.`,
   },
 ]
 
