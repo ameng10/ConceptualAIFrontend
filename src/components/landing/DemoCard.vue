@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ExternalLink, FileText, LifeBuoy, CreditCard } from 'lucide-vue-next'
+import { ExternalLink, FileText, Github, LifeBuoy, CreditCard } from 'lucide-vue-next'
 import type { DemoCardData } from './demos'
 import DemoPromptModal from './DemoPromptModal.vue'
 
@@ -22,6 +22,10 @@ const liveUrl = computed(() => activeVariant.value?.liveUrl ?? props.demo.liveUr
 const image = computed(() => activeVariant.value?.image ?? props.demo.image)
 
 const promptExcerpt = computed(() => props.demo.prompt.slice(0, 300))
+const repoLinks = computed(() => [
+  { label: 'Frontend repo', url: props.demo.repos.frontend },
+  { label: 'Backend repo', url: props.demo.repos.backend },
+])
 const demoHost = computed(() => {
   const url = liveUrl.value
   if (url) {
@@ -113,6 +117,25 @@ const demoHost = computed(() => {
           <ExternalLink :size="15" />
         </a>
         <span v-else class="card-btn soon" aria-disabled="true">Launching soon</span>
+      </div>
+
+      <div class="repo-actions">
+        <template v-for="repo in repoLinks" :key="repo.label">
+          <a
+            v-if="repo.url"
+            :href="repo.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="repo-btn"
+          >
+            <Github :size="14" />
+            {{ repo.label }}
+          </a>
+          <span v-else class="repo-btn disabled" aria-disabled="true" title="Repos go public at launch">
+            <Github :size="14" />
+            {{ repo.label }}
+          </span>
+        </template>
       </div>
     </div>
 
@@ -377,6 +400,40 @@ const demoHost = computed(() => {
 .card-btn.soon {
   border: 1px dashed var(--glass-border);
   color: var(--text-dim);
+  cursor: default;
+}
+
+.repo-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.repo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+a.repo-btn:hover {
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.repo-btn.disabled {
+  border-style: dashed;
+  opacity: 0.55;
   cursor: default;
 }
 </style>

@@ -18,6 +18,12 @@ export interface DemoVariant {
   image: string | null
 }
 
+export interface DemoRepos {
+  /** GitHub URLs of the exported repos; null renders a disabled button until launch. */
+  frontend: string | null
+  backend: string | null
+}
+
 export interface DemoCardData {
   slug: string
   name: string
@@ -28,6 +34,7 @@ export interface DemoCardData {
   tryList: string[]
   image: string | null
   liveUrl: string | null
+  repos: DemoRepos
   testCard?: boolean
   supportHub?: boolean
   variants?: DemoVariant[]
@@ -43,7 +50,11 @@ export const DEMOS: DemoCardData[] = [
     badges: ['AI triage & drafts', 'RAG over your docs', 'Two-way email', 'Operator admin', 'File uploads'],
     supportHub: true,
     image: '/demos/deskmind.png',
-    liveUrl: 'https://deskmind.rdavislee.deno.net',
+    liveUrl: 'https://deskmind.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Deskmind-frontend',
+      backend: 'https://github.com/rdavislee/Deskmind-backend',
+    },
     tryList: [
       'Submit a real support request — this is ConceptualAI\'s actual support desk, so it reaches us',
       'Ask anything about ConceptualAI — answers are grounded in our help docs and arrive as a real email',
@@ -68,6 +79,7 @@ Agents get a notification when a new High or Urgent request arrives.`,
     badges: ['AI booking assistant', 'Scheduling & reservations', 'Messaging', 'Reviews', 'Media'],
     image: null,
     liveUrl: null,
+    repos: { frontend: null, backend: null },
     tryList: [
       'Scroll the photo grid and filter by category',
       'Type "find me a pottery class next Saturday morning" — the assistant finds and books a slot',
@@ -95,6 +107,7 @@ A host can delete one of their listings. When a listing is deleted, all of its t
     testCard: true,
     image: null,
     liveUrl: null,
+    repos: { frontend: null, backend: null },
     variants: [
       {
         key: 'v1',
@@ -142,8 +155,12 @@ A user gets a notification when someone likes their post, comments on their post
     tagline:
       'An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback.',
     badges: ['Live web research + citations', 'AI plan adjustments', 'Daily check-ins', 'Notifications'],
-    image: null,
-    liveUrl: null,
+    image: '/demos/stride.png',
+    liveUrl: 'https://stride.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Stride-frontend',
+      backend: 'https://github.com/rdavislee/Stride-backend',
+    },
     tryList: [
       'Set a goal like "run a sub-20-minute 5K by October 1st" with your stats',
       'The calendar fills with a day-by-day plan — open a day to see the cited sources behind it',
@@ -172,6 +189,7 @@ The user gets a notification when their plan is generated and whenever the plan 
     testCard: true,
     image: null,
     liveUrl: null,
+    repos: { frontend: null, backend: null },
     tryList: [
       'Add 2 of an item with stock 3 to your cart and check out with the Stripe test card',
       'Stock drops to 1 and two confirmation emails go out — customer and owner',
