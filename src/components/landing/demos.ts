@@ -187,9 +187,12 @@ The user gets a notification when their plan is generated and whenever the plan 
       'A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once.',
     badges: ['Stripe checkout', 'Order emails', 'Inventory integrity', 'Owner admin', 'Media'],
     testCard: true,
-    image: null,
-    liveUrl: null,
-    repos: { frontend: null, backend: null },
+    image: '/demos/shopfront.png',
+    liveUrl: 'https://shopfront.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Shopfront-frontend',
+      backend: 'https://github.com/rdavislee/Shopfront-backend',
+    },
     tryList: [
       'Add 2 of an item with stock 3 to your cart and check out with the Stripe test card',
       'Stock drops to 1 and two confirmation emails go out — customer and owner',
