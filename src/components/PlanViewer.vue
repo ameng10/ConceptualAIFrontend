@@ -393,7 +393,9 @@ const tryCopy = async () => {
         </div>
       </details>
 
-      <details class="section" open>
+      <!-- Legacy plans only: current plans carry no entity list (the data model is the
+           state of the selected concepts, shown in the Concepts section of the review). -->
+      <details v-if="normalized.entities.length" class="section" open>
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -407,8 +409,6 @@ const tryCopy = async () => {
         </summary>
 
         <div class="section-body">
-          <div v-if="!normalized.entities.length" class="empty">No entities found.</div>
-
           <details v-for="(entityWrapper, idx) in normalized.entities" :key="idx" class="item" open>
             <summary class="item-summary">
               <span class="twisty">

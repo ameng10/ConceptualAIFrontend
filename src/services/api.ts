@@ -330,8 +330,9 @@ export const projectApi = {
     },
 
     async startDesign(projectId: string, plan: any) {
-        // Accept-plan gate: starts the design stage, after which the pipeline auto-advances
-        // (the backend decides whether to pause at the design gate via the user's settings).
+        // Accept of the merged Planning review (plan + concepts + quote): the design already
+        // ran inside the planning turn, so this starts the build directly at implementing and
+        // the pipeline auto-advances from there. Responds { status: "implementing" }.
         const response = await api.post<any>(
             `/api/projects/${projectId}/design`,
             { plan },
@@ -495,6 +496,17 @@ export const projectApi = {
         // API.md: GET /projects/:projectId/plan (immediate polling model)
         const response = await api.get<{ plan?: any; status?: string; questions?: string[] }>(`/api/projects/${projectId}/plan`)
         return response.data?.plan ?? response.data ?? null
+    },
+
+    async getPlanReview(projectId: string) {
+        // API.md: GET /projects/:projectId/plan — the MERGED Planning review resource:
+        // { plan, concepts: { libraryPulls, customConcepts } | null, quote | null }.
+        const response = await api.get<{
+            plan?: any
+            concepts?: { libraryPulls: any[]; customConcepts: any[] } | null
+            quote?: { actions: number; queries: number; credits: number } | null
+        }>(`/api/projects/${projectId}/plan`)
+        return response.data ?? null
     },
 
     async getDesign(projectId: string) {

@@ -7,8 +7,6 @@ const props = defineProps<{
   projectName: string
   holdPlanningActive?: boolean
   planAccepted?: boolean
-  /** Advanced design-review gate: adds a Concepts bubble between Planning and Building. */
-  showConceptsStep?: boolean
   showDownloadButton?: boolean
   downloadDisabled?: boolean
   downloadLabel?: string
@@ -18,33 +16,24 @@ const emit = defineEmits<{
   download: []
 }>()
 
-const steps = computed(() =>
-  props.showConceptsStep
-    ? [
-        { id: 'planning', label: 'Planning' },
-        { id: 'concepts', label: 'Concepts' },
-        { id: 'building', label: 'Building' },
-        { id: 'complete', label: 'Complete' },
-      ]
-    : [
-        { id: 'planning', label: 'Planning' },
-        { id: 'building', label: 'Building' },
-        { id: 'complete', label: 'Complete' },
-      ]
-)
+const steps = computed(() => [
+  { id: 'planning', label: 'Planning' },
+  { id: 'building', label: 'Building' },
+  { id: 'complete', label: 'Complete' },
+])
 
-// Map every backend status onto one of the high-level bubbles.
+// Map every backend status onto one of the high-level bubbles. The merged Planning
+// stage covers plan + concepts + quote, so "designing" (a design-scoped modify
+// re-running at the gate) belongs to Planning, not Building.
 const PLANNING_STATUSES = [
   'planning',
   'planned',
   'planning_complete',
+  'designing',
   'awaiting_clarification',
   'awaiting_input',
 ]
-// With the Concepts bubble shown, these two belong to it instead of Building.
-const DESIGN_STATUSES = ['designing', 'design_complete']
 const BUILDING_STATUSES = [
-  'designing',
   'design_complete',
   'implementing',
   'implemented',
@@ -56,36 +45,25 @@ const BUILDING_STATUSES = [
   'assembled',
 ]
 
-const buildingStepIndex = computed(() => (props.showConceptsStep ? 2 : 1))
-
 const currentStepIndex = computed(() => {
   const status = props.status
   if (status === 'error') return -1
   if (status === 'complete') return steps.value.length - 1
-  if (props.showConceptsStep && DESIGN_STATUSES.includes(status)) return 1
-  if (BUILDING_STATUSES.includes(status)) return buildingStepIndex.value
-  // Optimistic window right after "Accept plan", before polling reports a
-  // recognizable status: we are at the step after Planning (index 1 in both layouts).
+  if (BUILDING_STATUSES.includes(status)) return 1
+  // Optimistic window right after "Accept & build", before polling reports a
+  // recognizable status: we are at the Building step.
   if (props.planAccepted) return 1
   if (props.holdPlanningActive) return 0
   if (PLANNING_STATUSES.includes(status)) return 0
   return -1
 })
 
-// Parked at the advanced design-review gate: the pipeline is stopped and waiting on
-// the user, not processing.
-const awaitingDesignReview = computed(
-  () => Boolean(props.showConceptsStep) && props.status === 'design_complete',
-)
-
-// Parked at the plan-review gate: the plan is finished and waiting for the user to
-// accept it — same "waiting on you" treatment as the design gate, not a spinner.
+// Parked at the merged Planning review gate: the plan + concepts + quote are finished
+// and waiting for the user to accept — "waiting on you" treatment, not a spinner.
 const PLAN_PARKED_STATUSES = ['planning_complete', 'planned']
-const awaitingPlanReview = computed(
+const awaitingReview = computed(
   () => PLAN_PARKED_STATUSES.includes(props.status) && !props.planAccepted,
 )
-
-const awaitingReview = computed(() => awaitingDesignReview.value || awaitingPlanReview.value)
 
 const getStepStatus = (index: number) => {
   const status = props.status

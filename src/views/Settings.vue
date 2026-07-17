@@ -14,7 +14,6 @@ const success = ref('')
 const username = ref('')
 const displayName = ref('')
 const bio = ref('')
-const showConceptDesign = ref(false)
 
 const loadProfile = async () => {
   loading.value = true
@@ -25,7 +24,6 @@ const loadProfile = async () => {
     username.value = profile?.username ?? ''
     displayName.value = profile?.displayName ?? ''
     bio.value = profile?.bio ?? ''
-    showConceptDesign.value = Boolean(profile?.showConceptDesign)
   } catch (e: any) {
     const status = e?.response?.status
     if (status === 404) {
@@ -57,7 +55,6 @@ const saveProfile = async () => {
       username: nextUsername,
       displayName: nextDisplayName,
       bio: nextBio || undefined,
-      showConceptDesign: showConceptDesign.value,
     })
 
     // Keep auth display in sync for sidebar/header labels.
@@ -66,9 +63,6 @@ const saveProfile = async () => {
     username.value = profile?.username ?? nextUsername
     displayName.value = profile?.displayName ?? nextDisplayName
     bio.value = profile?.bio ?? nextBio
-    if (typeof profile?.showConceptDesign === 'boolean') {
-      showConceptDesign.value = profile.showConceptDesign
-    }
     success.value = 'Profile updated.'
   } catch (e: any) {
     const status = e?.response?.status
@@ -79,7 +73,6 @@ const saveProfile = async () => {
           username: nextUsername,
           displayName: nextDisplayName,
           bio: nextBio || undefined,
-          showConceptDesign: showConceptDesign.value,
         })
         if (created?.username) setUsername(created.username)
         username.value = created?.username ?? nextUsername
@@ -270,21 +263,6 @@ onMounted(() => {
               rows="4"
               placeholder="Tell people a bit about yourself (optional)."
             />
-          </div>
-
-          <div class="field-group toggle-field">
-            <label class="toggle-row" for="profile-show-concept-design">
-              <input
-                id="profile-show-concept-design"
-                v-model="showConceptDesign"
-                type="checkbox"
-                class="toggle-checkbox"
-              />
-              <span class="toggle-copy">
-                <span class="toggle-label">Show concept-design review step (advanced)</span>
-                <span class="toggle-hint">Pause the pipeline after the design stage so you can review and modify the concept design before the build finishes.</span>
-              </span>
-            </label>
           </div>
 
           <p v-if="error" class="error-msg">{{ error }}</p>

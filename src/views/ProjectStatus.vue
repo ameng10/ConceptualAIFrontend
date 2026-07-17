@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
-import { socialApi } from '@/services/social-api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
 import { navigateOnCompletion } from '@/services/project-stage-routing'
@@ -11,7 +10,7 @@ import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
 import { ArrowLeft, Share2 } from 'lucide-vue-next'
-import { toastDesignReady, toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
+import { toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,25 +23,22 @@ const showClarification = ref(false)
 const questions = ref<string[]>([])
 const projectName = ref<string>('')
 
-// Plan review actions
+// Merged Planning review: one turn produces plan + concepts + quote; the user
+// reviews all three together with one approve and per-scope modify inputs.
 const feedback = ref('')
 const isModifying = ref(false)
 const modifyError = ref('')
 const accepted = ref(false)
-const designStatus = ref<'idle' | 'starting' | 'started' | 'error'>('idle')
 const designError = ref('')
 const designDoc = ref<any | null>(null)
+const quote = ref<{ actions: number; queries: number; credits: number } | null>(null)
 
-// Design review actions
+// Design-scoped modify (PUT /design) — re-patches concepts + quote only.
 const designFeedback = ref('')
 const isModifyingDesign = ref(false)
 const modifyDesignError = ref('')
 
-// Advanced setting: only advanced users review/modify the concept design.
-const showConceptDesign = ref(false)
-
 const planToastShown = ref(false)
-const designToastShown = ref(false)
 const planningError = ref('')
 
 const toErrorMessage = (err: unknown, fallback: string) => {
@@ -85,33 +81,6 @@ const canStartDesign = computed(() => {
   return true
 })
 
-// Statuses where we're past design - implementing or later; don't allow "Accept design" again
-const PAST_DESIGN_STATUSES = [
-  'implementing',
-  'implemented',
-  'sync_generating',
-  'syncs_generated',
-  'syncing',
-  'building',
-  'assembling',
-  'assembled',
-  'complete',
-  'error',
-] as const
-
-const canAcceptDesign = computed(() => {
-  const status = planningStatus.value ?? project.value?.status
-  if (status && PAST_DESIGN_STATUSES.includes(status as any)) return false
-  return true
-})
-
-// Parked at the advanced design-review gate: the backend stopped at design_complete and is
-// waiting for the user to accept (build) or modify the design.
-const parkedAtDesignReview = computed(() => {
-  const status = planningStatus.value ?? project.value?.status
-  return showConceptDesign.value && status === 'design_complete'
-})
-
 const isPastPlanningStage = computed(() => {
   const status = planningStatus.value ?? project.value?.status
   return Boolean(status && PAST_PLANNING_STATUSES.includes(status as any))
@@ -138,16 +107,18 @@ const tryHydrateFromQuery = () => {
   }
 }
 
+// The merged planning turn covers plan generation AND concept design ("designing" is a
+// design-scoped modify re-running inside the same stage).
 const isPlanInProgressStatus = (status: string) =>
-  status === 'planning' || status === 'awaiting_clarification' || status === 'awaiting_input'
-
-const isDesignInProgressStatus = (status: string) => status === 'designing'
+  status === 'planning' ||
+  status === 'designing' ||
+  status === 'awaiting_clarification' ||
+  status === 'awaiting_input'
 
 // Building statuses that the backend auto-advances through. While in any of these, this page
 // stays mounted as a read-only "Building…" progress view (the 3-bubble indicator with Building
 // active) and keeps polling until the project completes.
 const BUILDING_STATUSES = [
-  'designing',
   'design_complete',
   'implementing',
   'implemented',
@@ -160,26 +131,25 @@ const BUILDING_STATUSES = [
 const isBuildingStatus = (status: string | null | undefined) =>
   Boolean(status) && BUILDING_STATUSES.includes(String(status))
 
-// Keep polling while planning is in progress, the design gate is active, or the backend is
-// auto-building. We stop once the user is parked at a human gate (plan/design review) or the
-// project reaches a terminal/complete status (which navigates away to the completed page).
+// Keep polling while the planning turn is in progress or the backend is auto-building. We stop
+// once the user is parked at the review gate or the project reaches a terminal/complete status
+// (which navigates away to the completed page).
 const shouldPollProjectStatus = (status: string | null | undefined) => {
   if (!status) return false
   const s = String(status)
   if (isPlanInProgressStatus(s)) return true
-  // Advanced users pause at design_complete; everyone else keeps building.
-  if (s === 'design_complete') return !showConceptDesign.value
   return isBuildingStatus(s)
 }
 
 const refreshPlan = async () => {
-  const planPayload = await projectApi.getPlan(projectId)
-  if (!planPayload || typeof planPayload !== 'object') return
+  const review = await projectApi.getPlanReview(projectId)
+  if (!review || typeof review !== 'object') return
+  const planPayload = (review as any).plan ?? review
 
   const status = String((planPayload as any)?.status ?? '')
   if (status === 'planning') {
     planDoc.value = { status: 'processing' }
-    planningStatus.value = 'planning'
+    if (planningStatus.value !== 'designing') planningStatus.value = 'planning'
     return
   }
 
@@ -192,39 +162,15 @@ const refreshPlan = async () => {
     return
   }
 
-  // Any non-status plan payload is considered ready plan data.
+  // Any non-status plan payload is the ready merged review: plan + concepts + quote.
   planDoc.value = { status: 'complete', plan: planPayload }
+  designDoc.value = (review as any).concepts ?? null
+  quote.value = (review as any).quote ?? null
   planningStatus.value = 'planning_complete'
   if (project.value) project.value = { ...project.value, status: 'planning_complete' as any }
   if (!planToastShown.value) {
     toastPlanReady()
     planToastShown.value = true
-  }
-}
-
-const refreshDesign = async () => {
-  const designPayload = await projectApi.getDesign(projectId)
-  if (!designPayload || typeof designPayload !== 'object') return
-
-  const status = String((designPayload as any)?.status ?? '')
-  if (status === 'designing') {
-    designStatus.value = 'starting'
-    planningStatus.value = 'designing'
-    return
-  }
-
-  designDoc.value = designPayload
-  accepted.value = true
-  designStatus.value = 'started'
-  if (planningStatus.value === 'designing') {
-    planningStatus.value = 'design_complete'
-  }
-  if (project.value && project.value.status === 'designing') {
-    project.value = { ...project.value, status: 'design_complete' as any }
-  }
-  if (!designToastShown.value) {
-    toastDesignReady()
-    designToastShown.value = true
   }
 }
 
@@ -270,22 +216,6 @@ const tickProject = async () => {
       await refreshPlan()
     }
 
-    const shouldLoadDesign =
-      isDesignInProgressStatus(status) ||
-      status === 'design_complete' ||
-      status === 'implementing' ||
-      status === 'implemented' ||
-      status === 'sync_generating' ||
-      status === 'syncs_generated' ||
-      status === 'building' ||
-      status === 'assembling' ||
-      status === 'assembled' ||
-      status === 'complete'
-
-    if (shouldLoadDesign) {
-      await refreshDesign()
-    }
-
     // Stop polling once this page reaches a stable non-in-progress state. While an iteration is
     // still settling on the prior terminal status, keep polling so we catch the transition into
     // Planning (or a building status).
@@ -320,7 +250,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
 // Auto-continue when a project is opened sitting at a stage checkpoint (e.g. a later stage
 // failed and the status rolled back, and there's no "continue" button). Re-fires the next
 // pipeline step:
-//   design_complete -> implement   (unless the user reviews design first via showConceptDesign)
+//   design_complete  -> implement  (legacy parked gate from before the stage merge)
 //   implemented      -> syncs
 //   syncs_generated  -> build
 // If the backend is still actively building, its per-project guard rejects the duplicate
@@ -340,7 +270,6 @@ const maybeAutoContinue = async (status: string | null | undefined): Promise<boo
     await tickProject()
   }
   if (s === 'design_complete') {
-    if (showConceptDesign.value) return false // advanced users review the design first
     await fire('implementing', () => projectApi.startImplementation(projectId))
     return true
   }
@@ -357,12 +286,6 @@ const maybeAutoContinue = async (status: string | null | undefined): Promise<boo
 
 onMounted(async () => {
   tryHydrateFromQuery()
-  try {
-    const profile = await socialApi.getMyProfile()
-    showConceptDesign.value = Boolean(profile?.showConceptDesign)
-  } catch {
-    // Default advanced setting to off if the profile can't be loaded.
-  }
   await tickProject()
   const status = planningStatus.value ?? project.value?.status
   const continued = await maybeAutoContinue(status)
@@ -371,39 +294,16 @@ onMounted(async () => {
   }
 })
 
-const handleAcceptDesign = () => {
-  if (!designDoc.value) return
-  designError.value = ''
-
-  // Advanced "accept design" gate: start implementation, then let polling drive the UI through
-  // the rest of the auto-build (the backend advances implement -> syncs -> build -> complete).
-  const previousPlanningStatus = planningStatus.value
-  planningStatus.value = 'implementing'
-  projectPoll.start()
-  projectApi
-    .startImplementation(projectId)
-    .then(async () => {
-      await tickProject()
-    })
-    .catch((err) => {
-      if (isHttp524(err)) return
-      planningStatus.value = previousPlanningStatus
-      designError.value = err instanceof Error ? err.message : String(err)
-    })
-}
-
 const handleAcceptPlan = () => {
   if (!planDoc.value?.plan) return
   planningError.value = ''
   designError.value = ''
   const previousAccepted = accepted.value
   const previousPlanningStatus = planningStatus.value
-  const previousDesignStatus = designStatus.value
+  // Accept the merged review: the build starts directly at implementing (the design
+  // already ran inside the planning turn).
   accepted.value = true
-  designStatus.value = 'starting'
-  designError.value = ''
-  designDoc.value = null
-  planningStatus.value = 'designing'
+  planningStatus.value = 'implementing'
   projectPoll.start()
   projectApi
     .startDesign(projectId, planDoc.value.plan)
@@ -412,11 +312,10 @@ const handleAcceptPlan = () => {
     })
     .catch((err) => {
       if (isHttp524(err)) return
-      // If the design agent never actually started, restore the review state
+      // If the build never actually started, restore the review state
       // so the user can reconnect and immediately try again.
       accepted.value = previousAccepted
       planningStatus.value = previousPlanningStatus
-      designStatus.value = previousDesignStatus
       designError.value = err instanceof Error ? err.message : String(err)
     })
 }
@@ -431,7 +330,10 @@ const handleModifyPlan = async () => {
   isModifying.value = true
   try {
     await projectApi.modifyPlan(projectId, feedback.value.trim())
+    // One modify re-runs the whole merged turn: plan, then design + quote.
     planDoc.value = { status: 'processing' }
+    designDoc.value = null
+    quote.value = null
     planningStatus.value = 'planning'
     projectPoll.start()
     accepted.value = false
@@ -460,8 +362,11 @@ const handleModifyDesign = async () => {
   isModifyingDesign.value = true
   try {
     await projectApi.modifyDesign(projectId, designFeedback.value.trim())
+    // Design-scoped modify re-runs inside the merged stage; the review re-parks at
+    // planning_complete with re-patched concepts + quote.
     designDoc.value = null
-    designStatus.value = 'starting'
+    quote.value = null
+    planDoc.value = { status: 'processing' }
     planningStatus.value = 'designing'
     projectPoll.start()
     designFeedback.value = ''
@@ -500,102 +405,112 @@ const handleModifyDesign = async () => {
         :projectName="projectName || 'Project'"
   :holdPlanningActive="!accepted"
   :planAccepted="accepted"
-  :showConceptsStep="showConceptDesign"
       />
 
       <div v-if="planDoc && !accepted && !isPastPlanningStage" class="glass fade-in plan-card">
-        <h2 class="section-title">Planner</h2>
-        <p v-if="planDoc.status === 'processing'" class="muted">Planning agent is working…</p>
-        <p v-else-if="planDoc.status === 'complete'" class="muted">Review the plan, then accept to continue.</p>
-        <p v-else-if="planDoc.status === 'needs_clarification'" class="muted">Needs clarification to proceed.</p>
-        <p v-else-if="planDoc.status === 'error'" class="muted">Planner errored.</p>
-        <div v-if="planningError" class="error-msg">{{ planningError }}</div>
+        <template v-if="planDoc.status !== 'complete'">
+          <h2 class="section-title">Planning</h2>
+          <p v-if="planDoc.status === 'processing'" class="muted">Planning agent is working — drafting the plan, resolving concepts, and pricing…</p>
+          <p v-else-if="planDoc.status === 'needs_clarification'" class="muted">Needs clarification to proceed.</p>
+          <p v-else-if="planDoc.status === 'error'" class="muted">Planner errored.</p>
+          <div v-if="planningError" class="error-msg">{{ planningError }}</div>
+        </template>
 
-        <div v-if="planDoc.status === 'complete' && planDoc.plan" class="json">
-          <PlanViewer :plan="planDoc.plan" />
-        </div>
-
-        <div v-if="planDoc.status === 'complete' && planDoc.plan" class="review-actions">
-          <div class="review-header">
-            <h3 class="review-title">Is this plan good?</h3>
-            <span v-if="accepted" class="accepted-pill">Accepted</span>
-          </div>
-
-          <div class="review-buttons">
-            <button class="btn-primary" type="button" :disabled="accepted || !canStartDesign || designStatus === 'starting'" @click="handleAcceptPlan">
-              Accept plan
-            </button>
-          </div>
-
-          <div class="modify-block">
-            <label class="modify-label">Want changes? Describe what to modify:</label>
-            <textarea
-              v-model="feedback"
-              class="modify-input"
-              rows="3"
-              placeholder="Example: Add user accounts and tags for notes."
-              :disabled="isModifying"
-            />
-            <div v-if="modifyError" class="error-msg">{{ modifyError }}</div>
-            <div class="action-row">
-              <button class="btn-secondary" type="button" :disabled="isModifying" @click="handleModifyPlan">
-                <span v-if="!isModifying">Modify plan</span>
-                <span v-else>Modifying…</span>
-              </button>
+        <template v-if="planDoc.status === 'complete' && planDoc.plan">
+          <div class="review-head">
+            <div>
+              <h2 class="section-title">Review your blueprint</h2>
+              <p class="muted">The plan, the concepts it's built from, and the price — approve once to build.</p>
+            </div>
+            <div v-if="quote" class="quote-chip" title="Priced from the actions and queries of the selected concepts">
+              <span class="quote-credits">{{ quote.credits }}</span>
+              <span class="quote-unit">credit{{ quote.credits === 1 ? '' : 's' }}</span>
             </div>
           </div>
-        </div>
+          <div v-if="planningError" class="error-msg">{{ planningError }}</div>
 
-      </div>
+          <section class="review-section">
+            <header class="review-section-head">
+              <h3>Plan</h3>
+              <p class="muted">What your app does, page by page and flow by flow.</p>
+            </header>
+            <div class="json">
+              <PlanViewer :plan="planDoc.plan" />
+            </div>
+          </section>
 
-      <div v-if="showConceptDesign && (accepted || isPastPlanningStage)" class="glass fade-in plan-card">
-        <h2 class="section-title">Design</h2>
-        <p v-if="designStatus === 'starting'" class="muted">Design agent is working…</p>
-        <p v-else-if="parkedAtDesignReview" class="muted">Concept design is ready — review it below, then accept to start the build.</p>
-        <p v-else-if="designStatus === 'started'" class="muted">Design accepted — build in progress.</p>
-        <p v-else-if="designStatus === 'error'" class="muted">Failed to start design.</p>
-        <div v-if="designError" class="error-msg">{{ designError }}</div>
+          <section class="review-section">
+            <header class="review-section-head">
+              <h3>Concepts</h3>
+              <p class="muted">The tested building blocks your app is assembled from — expand any to read its full specification.</p>
+            </header>
+            <div v-if="designDoc" class="json">
+              <DesignViewer :design="designDoc" />
+            </div>
+            <p v-else class="muted">Concepts are still being resolved…</p>
+          </section>
 
-          <div v-if="designDoc" class="json" style="margin-top: 1rem;">
-            <DesignViewer :design="designDoc" />
-          </div>
-
-        <!-- Accept/modify only while parked at the gate: once the build starts, a design
-             modification would provision a competing design sandbox. -->
-        <div v-if="designDoc && canAcceptDesign" class="review-actions">
-          <div class="review-header">
-            <h3 class="review-title">Is this design good?</h3>
-          </div>
-
-          <div class="review-buttons">
-            <button
-              class="btn-primary"
-              type="button"
-              :disabled="!canAcceptDesign"
-              @click="handleAcceptDesign"
-            >
-              Accept design &amp; build
+          <div class="decision-bar">
+            <div class="decision-copy">
+              <span v-if="quote" class="decision-price">
+                {{ quote.credits }} credit{{ quote.credits === 1 ? '' : 's' }}
+                <span class="decision-price-detail">· {{ quote.actions }} actions + {{ quote.queries }} queries</span>
+              </span>
+              <span class="decision-hint">Approving starts the build — you can iterate again once it finishes.</span>
+            </div>
+            <button class="btn-primary btn-approve" type="button" :disabled="accepted || !canStartDesign || !designDoc" @click="handleAcceptPlan">
+              Accept &amp; build
             </button>
           </div>
+          <div v-if="designError" class="error-msg">{{ designError }}</div>
+          <span v-if="accepted" class="accepted-pill">Accepted</span>
 
-          <div class="modify-block">
-            <label class="modify-label">Want changes? Describe what to modify in the design:</label>
-            <textarea
-              v-model="designFeedback"
-              class="modify-input"
-              rows="3"
-              placeholder="Example: Use a different concept docs set and simplify the data model."
-              :disabled="isModifyingDesign"
-            />
-            <div v-if="modifyDesignError" class="error-msg">{{ modifyDesignError }}</div>
-            <div class="action-row">
-              <button class="btn-secondary" type="button" :disabled="isModifyingDesign" @click="handleModifyDesign">
-                <span v-if="!isModifyingDesign">Modify design</span>
-                <span v-else>Modifying…</span>
-              </button>
+          <section class="review-section changes-section">
+            <header class="review-section-head">
+              <h3>Request changes</h3>
+              <p class="muted">One modify updates the plan, concepts, and price together; use the concepts-only box for design-level tweaks.</p>
+            </header>
+
+            <div class="modify-grid">
+              <div class="modify-block">
+                <label class="modify-label">Plan &amp; concepts</label>
+                <textarea
+                  v-model="feedback"
+                  class="modify-input"
+                  rows="3"
+                  placeholder="Example: Add user accounts and tags for notes."
+                  :disabled="isModifying"
+                />
+                <div v-if="modifyError" class="error-msg">{{ modifyError }}</div>
+                <div class="action-row">
+                  <button class="btn-secondary" type="button" :disabled="isModifying" @click="handleModifyPlan">
+                    <span v-if="!isModifying">Modify plan</span>
+                    <span v-else>Modifying…</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="modify-block">
+                <label class="modify-label">Concepts only</label>
+                <textarea
+                  v-model="designFeedback"
+                  class="modify-input"
+                  rows="3"
+                  placeholder="Example: Split messaging and notifications into separate concepts."
+                  :disabled="isModifyingDesign"
+                />
+                <div v-if="modifyDesignError" class="error-msg">{{ modifyDesignError }}</div>
+                <div class="action-row">
+                  <button class="btn-secondary" type="button" :disabled="isModifyingDesign || !designDoc" @click="handleModifyDesign">
+                    <span v-if="!isModifyingDesign">Modify design</span>
+                    <span v-else>Modifying…</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
+        </template>
+
       </div>
 
       <div
@@ -765,6 +680,118 @@ h1 {
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.25);
   color: rgba(34, 197, 94, 0.95);
+}
+
+.review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.quote-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  flex: 0 0 auto;
+}
+
+.quote-credits {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.1;
+}
+
+.quote-unit {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.review-section {
+  margin-top: 1.5rem;
+}
+
+.review-section-head {
+  margin-bottom: 0.75rem;
+}
+
+.review-section-head h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+}
+
+.review-section-head .muted {
+  font-size: 0.8125rem;
+}
+
+.decision-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.decision-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.decision-price {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.decision-price-detail {
+  font-weight: 500;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.decision-hint {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.btn-approve {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9375rem;
+  flex: 0 0 auto;
+}
+
+.changes-section {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.modify-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .modify-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .review-buttons {

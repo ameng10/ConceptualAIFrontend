@@ -6,14 +6,14 @@ import {
   Clipboard,
   ClipboardCheck,
   Library,
-  ScrollText,
-  Wrench,
+  PenTool,
 } from 'lucide-vue-next'
-import PlanViewer, { type PlanShape } from '@/components/PlanViewer.vue'
+import type { PlanShape } from '@/components/PlanViewer.vue'
 
 type LibraryPull = {
   libraryName?: string
   instanceName?: string
+  spec?: string
   bindings?: Record<string, string>
 }
 
@@ -36,20 +36,121 @@ const props = defineProps<{
 const showRaw = ref(false)
 const copied = ref(false)
 
-const normalized = computed(() => {
-  const design = props.design || ({} as DesignShape)
-  return {
-  plan: (design as any)?.plan,
-    libraryPulls: Array.isArray(design.libraryPulls) ? design.libraryPulls : [],
-    customConcepts: Array.isArray(design.customConcepts) ? design.customConcepts : [],
+// ---------------------------------------------------------------------------
+// Concept-spec parsing: specs are markdown with `**heading**` section lines at
+// column 0 (purpose, principle, state, actions, queries, lifecycle cleanups)
+// and `name (args) : (result)` signature lines inside actions/queries. We parse
+// them into structured sections so the review reads like documentation, not a
+// raw dump.
+// ---------------------------------------------------------------------------
+
+type SpecSection = { heading: string; lines: string[] }
+
+const HEADING_RE = /^\*\*([a-zA-Z][a-zA-Z ]*)\*\*\s*(.*)$/
+const SIGNATURE_RE = /^(?:\*\*system\*\*\s+)?_?[a-zA-Z]\w*\s*\(.*$/
+
+const parseSpecSections = (spec: string): SpecSection[] => {
+  const sections: SpecSection[] = []
+  let current: SpecSection | null = null
+  for (const rawLine of (spec || '').split('\n')) {
+    const line = rawLine.trimEnd()
+    const heading = line.match(HEADING_RE)
+    if (heading && !rawLine.startsWith(' ')) {
+      // `**concept** Name [Params]` header line and section headings both match;
+      // treat the concept header as its own section so the title can use it.
+      current = { heading: heading[1].trim().toLowerCase(), lines: [] }
+      if (heading[2]?.trim()) current.lines.push(heading[2].trim())
+      sections.push(current)
+      continue
+    }
+    if (!current) {
+      current = { heading: '', lines: [] }
+      sections.push(current)
+    }
+    current.lines.push(rawLine)
   }
+  return sections
+}
+
+const sectionText = (sections: SpecSection[], heading: string): string =>
+  sections
+    .filter((s) => s.heading === heading)
+    .flatMap((s) => s.lines)
+    .join('\n')
+    .trim()
+
+/** Operation names listed in a set of sections (actions / queries / cleanups). */
+const operationNames = (sections: SpecSection[], headings: string[]): string[] => {
+  const names: string[] = []
+  for (const s of sections) {
+    if (!headings.includes(s.heading)) continue
+    for (const rawLine of s.lines) {
+      if (rawLine.startsWith(' ') || rawLine.startsWith('\t')) continue
+      const line = rawLine.trim()
+      if (!SIGNATURE_RE.test(line)) continue
+      const name = line.replace(/^\*\*system\*\*\s+/, '').split('(')[0].trim()
+      if (name) names.push(name)
+    }
+  }
+  return names
+}
+
+type ConceptCard = {
+  name: string
+  kind: 'library' | 'custom'
+  purpose: string
+  actionNames: string[]
+  queryNames: string[]
+  spec: string
+}
+
+const toCard = (name: string, kind: 'library' | 'custom', spec?: string): ConceptCard => {
+  const sections = parseSpecSections(spec || '')
+  return {
+    name,
+    kind,
+    purpose: sectionText(sections, 'purpose').split('\n')[0] || '',
+    actionNames: operationNames(sections, ['actions', 'lifecycle cleanups']),
+    queryNames: operationNames(sections, ['queries']),
+    spec: spec || '',
+  }
+}
+
+const cards = computed<ConceptCard[]>(() => {
+  const design = props.design || ({} as DesignShape)
+  const pulls = Array.isArray(design.libraryPulls) ? design.libraryPulls : []
+  const customs = Array.isArray(design.customConcepts) ? design.customConcepts : []
+  return [
+    ...pulls.map((p) => toCard(p.libraryName || p.instanceName || 'Concept', 'library', p.spec)),
+    ...customs.map((c) => toCard(c.name || 'Concept', 'custom', c.spec)),
+  ]
 })
 
-const formatBindings = (bindings?: Record<string, string>) => {
-  if (!bindings) return []
-  return Object.entries(bindings)
-    .map(([k, v]) => `${k} → ${v}`)
-    .sort((a, b) => a.localeCompare(b))
+const libraryCount = computed(() => cards.value.filter((c) => c.kind === 'library').length)
+const customCount = computed(() => cards.value.filter((c) => c.kind === 'custom').length)
+
+/** Render one spec for the expanded view: keep section headings bold, signature
+ *  lines emphasized, body lines dimmed — a documentation feel without a markdown lib. */
+type SpecRenderLine = { kind: 'heading' | 'signature' | 'body'; text: string }
+const renderSpec = (spec: string): SpecRenderLine[] => {
+  const out: SpecRenderLine[] = []
+  for (const rawLine of (spec || '').split('\n')) {
+    const line = rawLine.trimEnd()
+    const heading = line.match(HEADING_RE)
+    if (heading && !rawLine.startsWith(' ')) {
+      out.push({ kind: 'heading', text: heading[1].trim() + (heading[2] ? ' ' + heading[2].trim() : '') })
+      continue
+    }
+    if (!rawLine.startsWith(' ') && SIGNATURE_RE.test(line.trim()) && line.trim().length > 0) {
+      out.push({ kind: 'signature', text: line })
+      continue
+    }
+    out.push({ kind: 'body', text: rawLine })
+  }
+  // Trim leading/trailing blank body lines
+  while (out.length && out[0].kind === 'body' && !out[0].text.trim()) out.shift()
+  while (out.length && out[out.length - 1].kind === 'body' && !out[out.length - 1].text.trim()) out.pop()
+  return out
 }
 
 const tryCopy = async () => {
@@ -68,114 +169,64 @@ const tryCopy = async () => {
   <div class="design-viewer">
     <div class="top">
       <div class="top-left">
-        <Wrench :size="18" class="top-icon" />
-  <h3 class="title">Design output</h3>
+        <span class="count-chip"><Library :size="13" /> {{ libraryCount }} from library</span>
+        <span class="count-chip"><PenTool :size="13" /> {{ customCount }} designed for this app</span>
       </div>
 
       <div class="top-actions">
         <button class="btn-chip" type="button" @click="tryCopy" :title="copied ? 'Copied' : 'Copy JSON'">
-          <ClipboardCheck v-if="copied" :size="16" />
-          <Clipboard v-else :size="16" />
+          <ClipboardCheck v-if="copied" :size="14" />
+          <Clipboard v-else :size="14" />
           <span>{{ copied ? 'Copied' : 'Copy JSON' }}</span>
         </button>
 
         <button class="btn-chip" type="button" @click="showRaw = !showRaw">
-          <ChevronDown v-if="showRaw" :size="16" />
-          <ChevronRight v-else :size="16" />
-          <span>{{ showRaw ? 'Hide raw' : 'Show raw' }}</span>
+          <ChevronDown v-if="showRaw" :size="14" />
+          <ChevronRight v-else :size="14" />
+          <span>{{ showRaw ? 'Hide raw' : 'Raw' }}</span>
         </button>
       </div>
     </div>
 
-    <div class="stack">
-      <details v-if="normalized.plan" class="section" open>
-        <summary class="section-summary">
+    <div v-if="!cards.length" class="empty">No concepts selected yet.</div>
+
+    <div class="cards">
+      <details v-for="(card, idx) in cards" :key="idx" class="card">
+        <summary class="card-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
             <ChevronDown class="chev chev-down" :size="16" />
           </span>
-          <div class="section-title-row">
-            <ScrollText :size="16" />
-            <h4>Plan</h4>
-          </div>
-        </summary>
-        <div class="section-body">
-          <PlanViewer :plan="normalized.plan" />
-        </div>
-      </details>
-
-      <details class="section" open>
-        <summary class="section-summary">
-          <span class="twisty">
-            <ChevronRight class="chev chev-right" :size="16" />
-            <ChevronDown class="chev chev-down" :size="16" />
-          </span>
-          <div class="section-title-row">
-            <Library :size="16" />
-            <h4>Docs pulls</h4>
-            <span class="pill">{{ normalized.libraryPulls.length }}</span>
-          </div>
-        </summary>
-
-        <div class="section-body">
-          <div v-if="!normalized.libraryPulls.length" class="empty">No docs pulls found.</div>
-
-          <ul v-else class="pull-list">
-            <li v-for="(pull, idx) in normalized.libraryPulls" :key="idx" class="pull-row">
-              <div class="pull-main">
-                <span class="pull-name monospace">{{ pull.libraryName || pull.instanceName || 'DocsPull' }}</span>
-                <span
-                  v-if="pull.libraryName && pull.instanceName && pull.libraryName !== pull.instanceName"
-                  class="pull-sub"
-                >
-                  instance {{ pull.instanceName }}
-                </span>
-              </div>
-
-              <div v-if="pull.bindings" class="pull-bindings">
-                <div class="bindings-title">Bindings</div>
-                <div v-if="!Object.keys(pull.bindings).length" class="empty">No bindings.</div>
-                <ul v-else class="bullets">
-                  <li v-for="(b, bIdx) in formatBindings(pull.bindings)" :key="bIdx">{{ b }}</li>
-                </ul>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </details>
-
-      <details class="section" open>
-        <summary class="section-summary">
-          <span class="twisty">
-            <ChevronRight class="chev chev-right" :size="16" />
-            <ChevronDown class="chev chev-down" :size="16" />
-          </span>
-          <div class="section-title-row">
-            <ScrollText :size="16" />
-            <h4>Custom concepts</h4>
-            <span class="pill">{{ normalized.customConcepts.length }}</span>
-          </div>
-        </summary>
-
-        <div class="section-body">
-          <div v-if="!normalized.customConcepts.length" class="empty">No custom concepts found.</div>
-
-          <details v-for="(cc, idx) in normalized.customConcepts" :key="idx" class="item">
-            <summary class="item-summary">
-              <span class="twisty">
-                <ChevronRight class="chev chev-right" :size="16" />
-                <ChevronDown class="chev chev-down" :size="16" />
+          <div class="card-head">
+            <div class="card-title-row">
+              <span class="card-name">{{ card.name }}</span>
+              <span :class="['kind-badge', card.kind]">
+                <Library v-if="card.kind === 'library'" :size="11" />
+                <PenTool v-else :size="11" />
+                {{ card.kind === 'library' ? 'Library' : 'Custom' }}
               </span>
-              <span class="item-title">{{ cc.name || 'CustomConcept' }}</span>
-            </summary>
-
-            <div class="item-body">
-              <div v-if="cc.spec" class="spec">
-                <pre class="spec-pre">{{ cc.spec }}</pre>
-              </div>
-              <div v-else class="empty">No spec provided.</div>
             </div>
-          </details>
+            <p v-if="card.purpose" class="card-purpose">{{ card.purpose }}</p>
+            <div class="card-ops">
+              <span v-if="card.actionNames.length" class="ops-chip">
+                {{ card.actionNames.length }} action{{ card.actionNames.length === 1 ? '' : 's' }}
+              </span>
+              <span v-if="card.queryNames.length" class="ops-chip">
+                {{ card.queryNames.length }} quer{{ card.queryNames.length === 1 ? 'y' : 'ies' }}
+              </span>
+            </div>
+          </div>
+        </summary>
+
+        <div class="card-body">
+          <div v-if="card.spec" class="spec-doc">
+            <template v-for="(line, lIdx) in renderSpec(card.spec)" :key="lIdx">
+              <div v-if="line.kind === 'heading'" class="spec-heading">{{ line.text }}</div>
+              <div v-else-if="line.kind === 'signature'" class="spec-signature">{{ line.text }}</div>
+              <div v-else class="spec-body-line">{{ line.text || ' ' }}</div>
+            </template>
+          </div>
+          <div v-else class="empty">Specification not available for this concept.</div>
         </div>
       </details>
     </div>
@@ -190,7 +241,7 @@ const tryCopy = async () => {
 .design-viewer {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.9rem;
   background: transparent;
 }
 
@@ -199,21 +250,26 @@ const tryCopy = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .top-left {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.title {
-  font-size: 1rem;
-  margin: 0;
-}
-
-.top-icon {
-  color: var(--primary);
+.count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
 }
 
 .top-actions {
@@ -226,142 +282,155 @@ const tryCopy = async () => {
 .btn-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.45rem 0.65rem;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--text);
+  color: var(--text-dim);
   cursor: pointer;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
 }
 
 .btn-chip:hover {
   background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.pull-list {
-  margin: 0;
-  padding-left: 1.15rem;
+.cards {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.pull-row {
+.card {
   border: 1px solid var(--border);
-  outline: 1px solid var(--border);
-  outline-offset: -1px;
-  border-radius: 14px;
-  padding: 0.75rem;
-  background: transparent;
-  list-style: disc;
-}
-
-.pull-main {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.pull-name {
-  font-weight: 700;
-  color: var(--text);
-}
-
-.pull-sub {
-  color: var(--text-dim);
-  font-size: 0.85rem;
-}
-
-.pull-bindings {
-  margin-top: 0.6rem;
-}
-
-.section {
-  border: 1px solid var(--border);
-  outline: 1px solid var(--border);
-  outline-offset: -1px;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s;
 }
 
-.section-summary {
+.card[open],
+.card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.card-summary {
   list-style: none;
   cursor: pointer;
   user-select: none;
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 1rem;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: transparent;
+  align-items: flex-start;
+  gap: 0.6rem;
 }
 
-.section-summary::-webkit-details-marker {
+.card-summary::-webkit-details-marker {
   display: none;
 }
 
-details,
-summary {
-  background: transparent;
+.card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
-.section-title-row {
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.card-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.kind-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.section-title-row h4 {
-  font-size: 0.95rem;
-}
-
-.pill {
-  margin-left: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  padding: 0.15rem 0.5rem;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.18rem 0.5rem;
   border-radius: 999px;
 }
 
-.section-body {
-  padding: 0 1rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: transparent;
+.kind-badge.library {
+  color: rgba(96, 165, 250, 0.95);
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.25);
 }
 
-.item {
+.kind-badge.custom {
+  color: rgba(192, 132, 252, 0.95);
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+}
+
+.card-purpose {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.card-ops {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.ops-chip {
+  font-size: 0.72rem;
+  color: var(--text-dim);
   border: 1px solid var(--border);
-  outline: 1px solid var(--border);
-  outline-offset: -1px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: transparent;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
 }
 
-.item-summary {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-  padding: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: transparent;
+.card-body {
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 1rem;
 }
 
-.item-summary::-webkit-details-marker {
-  display: none;
+.spec-doc {
+  max-height: 420px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.spec-heading {
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  margin: 0.9rem 0 0.25rem;
+}
+
+.spec-heading:first-child {
+  margin-top: 0;
+}
+
+.spec-signature {
+  color: var(--primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.spec-body-line {
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .twisty {
@@ -369,106 +438,23 @@ summary {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+  margin-top: 0.1rem;
 }
 
 .chev {
   position: absolute;
   top: 1px;
   left: 1px;
-  color: var(--text);
+  color: var(--text-dim);
   opacity: 0.85;
 }
 
-/* Scope to the current details -> summary -> twisty so nested details don't interfere */
 details[open] > summary .twisty .chev-right {
   display: none;
 }
 
 details:not([open]) > summary .twisty .chev-down {
   display: none;
-}
-
-.item-title {
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.item-title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.sub {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
-
-.item-body {
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: transparent;
-}
-
-.meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.meta-k {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
-
-.meta-v {
-  color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.monospace {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-
-.bindings-title {
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.bullets {
-  margin-left: 1.15rem;
-  color: var(--text);
-}
-
-.bullets li {
-  padding: 0.15rem 0;
-}
-
-.spec {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.spec-pre {
-  margin: 0;
-  padding: 0.75rem;
-  max-height: 320px;
-  overflow: auto;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
 }
 
 .empty {

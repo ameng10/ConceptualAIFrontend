@@ -28,7 +28,6 @@ const COMPLETE_STATUSES = ['complete', 'assembled']
 export function getProjectPathForStatus(
   projectId: string,
   status: Project['status'] | string | null | undefined,
-  showConceptDesign = false,
 ): string | null {
   if (!status) return null
 
@@ -36,8 +35,7 @@ export function getProjectPathForStatus(
     return `/project/${projectId}`
   }
 
-  // Advanced users pause at the design review gate. Non-advanced users never pause here — the
-  // backend auto-advances, so `design_complete` is treated like any other building status.
+  // Legacy parked gate from before the stage merge; treated like a building status.
   if (status === 'design_complete') {
     return `/project/${projectId}`
   }
