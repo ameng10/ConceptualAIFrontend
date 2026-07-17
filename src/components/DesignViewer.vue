@@ -46,8 +46,23 @@ const copied = ref(false)
 
 type SpecSection = { heading: string; lines: string[] }
 
-const HEADING_RE = /^\*\*([a-zA-Z][a-zA-Z ]*)\*\*\s*(.*)$/
-const SIGNATURE_RE = /^(?:\*\*system\*\*\s+)?_?[a-zA-Z]\w*\s*\(.*$/
+const HEADING_RE = /^\*\*([a-zA-Z][^*]*)\*\*\s*(.*)$/
+
+// Two spec dialects: repo-local bare signature lines, and the library server's
+// bulleted bold actions (`* **register (...) : (...)**`) / backtick queries.
+const stripSignatureDecorations = (raw: string): string => {
+  let line = raw.trim()
+  line = line.replace(/^[-*]\s+/, '')
+  line = line.replace(/^`/, '')
+  line = line.replace(/^\*\*/, '')
+  line = line.replace(/^system(\*\*)?\s+/, '')
+  return line
+}
+
+const isSignatureLine = (rawLine: string): boolean => {
+  if (rawLine.startsWith(' ') || rawLine.startsWith('\t')) return false
+  return /^_?[a-zA-Z]\w*\s*\(/.test(stripSignatureDecorations(rawLine))
+}
 
 const parseSpecSections = (spec: string): SpecSection[] => {
   const sections: SpecSection[] = []
@@ -85,10 +100,8 @@ const operationNames = (sections: SpecSection[], headings: string[]): string[] =
   for (const s of sections) {
     if (!headings.includes(s.heading)) continue
     for (const rawLine of s.lines) {
-      if (rawLine.startsWith(' ') || rawLine.startsWith('\t')) continue
-      const line = rawLine.trim()
-      if (!SIGNATURE_RE.test(line)) continue
-      const name = line.replace(/^\*\*system\*\*\s+/, '').split('(')[0].trim()
+      if (!isSignatureLine(rawLine)) continue
+      const name = stripSignatureDecorations(rawLine).split('(')[0].trim()
       if (name) names.push(name)
     }
   }
@@ -141,8 +154,8 @@ const renderSpec = (spec: string): SpecRenderLine[] => {
       out.push({ kind: 'heading', text: heading[1].trim() + (heading[2] ? ' ' + heading[2].trim() : '') })
       continue
     }
-    if (!rawLine.startsWith(' ') && SIGNATURE_RE.test(line.trim()) && line.trim().length > 0) {
-      out.push({ kind: 'signature', text: line })
+    if (line.trim().length > 0 && isSignatureLine(rawLine)) {
+      out.push({ kind: 'signature', text: stripSignatureDecorations(line).replace(/\*\*\s*$/, '') })
       continue
     }
     out.push({ kind: 'body', text: rawLine })
