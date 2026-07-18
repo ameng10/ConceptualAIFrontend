@@ -31,7 +31,9 @@ const modifyError = ref('')
 const accepted = ref(false)
 const designError = ref('')
 const designDoc = ref<any | null>(null)
-const quote = ref<{ actions: number; queries: number; credits: number } | null>(null)
+const quote = ref<
+  { actions: number; queries: number; credits: number; iteration?: boolean; newOps?: number } | null
+>(null)
 
 // Design-scoped modify (PUT /design) — re-patches concepts + quote only.
 const designFeedback = ref('')
@@ -422,9 +424,16 @@ const handleModifyDesign = async () => {
               <h2 class="section-title">Review your blueprint</h2>
               <p class="muted">The plan, the concepts it's built from, and the price — approve once to build.</p>
             </div>
-            <div v-if="quote" class="quote-chip" title="Priced from the actions and queries of the selected concepts">
+            <div
+              v-if="quote"
+              class="quote-chip"
+              :title="quote.iteration
+                ? 'Iteration price: 1 credit base + the new operations this change adds'
+                : 'Priced from the actions and queries of the selected concepts'"
+            >
               <span class="quote-credits">{{ quote.credits }}</span>
               <span class="quote-unit">credit{{ quote.credits === 1 ? '' : 's' }}</span>
+              <span v-if="quote.iteration" class="quote-unit">iteration</span>
             </div>
           </div>
           <div v-if="planningError" class="error-msg">{{ planningError }}</div>
@@ -454,7 +463,8 @@ const handleModifyDesign = async () => {
             <div class="decision-copy">
               <span v-if="quote" class="decision-price">
                 {{ quote.credits }} credit{{ quote.credits === 1 ? '' : 's' }}
-                <span class="decision-price-detail">· {{ quote.actions }} actions + {{ quote.queries }} queries</span>
+                <span v-if="quote.iteration" class="decision-price-detail">· iteration — {{ quote.newOps ?? 0 }} new operation{{ (quote.newOps ?? 0) === 1 ? '' : 's' }}</span>
+                <span v-else class="decision-price-detail">· {{ quote.actions }} actions + {{ quote.queries }} queries</span>
               </span>
               <span class="decision-hint">Approving starts the build — you can iterate again once it finishes.</span>
             </div>

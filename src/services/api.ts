@@ -501,10 +501,17 @@ export const projectApi = {
     async getPlanReview(projectId: string) {
         // API.md: GET /projects/:projectId/plan — the MERGED Planning review resource:
         // { plan, concepts: { libraryPulls, customConcepts } | null, quote | null }.
+        // Iteration reviews carry quote.iteration=true + quote.newOps (growth-priced).
         const response = await api.get<{
             plan?: any
             concepts?: { libraryPulls: any[]; customConcepts: any[] } | null
-            quote?: { actions: number; queries: number; credits: number } | null
+            quote?: {
+                actions: number
+                queries: number
+                credits: number
+                iteration?: boolean
+                newOps?: number
+            } | null
         }>(`/api/projects/${projectId}/plan`)
         return response.data ?? null
     },
