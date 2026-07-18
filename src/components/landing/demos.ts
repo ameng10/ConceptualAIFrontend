@@ -10,18 +10,20 @@ export interface DemoDiff {
   unchangedSample: string[]
 }
 
+export interface DemoRepos {
+  /** GitHub URLs of the exported repos; null renders a disabled button until launch. */
+  frontend: string | null
+  backend: string | null
+}
+
 export interface DemoVariant {
   key: 'v1' | 'v2'
   label: string
   badges: string[]
   liveUrl: string | null
   image: string | null
-}
-
-export interface DemoRepos {
-  /** GitHub URLs of the exported repos; null renders a disabled button until launch. */
-  frontend: string | null
-  backend: string | null
+  /** Falls back to the parent demo's repos when a variant doesn't override them. */
+  repos?: DemoRepos
 }
 
 export interface DemoCardData {
@@ -139,9 +141,12 @@ The owner has an orders page listing orders newest-first with their items, quant
     tagline:
       'A visual booking marketplace: photo listings, schedules that can’t double-book, and a natural-language booking assistant.',
     badges: ['AI booking assistant', 'Scheduling & reservations', 'Messaging', 'Reviews', 'Media'],
-    image: null,
-    liveUrl: null,
-    repos: { frontend: null, backend: null },
+    image: '/demos/atelier.png',
+    liveUrl: 'https://atelier.conceptual-ai.app',
+    repos: {
+      frontend: 'https://github.com/rdavislee/Atelier-frontend',
+      backend: 'https://github.com/rdavislee/Atelier-backend',
+    },
     tryList: [
       'Scroll the photo grid and filter by category',
       'Type "find me a pottery class next Saturday morning" — the assistant finds and books a slot',
@@ -175,15 +180,23 @@ A host can delete one of their listings. When a listing is deleted, all of its t
         key: 'v1',
         label: 'v1',
         badges: ['Stripe subscriptions', 'Admin dashboard', 'Social feed', 'Media'],
-        liveUrl: null,
-        image: null,
+        liveUrl: 'https://commonsv1.conceptual-ai.app',
+        image: '/demos/commons-v1.png',
+        repos: {
+          frontend: 'https://github.com/rdavislee/CommonsV1_frontend',
+          backend: 'https://github.com/rdavislee/CommonsV1_backend',
+        },
       },
       {
         key: 'v2',
         label: 'v2 — after iteration',
         badges: ['Stripe subscriptions', 'Admin dashboard', 'Social feed', 'Media', 'AI moderation'],
-        liveUrl: null,
-        image: null,
+        liveUrl: 'https://commonsv2.conceptual-ai.app',
+        image: '/demos/commons-v2.png',
+        repos: {
+          frontend: 'https://github.com/rdavislee/commonsv2-frontend',
+          backend: 'https://github.com/rdavislee/commonsV2-backend',
+        },
       },
     ],
     diff: {

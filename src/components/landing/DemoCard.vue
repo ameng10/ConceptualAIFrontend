@@ -22,9 +22,10 @@ const liveUrl = computed(() => activeVariant.value?.liveUrl ?? props.demo.liveUr
 const image = computed(() => activeVariant.value?.image ?? props.demo.image)
 
 const promptExcerpt = computed(() => props.demo.prompt.slice(0, 300))
+const repos = computed(() => activeVariant.value?.repos ?? props.demo.repos)
 const repoLinks = computed(() => [
-  { label: 'Frontend repo', url: props.demo.repos.frontend },
-  { label: 'Backend repo', url: props.demo.repos.backend },
+  { label: 'Frontend repo', url: repos.value.frontend },
+  { label: 'Backend repo', url: repos.value.backend },
 ])
 const demoHost = computed(() => {
   const url = liveUrl.value
