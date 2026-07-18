@@ -377,7 +377,7 @@ const tryCopy = async () => {
     </div>
 
     <div class="stack">
-      <details v-if="normalized.summary" class="section" open>
+      <details v-if="normalized.summary" class="section">
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -395,7 +395,7 @@ const tryCopy = async () => {
 
       <!-- Legacy plans only: current plans carry no entity list (the data model is the
            state of the selected concepts, shown in the Concepts section of the review). -->
-      <details v-if="normalized.entities.length" class="section" open>
+      <details v-if="normalized.entities.length" class="section">
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -409,7 +409,7 @@ const tryCopy = async () => {
         </summary>
 
         <div class="section-body">
-          <details v-for="(entityWrapper, idx) in normalized.entities" :key="idx" class="item" open>
+          <details v-for="(entityWrapper, idx) in normalized.entities" :key="idx" class="item">
             <summary class="item-summary">
               <span class="twisty">
                 <ChevronRight class="chev chev-right" :size="16" />
@@ -439,7 +439,7 @@ const tryCopy = async () => {
         </div>
       </details>
 
-      <details class="section" open>
+      <details class="section">
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -455,7 +455,7 @@ const tryCopy = async () => {
         <div class="section-body">
           <div v-if="!normalized.userFlows.length" class="empty">No user flows found.</div>
 
-          <details v-for="(flowWrapper, idx) in normalized.userFlows" :key="idx" class="item" open>
+          <details v-for="(flowWrapper, idx) in normalized.userFlows" :key="idx" class="item">
             <summary class="item-summary">
               <span class="twisty">
                 <ChevronRight class="chev chev-right" :size="16" />
@@ -476,7 +476,7 @@ const tryCopy = async () => {
         </div>
       </details>
 
-      <details class="section" open>
+      <details class="section">
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
@@ -492,7 +492,7 @@ const tryCopy = async () => {
         <div class="section-body">
           <div v-if="!normalized.pages.length" class="empty">No pages found.</div>
 
-          <details v-for="(pageWrapper, idx) in normalized.pages" :key="idx" class="item" open>
+          <details v-for="(pageWrapper, idx) in normalized.pages" :key="idx" class="item">
             <summary class="item-summary">
               <span class="twisty">
                 <ChevronRight class="chev chev-right" :size="16" />
@@ -517,7 +517,7 @@ const tryCopy = async () => {
       </details>
 
       <!-- Only show Technical Requirements section if there are any -->
-      <details v-if="normalized.technical.length" class="section" open>
+      <details v-if="normalized.technical.length" class="section">
         <summary class="section-summary">
           <span class="twisty">
             <ChevronRight class="chev chev-right" :size="16" />
