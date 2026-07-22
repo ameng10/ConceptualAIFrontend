@@ -15,15 +15,22 @@
             </p>
           </div>
 
-          <router-link
-            to="/"
+          <!-- Plain anchor: the landing page is static HTML outside the SPA router. -->
+          <a
+            href="/"
             class="shrink-0 rounded-xl border border-glass-border bg-glass-bg px-3 py-2 text-sm font-semibold transition hover:bg-white/5"
           >
             Back to home
-          </router-link>
+          </a>
         </div>
 
         <div class="mt-8 space-y-3 text-sm">
+          <a
+            class="block rounded-xl border border-glass-border bg-glass-bg px-4 py-3 transition hover:bg-white/5"
+            href="mailto:admin@conceptual-ai.app"
+          >
+            admin@conceptual-ai.app
+          </a>
           <a
             class="block rounded-xl border border-glass-border bg-glass-bg px-4 py-3 transition hover:bg-white/5"
             href="mailto:ameng10@mit.edu"

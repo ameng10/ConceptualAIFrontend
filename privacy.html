@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — ConceptualAI</title>
+    <meta name="description" content="Privacy Policy for ConceptualAI, the AI app-generation platform operated by ConceptualAI, Inc." />
+    <link rel="canonical" href="https://conceptual-ai.app/privacy" />
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder (Beta)</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Privacy Policy</h1>
+          <p class="legal-updated">Last updated: July 22, 2026</p>
+
+          <p>
+            This policy describes how <strong>ConceptualAI, Inc.</strong> ("we", "us") collects, uses, and shares
+            information when you use the ConceptualAI service at
+            <a href="https://conceptual-ai.app">conceptual-ai.app</a>. Privacy questions and requests:
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          </p>
+
+          <h2>1. Information we collect</h2>
+          <ul>
+            <li>
+              <strong>Account information.</strong> Your email address and a password (stored as a salted hash), or —
+              if you sign in with GitHub or Google — the name, email address, and avatar those providers share with
+              us. We never see your GitHub or Google password.
+            </li>
+            <li>
+              <strong>Content you submit.</strong> App descriptions and prompts, plan feedback, project names, and the
+              applications the service generates for you (code, tests, documentation, previews).
+            </li>
+            <li>
+              <strong>Support communications.</strong> Messages, email addresses, and attachments you submit to our
+              support desk.
+            </li>
+            <li>
+              <strong>Technical data.</strong> Standard server logs: IP address, browser user agent, request
+              timestamps, and error diagnostics.
+            </li>
+            <li>
+              <strong>Cookies and local storage.</strong> We use them for signing you in (session tokens) and for
+              preferences such as your theme. We do not use advertising or cross-site tracking cookies.
+            </li>
+          </ul>
+
+          <h2>2. How we use information</h2>
+          <ul>
+            <li>To provide and operate the service — including sending your prompts and project context to third-party AI model providers to generate your application.</li>
+            <li>To respond to support requests.</li>
+            <li>To secure the service, prevent abuse, and enforce our <a href="/terms">Terms of Service</a>.</li>
+            <li>To understand usage and improve the service.</li>
+          </ul>
+          <p>We do not sell personal information, and we do not share it with third parties for their advertising.</p>
+
+          <h2>3. Service providers</h2>
+          <p>We share data with providers only as needed to run the service:</p>
+          <ul>
+            <li><strong>AI model providers</strong> — process your prompts and project context to generate plans, code, and tests.</li>
+            <li><strong>Cloud infrastructure</strong> — database hosting (MongoDB Atlas), application hosting (Deno Deploy), and isolated build sandboxes (Modal).</li>
+            <li><strong>Email delivery providers</strong> — send transactional and support email.</li>
+            <li><strong>Stripe</strong> — will process payments once paid features launch. Card details go directly to Stripe; we never store card numbers.</li>
+          </ul>
+
+          <h2>4. Retention and deletion</h2>
+          <p>
+            Account data is kept while your account is active. Projects and generated applications are kept until you
+            delete them or your account. Server logs are kept for a limited period for security and debugging. To
+            delete your account and associated data, email
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your account's email address.
+          </p>
+
+          <h2>5. Security</h2>
+          <p>
+            Traffic is encrypted in transit (TLS). Passwords are stored as salted hashes. Secrets and credentials are
+            kept in server-side configuration, never in the browser. No method of storage or transmission is 100%
+            secure, so we cannot guarantee absolute security — please avoid submitting highly sensitive or regulated
+            data.
+          </p>
+
+          <h2>6. Your rights</h2>
+          <p>
+            Depending on where you live, you may have rights to access, correct, export, or delete your personal
+            information, or to object to certain processing. To exercise any of these rights, email
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>; we will respond within the timeframe
+            required by applicable law.
+          </p>
+
+          <h2>7. Children</h2>
+          <p>
+            The service is not directed to children under 13 (or the equivalent minimum age in your jurisdiction), and
+            we do not knowingly collect their data.
+          </p>
+
+          <h2>8. Changes to this policy</h2>
+          <p>
+            We may update this policy over time. We will post the updated version here with a new "last updated" date;
+            material changes may also be announced in the product.
+          </p>
+
+          <h2>9. Contact</h2>
+          <p>
+            ConceptualAI, Inc. · <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </p>
+
+          <div class="legal-footer">
+            © 2026 ConceptualAI, Inc. ·
+            <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
+            <a href="/refunds">Refund &amp; Cancellation Policy</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

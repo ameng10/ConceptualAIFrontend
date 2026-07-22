@@ -26,7 +26,7 @@ const handleFederated = async (provider: FederatedProvider) => {
 
 const redirectTo = computed(() => {
   const r = route.query.redirect
-  return typeof r === 'string' && r.startsWith('/') ? r : '/'
+  return typeof r === 'string' && r.startsWith('/') ? r : '/build'
 })
 
 const handleSubmit = async () => {

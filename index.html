@@ -4,10 +4,916 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Conceptual AI</title>
+    <title>ConceptualAI — Describe your app. Get the codebase.</title>
+    <meta
+      name="description"
+      content="ConceptualAI generates complete, tested web applications from plain-language descriptions. You own the resulting code: Deno backend, React frontend, tests, and API docs."
+    />
+    <link rel="canonical" href="https://conceptual-ai.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="ConceptualAI — Describe your app. Get the codebase." />
+    <meta
+      property="og:description"
+      content="ConceptualAI generates complete, tested web applications from plain-language descriptions. You own the resulting code: Deno backend, React frontend, tests, and API docs."
+    />
+    <meta property="og:url" content="https://conceptual-ai.app/" />
+    <script>
+      // Apply the persisted theme before first paint (shared with the builder app).
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
   </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <!-- HEADER -->
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <div class="flex items-center gap-3">
+            <a
+              href="/"
+              class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5"
+            >
+              <span class="inline-flex h-6 w-6 items-center justify-center rounded-xl">
+                <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+              </span>
+              <span>ConceptualAI</span>
+            </a>
+
+            <nav class="hidden items-center gap-1 md:flex" aria-label="Primary">
+              <a href="#demos" class="nav-link">Live Demos</a>
+              <a href="#how" class="nav-link">How it Works</a>
+              <a href="#own" class="nav-link">Own the Code</a>
+              <a href="#faq" class="nav-link">FAQ</a>
+            </nav>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="theme-toggle"
+              class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10"
+              aria-label="Toggle color theme"
+            >
+              <span data-theme-label>Light Mode</span>
+            </button>
+
+            <a href="/login" class="hidden rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text no-underline transition hover:bg-white/10 md:inline-flex">
+              Sign in
+            </a>
+
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">
+              Open Builder (Beta)
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- HERO -->
+      <section class="relative overflow-hidden">
+        <div class="pointer-events-none absolute -inset-20 bg-[image:var(--grad-wave)] opacity-20 blur-3xl"></div>
+        <div class="pointer-events-none absolute inset-0 landing-grid"></div>
+
+        <div class="mx-auto w-full max-w-6xl px-4 pb-14 pt-40 md:pb-20 md:pt-28">
+          <!-- Central prompt box -->
+          <div class="mb-40">
+            <div class="mx-auto max-w-3xl">
+              <div class="mb-5 pb-1 text-center text-4xl font-semibold leading-[1.25] tracking-tight text-transparent md:text-5xl bg-clip-text bg-[image:var(--grad-wave)]">
+                Start with your app idea
+              </div>
+              <form action="/build" method="get" class="hero-form glass">
+                <input
+                  type="text"
+                  name="name"
+                  class="hero-input"
+                  placeholder="Agency Client Portal"
+                  aria-label="App name"
+                  maxlength="120"
+                />
+                <textarea
+                  name="description"
+                  class="hero-textarea"
+                  rows="4"
+                  placeholder="Build a client portal for my design agency — project status, file approvals, Stripe invoices..."
+                  aria-label="Describe your app"
+                ></textarea>
+                <div class="hero-form-footer">
+                  <button type="submit" class="btn btn-primary start-building-btn">
+                    Continue to Builder
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="grid gap-10 md:grid-cols-2 md:items-center">
+            <div>
+              <h1 class="mt-5 text-balance text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
+                Describe your app. Get the codebase.
+              </h1>
+              <p class="mt-4 max-w-xl text-pretty text-lg text-text-dim">
+                Work with the AI on a plan. We build it on our servers — assembled from pre-tested building blocks and
+                checked by a generated test suite against a real database. What comes out is yours: backend and frontend
+                repos, tests, API docs, ready to deploy.
+              </p>
+
+              <div class="mt-7 flex flex-wrap items-center gap-3">
+                <a href="/build" class="btn btn-primary start-building-btn no-underline">
+                  Open Builder (Beta)
+                  <span aria-hidden="true">→</span>
+                </a>
+                <a
+                  href="#demos"
+                  class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-6 py-3 text-base font-extrabold text-text no-underline transition hover:bg-white/10"
+                >
+                  See the live demos
+                </a>
+              </div>
+
+              <div class="mt-8 flex flex-wrap items-center gap-3 text-sm text-text-dim">
+                <span class="hero-chip">✓ Both repos are yours</span>
+                <span class="hero-chip">✓ Tested before it's done</span>
+                <span class="hero-chip">✓ Payments, email &amp; AI built in</span>
+              </div>
+            </div>
+
+            <!-- HERO VISUAL: Factory Console, ending green -->
+            <div class="relative">
+              <div class="absolute -inset-6 -z-10 rounded-[32px] bg-[image:var(--grad-wave)] opacity-25 blur-2xl"></div>
+              <div class="console-card glass">
+                <div class="console-top">
+                  <div class="console-title">Factory Console</div>
+                  <div class="console-pill">Autonomous</div>
+                </div>
+                <div class="grid gap-4 p-6">
+                  <div class="console-panel rounded-2xl p-4">
+                    <div class="flex items-center justify-between">
+                      <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">Factory Output</div>
+                      <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-neon-teal">pipeline</div>
+                    </div>
+                    <div class="mt-4 space-y-3 text-[13px] leading-relaxed">
+                      <div class="step-row"><div class="step-title">Planning</div><div class="step-chip done">Complete</div></div>
+                      <div class="step-row"><div class="step-title">Structuring</div><div class="step-chip done">Complete</div></div>
+                      <div class="step-row"><div class="step-title">Building</div><div class="step-chip done">Complete</div></div>
+                      <div class="step-row"><div class="step-title">Connecting</div><div class="step-chip done">Complete</div></div>
+                      <div class="step-row"><div class="step-title">Assembling</div><div class="step-chip done">Complete</div></div>
+                      <div class="step-row step-row-pass"><div class="step-title">Testing</div><div class="step-chip pass">313 / 313 passing</div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- THE GALLERY -->
+      <section id="demos" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div class="mb-8">
+          <div class="kicker">The gallery</div>
+          <h2 class="section-h2">Five real apps. One prompt each.</h2>
+          <p class="section-sub">
+            Every app below was generated from the single prompt shown on its card — expand the prompt, then click
+            through and use the app live. Commons ships twice: v1, then v2 after one iteration, with the diff to prove
+            nothing else moved.
+          </p>
+        </div>
+
+        <div class="demo-row" id="demo-row">
+          <!-- Deskmind -->
+          <article class="dcard glass">
+            <div class="dcard-frame">
+              <div class="dcard-chrome"><span></span><span></span><span></span><span class="dcard-host">deskmind.conceptual-ai.app</span></div>
+              <img src="/demos/deskmind.png" alt="Deskmind — AI support inbox screenshot" width="1440" height="900" fetchpriority="high" />
+            </div>
+            <div class="dcard-body">
+              <div class="dcard-head">
+                <h3>Deskmind</h3>
+                <span class="dcard-flag">Also our real support desk</span>
+              </div>
+              <p class="dcard-tagline">
+                An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way
+                email — on a backend you own.
+              </p>
+              <div class="chip-cloud">
+                <span class="lib-chip">AI triage &amp; drafts</span>
+                <span class="lib-chip">RAG over your docs</span>
+                <span class="lib-chip">Two-way email</span>
+                <span class="lib-chip">Operator admin</span>
+                <span class="lib-chip">File uploads</span>
+              </div>
+              <details class="dcard-prompt">
+                <summary>See the prompt that built it</summary>
+                <p class="dcard-prompt-note">This exact prompt — nothing else — built this app.</p>
+                <pre>Build an AI-powered customer support inbox for a small support team.
+
+There are two kinds of people using the app. The support team's operator signs in with operator credentials configured in the environment — there is no operator signup page. Support agents register with email and password and have a profile with a name and an avatar image they can upload, but registering alone gives no access to the inbox: the operator must approve (promote) a registered account to agent before it can see or work on support requests, and the operator can revoke an agent's access later. There is also a public page where customers can submit a support request without logging in — they enter their email, a subject, a message, and can optionally attach a file or screenshot. After submitting, a customer can return to the public page and look up their own request(s) by entering the email address they used — no account needed — to see the current status and the full conversation, and to post a follow-up reply on their request (the follow-up is identified by that email).
+
+When a new support request arrives, the system automatically uses AI to process it: it classifies the request into a category (Billing, Bug, Feature Request, or Other), assigns a priority (Low, Medium, High, or Urgent), extracts structured fields from the message into a side panel (order number, product name, customer sentiment, and the specific action the customer is requesting), and screens the message for abusive or threatening language, flagging it with a short written reason when it violates policy.
+
+Logged-in agents see an inbox list of all requests sorted by priority, with the category and a flag indicator shown on each row. Clicking a request opens it to show the full message, any attachment, the AI-extracted fields, and the AI moderation verdict. Agents can write internal notes on a request that only other agents can see, and they can post a reply to the customer — and that reply is sent to the customer as a real email from the team's support email address. The customer's own replies (whether posted via the public lookup page or received by email) are threaded back into the same request so agents and the customer see one continuous conversation. There is an "AI draft reply" button that generates a suggested reply; the suggested reply must be grounded in help-center documents that agents upload (policy and FAQ documents), so answers are based on the team's real policies rather than guesses. Agents can edit a draft before sending and can mark a request as resolved.
+
+Agents get a notification when a new High or Urgent request arrives.</pre>
+                <ul class="dcard-try">
+                  <li>Submit a real support request — this is ConceptualAI's actual support desk, so it reaches us</li>
+                  <li>Ask anything about ConceptualAI — answers are grounded in our help docs and arrive as a real email</li>
+                  <li>Come back later, look up your request by email (no account needed), and post a follow-up — it threads into the same conversation</li>
+                  <li>Behind the curtain, staff-side: AI classifies, prioritizes, extracts details, and drafts doc-grounded replies for our team</li>
+                </ul>
+              </details>
+              <div class="dcard-links">
+                <a class="dcard-live" href="https://deskmind.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open live app ↗</a>
+                <a href="https://github.com/rdavislee/Deskmind-backend" target="_blank" rel="noopener noreferrer">Backend repo</a>
+                <a href="https://github.com/rdavislee/Deskmind-frontend" target="_blank" rel="noopener noreferrer">Frontend repo</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Atelier -->
+          <article class="dcard glass">
+            <div class="dcard-frame">
+              <div class="dcard-chrome"><span></span><span></span><span></span><span class="dcard-host">atelier.conceptual-ai.app</span></div>
+              <img src="/demos/atelier.png" alt="Atelier — booking marketplace screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+            <div class="dcard-body">
+              <div class="dcard-head"><h3>Atelier</h3></div>
+              <p class="dcard-tagline">
+                A visual booking marketplace: photo listings, schedules that can’t double-book, and a natural-language
+                booking assistant.
+              </p>
+              <div class="chip-cloud">
+                <span class="lib-chip">AI booking assistant</span>
+                <span class="lib-chip">Scheduling &amp; reservations</span>
+                <span class="lib-chip">Messaging</span>
+                <span class="lib-chip">Reviews</span>
+                <span class="lib-chip">Media</span>
+              </div>
+              <details class="dcard-prompt">
+                <summary>See the prompt that built it</summary>
+                <p class="dcard-prompt-note">This exact prompt — nothing else — built this app.</p>
+                <pre>Build a visual marketplace for booking creative classes and studio sessions (for example pottery, photography, music, or cooking classes).
+
+Users register with email and password, log in, and create a profile with a display name, a short bio, and an avatar image they can upload. Any user can act as a host or a guest.
+
+Hosts create listings. A listing has a title, a description, a category, a location, a price, and one or more photos the host uploads. For each listing, the host publishes available time slots that guests can book.
+
+Guests browse a visual grid of listings with their photos and can filter by category. Opening a listing shows its photos, details, available time slots, and reviews. A guest books an available time slot; the system must prevent two guests from booking the same slot. There is also a natural-language booking assistant: a guest can type a request like "find me a pottery class next Saturday morning" and the assistant finds matching listings and available slots and books one for them.
+
+When a booking is made, a private message thread between the guest and the host is started for that booking, and that is where they arrange payment and any session specifics — the app itself does not process payments; the listing's price is what the host communicates and collects directly. After a session, a guest can leave a star rating and a written review on the listing. Users get a notification when they receive a new booking or a new message.
+
+A host can delete one of their listings. When a listing is deleted, all of its time slots, bookings, reviews, and message threads connected to it are removed as well, leaving no orphaned data.</pre>
+                <ul class="dcard-try">
+                  <li>Scroll the photo grid and filter by category</li>
+                  <li>Type "find me a pottery class next Saturday morning" — the assistant finds and books a slot</li>
+                  <li>Booking opens a private message thread with the host</li>
+                  <li>Try to double-book a taken slot — the server refuses</li>
+                </ul>
+              </details>
+              <div class="dcard-links">
+                <a class="dcard-live" href="https://atelier.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open live app ↗</a>
+                <a href="https://github.com/rdavislee/Atelier-backend" target="_blank" rel="noopener noreferrer">Backend repo</a>
+                <a href="https://github.com/rdavislee/Atelier-frontend" target="_blank" rel="noopener noreferrer">Frontend repo</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Commons v1 ⇄ v2 -->
+          <article class="dcard glass">
+            <div class="dcard-frame">
+              <div class="dcard-chrome"><span></span><span></span><span></span><span class="dcard-host">commonsv1.conceptual-ai.app</span></div>
+              <img src="/demos/commons-v1.png" alt="Commons — paid community screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+            <div class="dcard-body">
+              <div class="dcard-head">
+                <h3>Commons</h3>
+                <span class="dcard-flag">v1 ⇄ v2 — one iteration apart</span>
+              </div>
+              <p class="dcard-tagline">
+                A paid community with Stripe supporter subscriptions — then one iteration adds AI moderation without
+                touching the billing.
+              </p>
+              <div class="chip-cloud">
+                <span class="lib-chip">Stripe subscriptions</span>
+                <span class="lib-chip">Admin dashboard</span>
+                <span class="lib-chip">Social feed</span>
+                <span class="lib-chip">Media</span>
+                <span class="lib-chip">v2 adds: AI moderation</span>
+              </div>
+              <div class="diff-strip">
+                <span class="patched">~ Posting, Commenting — patched</span>
+                <span class="added">+ AIModeration — added</span>
+                <span class="unchanged">= Subscribing, Liking, Following + 6 more — unchanged, byte-for-byte</span>
+              </div>
+              <details class="dcard-prompt">
+                <summary>See the prompt that built it</summary>
+                <p class="dcard-prompt-note">This exact prompt — nothing else — built v1.</p>
+                <pre>Build an image-sharing community app with a paid supporter tier.
+
+Users register with email and password, log in, and create a profile with a display name, a short bio, and an avatar image they can upload.
+
+Users create posts that consist of an uploaded photo and a caption. There is a home feed that shows posts from the people the user follows, and a separate discover feed that shows recent posts from everyone. Users can like a post and leave comments on a post. Users can follow and unfollow other users. Opening a user's profile shows their posts, their follower count, and a follow button.
+
+Users can become supporters by subscribing to a monthly supporter plan through a secure hosted checkout page. A user can mark any of their posts as supporters-only. Supporters-only posts are shown in full only to users with an active supporter subscription; everyone else sees a locked placeholder instead of the photo. A user can cancel their subscription from a billing page, and when the subscription ends their supporter access ends with it.
+
+There is a site operator (admin) who signs in with operator credentials configured in the environment — there is no admin signup page. The admin has a dashboard that shows recent posts and members and lets the admin remove a post.
+
+A user gets a notification when someone likes their post, comments on their post, or follows them.</pre>
+                <p class="dcard-prompt-note">The v2 iteration prompt — the only change request between v1 and v2:</p>
+                <pre>Add AI moderation that screens every new post and every new comment before it becomes public. If the content violates community guidelines — harassment, hate, sexually explicit material, or spam — block it from the feeds and show the author a clear message explaining which rule it broke. Add a moderation queue page to the admin dashboard that lists every flagged item together with the AI's written rationale, and lets the admin approve an item back onto the feed or permanently remove it.</pre>
+                <ul class="dcard-try">
+                  <li>Subscribe with the Stripe test card — a locked supporters-only post unlocks</li>
+                  <li>On v2, try posting abusive text — it’s blocked with a written reason</li>
+                  <li>Open the admin moderation queue: every flagged item with the AI’s rationale</li>
+                  <li>Compare v1 and v2 — the billing machinery is byte-for-byte identical</li>
+                </ul>
+              </details>
+              <p class="dcard-testcard">Test mode — card 4242 4242 4242 4242</p>
+              <div class="dcard-links">
+                <a class="dcard-live" href="https://commonsv1.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open v1 live ↗</a>
+                <a class="dcard-live" href="https://commonsv2.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open v2 live ↗</a>
+                <a href="https://github.com/rdavislee/CommonsV1_backend" target="_blank" rel="noopener noreferrer">v1 backend</a>
+                <a href="https://github.com/rdavislee/commonsV2-backend" target="_blank" rel="noopener noreferrer">v2 backend</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Stride -->
+          <article class="dcard glass">
+            <div class="dcard-frame">
+              <div class="dcard-chrome"><span></span><span></span><span></span><span class="dcard-host">stride.conceptual-ai.app</span></div>
+              <img src="/demos/stride.png" alt="Stride — AI training coach screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+            <div class="dcard-body">
+              <div class="dcard-head"><h3>Stride</h3></div>
+              <p class="dcard-tagline">
+                An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily
+                feedback.
+              </p>
+              <div class="chip-cloud">
+                <span class="lib-chip">Live web research + citations</span>
+                <span class="lib-chip">AI plan adjustments</span>
+                <span class="lib-chip">Daily check-ins</span>
+                <span class="lib-chip">Notifications</span>
+              </div>
+              <details class="dcard-prompt">
+                <summary>See the prompt that built it</summary>
+                <p class="dcard-prompt-note">This exact prompt — nothing else — built this app.</p>
+                <pre>Build an AI training coach app.
+
+Users register with email and password, log in, and have a profile with a display name and an avatar image they can upload.
+
+A user sets a training goal by telling the coach, in their own words, what they want to achieve, the date they want to achieve it by (for example "run a sub-20-minute 5K by October 1st"), and their athletic stats (for example age, weight, experience level, and recent performance numbers). A user can have only one active goal at a time; they can abandon their active goal, and only then set a new one.
+
+When a goal is set, the AI builds a day-by-day workout plan running from today through the goal date, optimized toward the goal given the user's stats. The plan must be grounded in real research: the AI runs web research on the training approach for this kind of goal and attaches the cited sources it relied on, so the user can see the evidence behind the plan's structure and exercise choices.
+
+The main view is a calendar showing each day's workout. Opening a day shows that workout's details — the exercises with sets and reps, or duration and intensity — plus the research-backed rationale and its cited sources.
+
+After doing (or skipping) a day's workout, the user gives feedback on that day: a quick rating of how it went and an optional written note (for example "this was too easy" or "my knee hurt on the lunges"). The AI then adjusts the remaining future days of the plan based on the feedback — past days are never changed.
+
+The user gets a notification when their plan is generated and whenever the plan is adjusted after feedback.</pre>
+                <ul class="dcard-try">
+                  <li>Set a goal like "run a sub-20-minute 5K by October 1st" with your stats</li>
+                  <li>The calendar fills with a day-by-day plan — open a day to see the cited sources behind it</li>
+                  <li>Rate today’s workout "too easy" — future days adjust, past days never change</li>
+                </ul>
+              </details>
+              <div class="dcard-links">
+                <a class="dcard-live" href="https://stride.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open live app ↗</a>
+                <a href="https://github.com/rdavislee/Stride-backend" target="_blank" rel="noopener noreferrer">Backend repo</a>
+                <a href="https://github.com/rdavislee/Stride-frontend" target="_blank" rel="noopener noreferrer">Frontend repo</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Shopfront -->
+          <article class="dcard glass">
+            <div class="dcard-frame">
+              <div class="dcard-chrome"><span></span><span></span><span></span><span class="dcard-host">shopfront.conceptual-ai.app</span></div>
+              <img src="/demos/shopfront.png" alt="Shopfront — online store screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+            </div>
+            <div class="dcard-body">
+              <div class="dcard-head"><h3>Shopfront</h3></div>
+              <p class="dcard-tagline">
+                A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation
+                emails sent exactly once.
+              </p>
+              <div class="chip-cloud">
+                <span class="lib-chip">Stripe checkout</span>
+                <span class="lib-chip">Order emails</span>
+                <span class="lib-chip">Inventory integrity</span>
+                <span class="lib-chip">Owner admin</span>
+                <span class="lib-chip">Media</span>
+              </div>
+              <details class="dcard-prompt">
+                <summary>See the prompt that built it</summary>
+                <p class="dcard-prompt-note">This exact prompt — nothing else — built this app.</p>
+                <pre>Build an online store app for a single business.
+
+The business owner signs in with operator credentials configured in the environment — there is no owner signup page. The owner manages the store's catalog: each item has a name, a description, a price, one or more photos the owner uploads, and a stock count. The owner can add stock to any item at any time.
+
+Customers do not need an account. They browse a visual grid of the items with photos and prices. An item whose stock is zero is shown grayed out as sold out and cannot be purchased.
+
+Customers add items to a cart, choosing a quantity for each, and check out the whole cart in one payment through a secure hosted checkout page. At checkout the customer provides their email address and their shipping address. Checkout must not go through for a quantity larger than an item's available stock, and sold-out items can't be checked out at all — the stock rules are enforced by the server, not just the page.
+
+When an order's payment completes, exactly once: each purchased item's stock goes down by the quantity bought (an item that reaches zero becomes sold out), the order is recorded with its items, quantities, the customer's email, and the shipping address, and a confirmation email listing the order's contents and shipping address is sent from the store's own email address to both the customer and the business owner. A duplicate or replayed payment notification must not decrement stock twice or send the emails twice.
+
+The owner has an orders page listing orders newest-first with their items, quantities, shipping details, and payment status, and gets a notification when a new order arrives.</pre>
+                <ul class="dcard-try">
+                  <li>Add 2 of an item with stock 3 to your cart and check out with the Stripe test card</li>
+                  <li>Stock drops to 1 and two confirmation emails go out — customer and owner</li>
+                  <li>Buy the last unit — the card grays out "Sold out"; the server enforces stock, not the page</li>
+                  <li>Replayed payment webhooks can’t decrement stock twice or double-send email</li>
+                </ul>
+              </details>
+              <p class="dcard-testcard">Test mode — card 4242 4242 4242 4242</p>
+              <div class="dcard-links">
+                <a class="dcard-live" href="https://shopfront.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open live app ↗</a>
+                <a href="https://github.com/rdavislee/Shopfront-backend" target="_blank" rel="noopener noreferrer">Backend repo</a>
+                <a href="https://github.com/rdavislee/Shopfront-frontend" target="_blank" rel="noopener noreferrer">Frontend repo</a>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="demo-controls" aria-hidden="true">
+          <button type="button" class="demo-arrow" data-scroll="-1" aria-label="Previous demos">←</button>
+          <button type="button" class="demo-arrow" data-scroll="1" aria-label="Next demos">→</button>
+        </div>
+      </section>
+
+      <!-- THE RECEIPTS -->
+      <section id="proof" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">The receipts</div>
+          <h2 class="section-h2">Why these don't fall apart.</h2>
+          <p class="section-sub">
+            The most common complaint about AI app builders is that adding a feature quietly breaks the last one. Apps
+            here are assembled from pre-tested building blocks, and a build isn't done until its own generated test
+            suite passes against a real database — so instead of promises, you get receipts.
+          </p>
+        </div>
+
+        <div class="mt-8 grid gap-4 md:grid-cols-5">
+          <div class="receipt md:col-span-3">
+            <div class="receipt-head">
+              <span class="receipt-title">Test receipt</span>
+              <span class="receipt-sub">every build, before it's called done</span>
+            </div>
+            <div class="terminal">
+              <div class="term-cmd">$ deno test --allow-all</div>
+              <div class="term-muted">running 313 tests from ./tests/</div>
+              <div class="term-row"><span>Authenticating › register → login → session</span><span class="term-ok">… ok</span></div>
+              <div class="term-row"><span>Purchasing › checkout applied exactly once</span><span class="term-ok">… ok</span></div>
+              <div class="term-row"><span>Reservations › double-booking rejected</span><span class="term-ok">… ok</span></div>
+              <div class="term-row"><span>Posting › supporters-only gate holds</span><span class="term-ok">… ok</span></div>
+              <div class="term-row"><span>Emailing › confirmation sent exactly once</span><span class="term-ok">… ok</span></div>
+              <div class="term-muted">…</div>
+              <div class="term-summary">ok · <span class="term-ok">313 passed</span> · 0 failed</div>
+              <div class="term-muted">same suite, green on MongoDB, Postgres, and Turso — your choice.</div>
+            </div>
+          </div>
+
+          <div class="receipt md:col-span-2">
+            <div class="receipt-head">
+              <span class="receipt-title">Iteration diff receipt</span>
+              <span class="receipt-sub">Commons v1 → v2</span>
+            </div>
+            <div class="terminal">
+              <div class="diff-line patched">~ Posting <span class="diff-note">patched</span></div>
+              <div class="diff-line patched">~ Commenting <span class="diff-note">patched</span></div>
+              <div class="diff-line added">+ AIModeration <span class="diff-note">added</span></div>
+              <div class="diff-sep">unchanged — byte-for-byte:</div>
+              <div class="diff-line unchanged">= Subscribing</div>
+              <div class="diff-line unchanged">= Liking</div>
+              <div class="diff-line unchanged">= Following</div>
+              <div class="diff-line unchanged">= Authenticating</div>
+              <div class="diff-line unchanged">= Sessioning</div>
+              <div class="diff-line unchanged">= Profiling</div>
+              <div class="diff-line unchanged">= MediaHosting</div>
+              <div class="diff-line unchanged">= Notifying</div>
+              <div class="diff-line unchanged">= AdminAuthenticating</div>
+            </div>
+            <p class="receipt-caption">Add a feature; get proof the rest didn't move — including the billing.</p>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="receipt-head">
+            <span class="receipt-title">Security receipt</span>
+            <span class="receipt-sub">the failure modes AI-built apps are famous for, closed by construction</span>
+          </div>
+          <div class="mt-3 grid gap-4 sm:grid-cols-2">
+            <div class="sec-pane">
+              <div class="sec-title">No keys in the browser</div>
+              <div class="terminal">
+                <div class="term-cmd">$ grep -r "sk_live" frontend/dist | wc -l</div>
+                <div class="term-summary"><span class="term-ok">0</span></div>
+              </div>
+              <p class="receipt-caption">
+                Keys live in <code>backend/.env</code>, documented by a generated <code>.env.template</code>. The
+                browser gets a session cookie — never a secret.
+              </p>
+            </div>
+            <div class="sec-pane">
+              <div class="sec-title">No database exposed to the client</div>
+              <div class="terminal">
+                <div>browser <span class="term-muted">▸</span> backend API <span class="term-muted">▸</span> your database</div>
+                <div class="term-muted">direct client → database access: none</div>
+              </div>
+              <p class="receipt-caption">
+                No client-side database access means no row-level security to misconfigure. The rules live in the
+                backend you own.
+              </p>
+            </div>
+            <div class="sec-pane">
+              <div class="sec-title">No admin signup route</div>
+              <div class="terminal">
+                <div>ADMIN_USERNAME= <span class="term-muted"># set on your server</span></div>
+                <div>ADMIN_PASSWORD=</div>
+              </div>
+              <p class="receipt-caption">
+                Operators sign in with environment credentials — there is no admin registration endpoint to discover.
+              </p>
+            </div>
+            <div class="sec-pane">
+              <div class="sec-title">Verification is never AI-written</div>
+              <div class="terminal">
+                <div class="term-cmd">POST /webhooks/stripe</div>
+                <div>signature <span class="term-ok">verified ✓</span> <span class="term-muted">(raw body)</span></div>
+                <div>evt_9f3k2 replayed <span class="term-muted">→ ignored</span></div>
+                <div>applied <span class="term-muted">→ syncs fire</span></div>
+              </div>
+              <p class="receipt-caption">
+                Untrusted events are verified, deduped, and applied exactly once by a human-authored, tested block.
+                Generated code only reacts to the verified result.
+              </p>
+            </div>
+          </div>
+          <p class="mt-4 max-w-3xl text-sm text-text-dim">
+            Everywhere the industry's horror stories come from — secrets, auth, webhooks, database exposure — is
+            human-authored library code that was tested before your app existed. The AI composes it; it doesn't
+            reinvent it.
+          </p>
+        </div>
+
+        <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="stat glass"><div class="stat-value">~17,800</div><div class="stat-label">lines of backend code</div></div>
+          <div class="stat glass"><div class="stat-value">~10,300</div><div class="stat-label">lines of frontend code</div></div>
+          <div class="stat glass"><div class="stat-value">~12,400</div><div class="stat-label">lines of generated tests</div></div>
+          <div class="stat glass"><div class="stat-value">2,866</div><div class="stat-label">lines of API documentation</div></div>
+        </div>
+        <p class="mt-3 text-sm text-text-dim">
+          All from the one prompt on Deskmind's card above — the AI support inbox that's live as our real support desk.
+        </p>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section id="how" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">How it works</div>
+          <h2 class="section-h2">Three steps. One of them is yours.</h2>
+          <p class="section-sub">
+            You shape what gets built; the machine does the building and the checking; you keep the result.
+          </p>
+        </div>
+        <div class="mt-8 how-flow">
+          <div class="how-step glass">
+            <div class="how-kicker"><span class="how-stepnum">1</span><span>Step</span></div>
+            <div class="how-title">Shape the plan</div>
+            <div class="how-body">
+              Describe the app in your own words. The AI turns it into a plan you can read and edit — nothing gets
+              built until you’re happy with it.
+            </div>
+          </div>
+          <div class="how-connector" aria-hidden="true"></div>
+          <div class="how-step glass">
+            <div class="how-kicker"><span class="how-stepnum">2</span><span>Step</span></div>
+            <div class="how-title">We build it</div>
+            <div class="how-body">
+              On our servers, on our AI keys: building blocks assemble, the connections between them are generated,
+              and a test suite runs against a real database. You watch the progress live.
+            </div>
+          </div>
+          <div class="how-connector" aria-hidden="true"></div>
+          <div class="how-step glass">
+            <div class="how-kicker"><span class="how-stepnum">3</span><span>Step</span></div>
+            <div class="how-title">It’s yours</div>
+            <div class="how-body">
+              A full-stack app — Deno backend, React frontend, tests, OpenAPI docs, Dockerfile. Preview it live,
+              export both repos to GitHub, deploy anywhere. Iterate any time in plain language: we patch our copy,
+              re-run the suite, and re-export both repos — with a diff receipt showing exactly what changed and what
+              didn’t. Edits in your own repos stay yours.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OWNERSHIP -->
+      <section id="own" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div class="grid gap-10 md:grid-cols-2 md:items-start">
+          <div>
+            <div class="kicker">Code you actually own</div>
+            <h2 class="section-h2">Both repos. Yours.</h2>
+            <p class="mt-3 max-w-xl text-lg text-text-dim">
+              Every build hands you two clean repositories — a Deno backend and a React frontend — with the tests, the
+              OpenAPI spec, and a Dockerfile inside. Export straight to GitHub, run locally, deploy anywhere. No
+              proprietary runtime. No SDK between you and your backend.
+            </p>
+            <div class="mt-6 flex flex-wrap items-center gap-3 text-sm">
+              <span class="hero-chip">One-click GitHub export — both repos</span>
+              <span class="hero-chip">MongoDB · Postgres · Turso — your call</span>
+              <span class="hero-chip">Tests, OpenAPI docs &amp; Dockerfile included</span>
+              <span class="hero-chip">✓ Run locally or deploy yourself</span>
+            </div>
+          </div>
+          <div class="code-window rounded-3xl border border-glass-border bg-glass-bg shadow-glass backdrop-blur-2xl">
+            <div class="flex items-center gap-2 border-b border-glass-border px-4 py-3">
+              <div class="h-2.5 w-2.5 rounded-full bg-[color:var(--error)]"></div>
+              <div class="h-2.5 w-2.5 rounded-full bg-[color:var(--await)]"></div>
+              <div class="h-2.5 w-2.5 rounded-full bg-[color:var(--primary)]"></div>
+              <div class="ml-auto text-xs font-extrabold uppercase tracking-[0.14em] text-text-dim">your repositories</div>
+            </div>
+            <div class="grid gap-3 p-4 md:grid-cols-2">
+              <div class="repo-pane p-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-[color:var(--primary-glow)]">backend/</div>
+                  <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">deno</div>
+                </div>
+                <pre class="repo-tree"><code>backend/
+  src/
+    concepts/
+    syncs/
+    main.ts
+  tests/
+  openapi.yaml
+  Dockerfile
+  .env.template
+  deno.json</code></pre>
+              </div>
+              <div class="repo-pane p-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-neon-teal">frontend/</div>
+                  <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">react + vite</div>
+                </div>
+                <pre class="repo-tree"><code>frontend/
+  public/
+  src/
+    pages/
+    components/
+    App.tsx
+    main.tsx
+  package.json
+  vite.config.ts</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INTEGRATIONS WALL -->
+      <section class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">Real integrations</div>
+          <h2 class="section-h2">Apps that do real business.</h2>
+          <p class="section-sub">
+            Payments that settle, email that sends, AI that's part of the product, research with sources. Every badge
+            below links to a live demo that proves it — nothing here is a roadmap item.
+          </p>
+        </div>
+        <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <a href="#demos" class="int-card glass"><span class="int-label">Stripe payments &amp; subscriptions</span><span class="int-proof">See it in Shopfront &amp; Commons ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Two-way email — Gmail · Outlook · Zoho</span><span class="int-proof">See it in Deskmind &amp; Shopfront ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">AI features — classify · extract · moderate · RAG</span><span class="int-proof">See it in Deskmind ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Live web research with citations</span><span class="int-proof">See it in Stride ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Scheduling &amp; reservations that can’t double-book</span><span class="int-proof">See it in Atelier ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Messaging, feeds &amp; notifications</span><span class="int-proof">See it in Atelier &amp; Commons ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">File &amp; media uploads</span><span class="int-proof">In every demo ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Admin operators — env-credentialed, no signup</span><span class="int-proof">See it in Shopfront &amp; Deskmind ↗</span></a>
+          <a href="#demos" class="int-card glass"><span class="int-label">Auth &amp; sessions out of the box</span><span class="int-proof">In every app ↗</span></a>
+          <a href="#own" class="int-card glass"><span class="int-label">MongoDB · Postgres · Turso</span><span class="int-proof">Your database, your call ↗</span></a>
+          <a href="#own" class="int-card glass"><span class="int-label">GitHub export — both repos</span><span class="int-proof">Ownership, one click ↗</span></a>
+          <a href="#own" class="int-card glass"><span class="int-label">Deno Deploy-ready</span><span class="int-proof">Deploy guide included ↗</span></a>
+        </div>
+      </section>
+
+      <!-- THE LIBRARY -->
+      <section id="library" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">The building blocks</div>
+          <h2 class="section-h2">A library, not a black box.</h2>
+          <p class="section-sub">
+            Apps here aren't improvised token-by-token. They're assembled from a versioned library of building blocks —
+            each one human-authored, individually tested, and already shipped inside earlier apps. The AI spends its
+            generation on the connections between blocks, not on reinventing auth or billing.
+          </p>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-2">
+          <div class="lib-card glass">
+            <div class="lib-head">Concepts — the behaviors</div>
+            <div class="chip-cloud">
+              <span class="lib-chip">Authenticating</span><span class="lib-chip">Sessioning</span><span class="lib-chip">Profiling</span>
+              <span class="lib-chip">Posting</span><span class="lib-chip">Commenting</span><span class="lib-chip">Liking</span>
+              <span class="lib-chip">Following</span><span class="lib-chip">Subscribing</span><span class="lib-chip">Purchasing</span>
+              <span class="lib-chip">Emailing</span><span class="lib-chip">Notifying</span><span class="lib-chip">MediaHosting</span>
+              <span class="lib-chip">Researching</span><span class="lib-chip">WebSearching</span><span class="lib-chip">AdminAuthenticating</span>
+              <span class="lib-chip more">40 versioned blocks &amp; counting</span>
+            </div>
+            <div class="lib-head mt-5">Provider utils — the integrations</div>
+            <div class="chip-cloud">
+              <span class="lib-chip util">stripe</span><span class="lib-chip util">github</span><span class="lib-chip util">email</span>
+              <span class="lib-chip util">ai</span><span class="lib-chip util">websearch</span><span class="lib-chip util">google</span>
+              <span class="lib-chip util">admin</span>
+            </div>
+          </div>
+          <div class="lib-card glass">
+            <div class="lib-head">Adding a provider is one file</div>
+            <pre class="lib-code"><code>library/utils/&lt;provider&gt;/&lt;provider&gt;.ts
+
+  real strategy   — calls the provider, keys from env
+  mock strategy   — runs in tests &amp; previews, no keys
+  .env.template   — every variable it needs, documented</code></pre>
+            <p class="lib-body">
+              An integration is a single TypeScript utils module with a live strategy and a mandatory mock. Publish it
+              to the library once, and every app built afterward can be assembled with it — same tests, same receipts.
+            </p>
+            <p class="lib-body dim">
+              Today the library grows through our own pipeline — Stripe, GitHub, email, AI, and web research all
+              entered this way. Community contributions are on the roadmap, and the ingestion path they'll use is the
+              one we already run.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- THE OBVIOUS QUESTION -->
+      <section id="agents" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">The obvious question</div>
+          <h2 class="section-h2">Why not just use a coding agent?</h2>
+          <p class="section-sub">
+            If you're technical enough to want two repos and a Dockerfile, you could point Claude Code or Cursor at a
+            template. Three honest reasons this is different:
+          </p>
+        </div>
+        <div class="mt-8 grid gap-4 md:grid-cols-3">
+          <div class="agent-card glass">
+            <div class="agent-title">Assembled, not improvised</div>
+            <div class="agent-body">
+              An agent writes your auth, billing, and bookings from scratch, every time, and hopes. Here those are
+              versioned library blocks that have shipped before — generation is spent on the connections, not the
+              foundations.
+            </div>
+          </div>
+          <div class="agent-card glass">
+            <div class="agent-title">"Done" has a definition</div>
+            <div class="agent-body">
+              An agent is done when it stops typing. A build here isn't done until its own generated test suite —
+              hundreds of tests — passes against the real database you chose.
+            </div>
+          </div>
+          <div class="agent-card glass">
+            <div class="agent-title">Iteration comes with proof</div>
+            <div class="agent-body">
+              Ask an agent for one more feature and hope nothing broke. Ask here and get a diff receipt: what changed,
+              what is byte-for-byte identical — including the billing.
+            </div>
+          </div>
+        </div>
+        <p class="mt-5 text-sm text-text-dim">
+          And if you love your coding agent: the export is a clean, tested repo it can keep working on. Plenty of
+          people use both.
+        </p>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="mx-auto w-full max-w-6xl px-4 py-14">
+        <div>
+          <div class="kicker">Fair questions</div>
+          <h2 class="section-h2">Asked by people who read Dockerfiles.</h2>
+        </div>
+        <div class="mt-8 grid gap-3">
+          <details class="faq-item glass">
+            <summary class="faq-q">Why Deno on the backend?</summary>
+            <p class="faq-a">
+              It's standard TypeScript with npm compatibility — a Node developer can read and extend it immediately.
+              The runtime buys default-secure permissions and zero build ceremony, and the included Dockerfile means it
+              runs anywhere a container runs: your VPS, Fly, Cloud Run, or Deno Deploy with the included guide.
+            </p>
+          </details>
+          <details class="faq-item glass">
+            <summary class="faq-q">Do I still need your servers after export?</summary>
+            <p class="faq-a">
+              No. The repos are self-contained: install Deno, put your database URL in .env, run the task. No
+              proprietary runtime, no SDK between you and your backend, nothing phones home.
+            </p>
+          </details>
+          <details class="faq-item glass">
+            <summary class="faq-q">Where do secrets live?</summary>
+            <p class="faq-a">
+              In backend/.env on your infrastructure, filled in from a generated .env.template that documents every
+              variable. The frontend bundle ships zero keys, and operators sign in with environment credentials — there
+              is no admin signup route.
+            </p>
+          </details>
+          <details class="faq-item glass">
+            <summary class="faq-q">Which databases can it use?</summary>
+            <p class="faq-a">
+              MongoDB, Postgres, or Turso — your pick at build time, and the same generated test suite runs green
+              against each. Choosing a database is a dropdown, not a migration project.
+            </p>
+          </details>
+          <details class="faq-item glass">
+            <summary class="faq-q">What if I've hand-edited my exported code?</summary>
+            <p class="faq-a">
+              Your edits live in your repos and stay yours. Platform iterations patch our copy, re-run the suite, and
+              re-export, so pulling an iteration into your fork is a normal git merge, not archaeology.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <!-- FINAL CTA -->
+      <section class="mx-auto w-full max-w-6xl px-4 pb-14">
+        <div class="relative overflow-hidden rounded-3xl border border-glass-border bg-glass-bg p-8 shadow-glass backdrop-blur-2xl">
+          <div class="absolute -inset-10 -z-10 bg-[image:var(--grad-wave)] opacity-30 blur-2xl"></div>
+          <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <div class="kicker">Start with a prompt. Keep the code.</div>
+              <h3 class="mt-2 text-2xl font-black tracking-tight md:text-3xl">Open the builder and start your first app.</h3>
+              <p class="mt-2 max-w-xl text-text-dim">Free during beta.</p>
+            </div>
+            <a href="/build" class="btn btn-primary no-underline">Open Builder →</a>
+          </div>
+
+          <div class="support-strip">
+            <span>
+              Have a question? Our support desk is <strong>Deskmind</strong> — an app this platform built. Same one as
+              in the gallery.
+            </span>
+            <a href="https://deskmind.conceptual-ai.app" target="_blank" rel="noopener noreferrer" class="support-link">Open support ↗</a>
+          </div>
+
+          <div class="mt-6 flex flex-wrap items-center gap-3 text-sm text-text-dim">
+            <a href="/library" class="footer-pill">Docs</a>
+            <a href="/contact" class="footer-pill">Contact</a>
+            <a href="/posts" class="footer-pill">Community</a>
+            <a href="https://arxiv.org/pdf/2508.14511" target="_blank" rel="noreferrer" class="footer-pill">About the method ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="site-footer">
+        <div class="mx-auto w-full max-w-6xl px-4 py-12">
+          <div class="grid gap-10 md:grid-cols-2">
+            <div>
+              <div class="flex items-center gap-2 text-base font-black tracking-tight">
+                <img src="/favicon.svg" alt="" class="h-6 w-6" />
+                <span>ConceptualAI</span>
+              </div>
+              <p class="mt-4 max-w-xl text-sm leading-relaxed text-text-dim">
+                ConceptualAI operates a software-as-a-service platform that uses artificial intelligence to generate
+                complete, tested web applications from customers' plain-language descriptions, assembling each
+                application from a library of pre-tested software components and delivering full ownership of the
+                resulting source code to the customer. The company earns revenue by selling usage-based credits,
+                purchased outright or through monthly subscriptions, which customers spend to plan, generate, and
+                iterate on their applications.
+              </p>
+              <p class="mt-3 max-w-xl text-sm leading-relaxed text-text-dim">
+                The service is free during beta; usage-based credits, purchased outright or through monthly
+                subscriptions, will follow.
+              </p>
+            </div>
+            <div class="grid gap-8 sm:grid-cols-2">
+              <div>
+                <div class="footer-heading">Support</div>
+                <ul class="footer-list">
+                  <li>Email: <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a></li>
+                  <li><a href="https://deskmind.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Support desk (Deskmind) ↗</a></li>
+                  <li><a href="/contact">Contact</a></li>
+                </ul>
+              </div>
+              <div>
+                <div class="footer-heading">Legal</div>
+                <ul class="footer-list">
+                  <li><a href="/terms">Terms of Service</a></li>
+                  <li><a href="/privacy">Privacy Policy</a></li>
+                  <li><a href="/refunds">Refund &amp; Cancellation Policy</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="mt-10 border-t border-glass-border pt-6 text-sm text-text-dim">
+            © 2026 ConceptualAI, Inc. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </div>
   </body>
 </html>

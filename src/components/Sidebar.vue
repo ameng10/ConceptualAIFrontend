@@ -89,10 +89,11 @@ onMounted(() => {
 <template>
   <aside class="sidebar" :class="{ collapsed }">
     <div class="sidebar-header">
-      <router-link to="/" class="logo logo-link" aria-label="Go to landing page" title="Go to landing page">
+      <!-- Plain anchor: the landing page is static HTML outside the SPA router. -->
+      <a href="/" class="logo logo-link" aria-label="Go to landing page" title="Go to landing page">
         <Sparkles class="logo-icon" />
         <span v-if="!collapsed" class="logo-text">ConceptualAI</span>
-      </router-link>
+      </a>
 
       <button
         class="collapse-toggle"

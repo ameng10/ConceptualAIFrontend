@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '@/views/Home.vue'
 import Contact from '@/views/Contact.vue'
 import CreateProject from '@/views/CreateProject.vue'
 import ProjectStatus from '@/views/ProjectStatus.vue'
@@ -54,12 +53,8 @@ const router = createRouter({
             component: AuthCallback,
             meta: { public: true, hideSidebar: true }
         },
-        {
-            path: '/',
-            name: 'home',
-            component: Home,
-            meta: { public: true, hideSidebar: true }
-        },
+        // NOTE: '/' is NOT an SPA route. The marketing landing page is a static
+        // index.html served by serve.ts; in-app links to it must be plain <a href="/">.
         {
             path: '/contact',
             name: 'contact',

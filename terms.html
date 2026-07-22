@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms of Service — ConceptualAI</title>
+    <meta name="description" content="Terms of Service for ConceptualAI, the AI app-generation platform operated by ConceptualAI, Inc." />
+    <link rel="canonical" href="https://conceptual-ai.app/terms" />
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder (Beta)</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Terms of Service</h1>
+          <p class="legal-updated">Last updated: July 22, 2026</p>
+
+          <p>
+            The ConceptualAI service at <a href="https://conceptual-ai.app">conceptual-ai.app</a> (the "service") is
+            operated by <strong>ConceptualAI, Inc.</strong> These terms set the basic conditions for using the
+            service. Questions: <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          </p>
+
+          <h2>1. Acceptance of terms</h2>
+          <p>By using the service, you agree to these Terms of Service.</p>
+          <p>If you do not agree, do not use the service.</p>
+
+          <h2>2. The service</h2>
+          <p>The service generates applications for you using AI. That means:</p>
+          <ul>
+            <li>The AI used to generate apps is provided by the service; you do not need to supply your own AI key to generate apps.</li>
+            <li>The service is currently provided at no charge. A credit-based usage model is planned and, once introduced, may govern future usage.</li>
+            <li>Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you separately use.</li>
+          </ul>
+
+          <h2>3. Keys you supply for your generated apps</h2>
+          <p>
+            Generated apps may include AI-backed features that require a third-party provider API key
+            <strong>you</strong> supply when you run or deploy your app. For any such key, you are responsible for:
+          </p>
+          <ul>
+            <li>Providing a valid API key you are authorized to use</li>
+            <li>Securing your key and your provider account</li>
+            <li>Monitoring usage, limits, and billing in your provider dashboard</li>
+            <li>Revoking or rotating your key if you believe it has been exposed</li>
+          </ul>
+
+          <h2>4. Costs and billing</h2>
+          <p>
+            You are solely responsible for all third-party API charges, usage fees, overages, and related costs
+            incurred through any provider key you supply for your own generated apps. This applies regardless of:
+          </p>
+          <ul>
+            <li>What inputs your app submits</li>
+            <li>What outputs are returned</li>
+            <li>Whether the output is useful, incorrect, incomplete, harmful, repetitive, or unexpected</li>
+            <li>Whether requests are large, frequent, automated, mistaken, or triggered by generated system behavior using your key</li>
+          </ul>
+          <p>We are never liable for third-party API costs incurred on a key you supply.</p>
+
+          <h2>5. Prompts, outputs, and generated results</h2>
+          <p>You understand and agree that:</p>
+          <ul>
+            <li>You provide prompts and other inputs to the service</li>
+            <li>The service may send those inputs to third-party AI providers to fulfill your requests</li>
+            <li>AI output is probabilistic and may be wrong, incomplete, misleading, offensive, or otherwise unsuitable</li>
+            <li>Generated code, plans, documents, or other outputs are provided as-is</li>
+          </ul>
+          <p>Any decision to rely on, publish, ship, deploy, distribute, or otherwise use output is solely your responsibility.</p>
+
+          <h2>6. No warranty on output</h2>
+          <p>The service does not guarantee that outputs will be:</p>
+          <ul>
+            <li>Correct</li>
+            <li>Complete</li>
+            <li>Safe</li>
+            <li>Secure</li>
+            <li>Fit for any particular purpose</li>
+            <li>Free of bugs, legal issues, policy issues, or third-party claims</li>
+          </ul>
+          <p>Any use of output is at your own risk.</p>
+
+          <h2>7. Acceptable use</h2>
+          <p>You agree not to use the service:</p>
+          <ul>
+            <li>In violation of law, regulation, or third-party rights</li>
+            <li>To abuse, probe, overload, or disrupt the service</li>
+            <li>To submit malicious content, malware, or attempts to bypass security controls</li>
+            <li>To use keys, accounts, or data you do not have permission to use</li>
+            <li>To build or operate harmful, deceptive, or unlawful systems</li>
+          </ul>
+
+          <h2>8. Service availability</h2>
+          <p>The service is provided on an as-is and as-available basis. We do not guarantee:</p>
+          <ul>
+            <li>Uptime</li>
+            <li>Availability</li>
+            <li>Throughput</li>
+            <li>Persistence of any in-progress work</li>
+            <li>Compatibility with every provider, key, model, or generated app</li>
+          </ul>
+          <p>We may change, limit, suspend, or discontinue the service at any time.</p>
+
+          <h2>9. Abuse prevention and suspension</h2>
+          <p>
+            We may rate-limit, restrict, suspend, or terminate access if we believe use is abusive, risky, unlawful,
+            or harmful to the service or other users.
+          </p>
+
+          <h2>10. Third-party services</h2>
+          <p>
+            The service may depend on third-party providers, infrastructure, model APIs, hosting, databases, or
+            software packages. We are not responsible for third-party outages, pricing changes, policy changes, model
+            behavior, data handling, or billing.
+          </p>
+
+          <h2>11. Data and privacy</h2>
+          <p>
+            Our <a href="/privacy">Privacy Policy</a> describes what we collect and how we use it. You should not
+            submit highly sensitive, regulated, or confidential material unless you have independently determined that
+            doing so is appropriate for your own risk tolerance and obligations.
+          </p>
+          <p>
+            You are responsible for your own compliance obligations relating to data, privacy, intellectual property,
+            employment, healthcare, finance, education, export controls, and any other regulated context.
+          </p>
+
+          <h2>12. Limitation of liability</h2>
+          <p>
+            To the maximum extent permitted by law, ConceptualAI, Inc. and its officers, employees, and suppliers are
+            not liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for
+            any loss of profits, revenue, data, goodwill, business opportunity, or other losses arising from or
+            related to use of the service. This includes, without limitation, claims, losses, damages, or consequences
+            arising from:
+          </p>
+          <ul>
+            <li>Your reliance on generated output</li>
+            <li>Your interpretation or use of generated output</li>
+            <li>Actions taken or not taken based on generated output</li>
+            <li>Distribution, publication, deployment, or commercialization of generated output</li>
+            <li>Errors, omissions, harmful content, or unexpected behavior in generated output</li>
+          </ul>
+          <p>
+            To the maximum extent permitted by law, total liability relating to this free service is zero dollars or,
+            if a court does not permit that limitation, the minimum amount permitted by applicable law.
+          </p>
+
+          <h2>13. Indemnity</h2>
+          <p>
+            You agree to defend, indemnify, and hold harmless ConceptualAI, Inc. from claims, damages, losses,
+            liabilities, costs, and expenses arising out of:
+          </p>
+          <ul>
+            <li>Your use of the service</li>
+            <li>Your prompts, data, or API keys</li>
+            <li>Your use of generated output</li>
+            <li>Your violation of these terms or any third-party rules</li>
+          </ul>
+
+          <h2>14. Changes to these terms</h2>
+          <p>
+            These terms may be updated over time. Your continued use of the service after changes means you accept the
+            updated terms.
+          </p>
+
+          <h2>15. Contact</h2>
+          <p>
+            Questions about these terms: <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>. If you
+            have questions about how these terms apply to you, we encourage you to consult your own legal counsel.
+          </p>
+
+          <div class="legal-footer">
+            © 2026 ConceptualAI, Inc. ·
+            <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
+            <a href="/refunds">Refund &amp; Cancellation Policy</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
