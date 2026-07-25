@@ -11,6 +11,7 @@ import {
 } from '@/services/github-credentials'
 import { getPendingGithubExport } from '@/services/github-export'
 import { useToasts } from '@/services/toast'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const { push } = useToasts()
 const route = useRoute()
@@ -185,12 +186,15 @@ const beginGithubLink = async () => {
   }
 }
 
-const disconnectGithub = async () => {
+const showDisconnectConfirm = ref(false)
+
+const disconnectGithub = () => {
   resetMessages()
+  showDisconnectConfirm.value = true
+}
 
-  const confirmed = window.confirm('Disconnect the linked GitHub account from this ConceptualAI account?')
-  if (!confirmed) return
-
+const confirmDisconnectGithub = async () => {
+  showDisconnectConfirm.value = false
   disconnecting.value = true
   try {
     await deleteGithubCredential()
@@ -338,6 +342,16 @@ onBeforeUnmount(() => {
 
     <p v-if="error" class="error-msg">{{ error }}</p>
     <p v-if="success" class="success-msg">{{ success }}</p>
+
+    <ConfirmDialog
+      :show="showDisconnectConfirm"
+      title="Disconnect GitHub?"
+      message="Disconnect the linked GitHub account from this ConceptualAI account?"
+      confirm-label="Disconnect"
+      danger
+      @confirm="confirmDisconnectGithub"
+      @cancel="showDisconnectConfirm = false"
+    />
   </section>
 </template>
 

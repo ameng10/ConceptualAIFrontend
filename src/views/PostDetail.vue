@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next'
 import { socialApi, type Post, type Comment } from '@/services/social-api'
 import { authState } from '@/services/api'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -69,13 +70,31 @@ const goToAuthor = () => {
 
 const goToEdit = () => router.push(`/posts/${postId}/edit`)
 
-const handleDeletePost = async () => {
-  if (!confirm('Delete this post?')) return
-  try {
-    await socialApi.deletePost(postId)
-    router.push('/posts')
-  } catch (e: any) {
-    error.value = e.response?.data?.error || e.message || 'Failed to delete'
+const confirmDelete = ref<{ show: boolean; title: string; message: string; action: () => Promise<void> }>({
+  show: false,
+  title: '',
+  message: '',
+  action: async () => {},
+})
+
+const runConfirmedDelete = async () => {
+  confirmDelete.value.show = false
+  await confirmDelete.value.action()
+}
+
+const handleDeletePost = () => {
+  confirmDelete.value = {
+    show: true,
+    title: 'Delete post?',
+    message: 'This permanently removes the post and its comments.',
+    action: async () => {
+      try {
+        await socialApi.deletePost(postId)
+        router.push('/posts')
+      } catch (e: any) {
+        error.value = e.response?.data?.error || e.message || 'Failed to delete'
+      }
+    },
   }
 }
 
@@ -173,13 +192,19 @@ const saveEditComment = async () => {
   }
 }
 
-const deleteComment = async (c: Comment) => {
-  if (!confirm('Delete this comment?')) return
-  try {
-    await socialApi.deleteComment(c._id)
-    await loadComments()
-  } catch {
-    // Ignore
+const deleteComment = (c: Comment) => {
+  confirmDelete.value = {
+    show: true,
+    title: 'Delete comment?',
+    message: 'This permanently removes the comment.',
+    action: async () => {
+      try {
+        await socialApi.deleteComment(c._id)
+        await loadComments()
+      } catch {
+        // Ignore
+      }
+    },
   }
 }
 
@@ -346,6 +371,16 @@ onMounted(refresh)
         </div>
       </section>
     </div>
+
+    <ConfirmDialog
+      :show="confirmDelete.show"
+      :title="confirmDelete.title"
+      :message="confirmDelete.message"
+      confirm-label="Delete"
+      danger
+      @confirm="runConfirmedDelete"
+      @cancel="confirmDelete.show = false"
+    />
   </div>
 </template>
 

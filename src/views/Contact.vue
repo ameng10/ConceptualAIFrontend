@@ -31,18 +31,6 @@
           >
             admin@conceptual-ai.app
           </a>
-          <a
-            class="block rounded-xl border border-glass-border bg-glass-bg px-4 py-3 transition hover:bg-white/5"
-            href="mailto:ameng10@mit.edu"
-          >
-            ameng10@mit.edu
-          </a>
-          <a
-            class="block rounded-xl border border-glass-border bg-glass-bg px-4 py-3 transition hover:bg-white/5"
-            href="mailto:rdlee@mit.edu"
-          >
-            rdlee@mit.edu
-          </a>
         </div>
       </div>
     </div>

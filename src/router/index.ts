@@ -2,8 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Contact from '@/views/Contact.vue'
 import CreateProject from '@/views/CreateProject.vue'
 import ProjectStatus from '@/views/ProjectStatus.vue'
-import Implementing from '@/views/Implementing.vue'
-import Syncing from '@/views/Syncing.vue'
 import Assembling from '@/views/Assembling.vue'
 import MyProjects from '@/views/MyProjects.vue'
 import Library from '@/views/Library.vue'
@@ -89,20 +87,6 @@ const router = createRouter({
             path: '/project/:id',
             name: 'project-status',
             component: ProjectStatus,
-            props: true,
-            meta: { requiresAuth: true }
-        },
-        {
-            path: '/project/:id/implementing',
-            name: 'project-implementing',
-            component: Implementing,
-            props: true,
-            meta: { requiresAuth: true }
-        },
-        {
-            path: '/project/:id/syncing',
-            name: 'project-syncing',
-            component: Syncing,
             props: true,
             meta: { requiresAuth: true }
         },

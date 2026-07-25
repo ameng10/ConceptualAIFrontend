@@ -9,7 +9,7 @@ import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import PlanViewer from '@/components/PlanViewer.vue'
 import DesignViewer from '@/components/DesignViewer.vue'
-import { ArrowLeft, Share2 } from 'lucide-vue-next'
+import { ArrowLeft } from 'lucide-vue-next'
 import { toastDesignUpdated, toastPlanReady, toastPlanUpdated } from '@/services/toast'
 
 const route = useRoute()
@@ -386,14 +386,9 @@ const handleModifyDesign = async () => {
 <template>
   <div class="status-view">
     <div class="header-nav fade-in">
-      <router-link to="/" class="back-link">
+      <router-link to="/build" class="back-link">
         <ArrowLeft :size="18" /> Back to Generator
       </router-link>
-      <div class="actions">
-        <button class="btn-icon">
-          <Share2 :size="18" />
-        </button>
-      </div>
     </div>
 
   <div class="content container">

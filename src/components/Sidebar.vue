@@ -67,7 +67,9 @@ const userInitials = computed(() => {
 const handleLogout = async () => {
   await authApi.logout()
   refreshAuth()
-  router.replace('/')
+  // '/' is the static landing outside the SPA router — a full navigation is
+  // required; router.replace('/') matches no route and renders a blank page.
+  window.location.href = '/'
 }
 
 const toggleTheme = () => {

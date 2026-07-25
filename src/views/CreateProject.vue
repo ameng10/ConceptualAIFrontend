@@ -5,6 +5,7 @@ import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
 import { isHttp524 } from '@/services/http-errors'
+import { useToasts } from '@/services/toast'
 import { getProjectPathForStatus } from '@/services/project-stage-routing'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 
@@ -199,7 +200,12 @@ const handleProjectSubmit = async (
           ? error.message
           : String(error)
 
-    alert(msg || 'Failed to start project. Please check if the backend is running.')
+    useToasts().push({
+      title: 'Failed to start project',
+      message: msg || 'Please check if the backend is running.',
+      kind: 'error',
+      ttlMs: 8000,
+    })
     done(false, msg || 'Failed to start project.')
   }
 }
