@@ -41,6 +41,8 @@ export interface AdminBuild {
   outcome?: 'complete' | 'failed' | 'aborted'
   stageOutcomes: Record<string, { status: string; durationMs?: number }>
   endpoints: AdminEndpointRecord[]
+  costUsd?: number | null
+  costIsLowerBound?: boolean
 }
 
 export const adminApi = {

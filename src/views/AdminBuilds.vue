@@ -75,6 +75,11 @@ const fmtDuration = (b: AdminBuild) => {
 const failedCount = (b: AdminBuild) =>
   b.endpoints.filter((e) => e.status === 'failed' || e.status === 'hung').length
 
+const fmtCost = (b: AdminBuild) => {
+  if (typeof b.costUsd !== 'number') return '—'
+  return `$${b.costUsd.toFixed(2)}${b.costIsLowerBound ? '+' : ''}`
+}
+
 onMounted(load)
 </script>
 
@@ -104,6 +109,7 @@ onMounted(load)
           <th>outcome</th>
           <th>failed eps</th>
           <th>duration</th>
+          <th>cost</th>
         </tr>
       </thead>
       <tbody>
@@ -118,9 +124,10 @@ onMounted(load)
             </td>
             <td>{{ failedCount(b) || '' }}</td>
             <td>{{ fmtDuration(b) }}</td>
+            <td>{{ fmtCost(b) }}</td>
           </tr>
           <tr v-if="selected?._id === b._id" class="detail">
-            <td colspan="7">
+            <td colspan="8">
               <div class="stages">
                 <span
                   v-for="(outcome, stage) in b.stageOutcomes"
