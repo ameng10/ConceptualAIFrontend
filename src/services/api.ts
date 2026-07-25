@@ -78,6 +78,40 @@ export interface SyncsResponse {
     status?: string
 }
 
+export type ReceiptVerdict = 'unchanged' | 'regenerated' | 'added' | 'removed'
+
+export interface ReceiptFile {
+    path: string
+    before: string | null
+    after: string | null
+    verdict: ReceiptVerdict
+}
+
+export interface ReceiptCounts {
+    unchanged: number
+    regenerated: number
+    added: number
+    removed: number
+}
+
+/** Latest-pair diff receipt (W2). Null until the project has iterated at least once. */
+export interface ProjectReceipt {
+    project: string
+    from: number
+    to: number
+    fromTrigger: 'BUILD' | 'ITERATE' | 'FRONTEND_ITERATE' | string
+    toTrigger: 'BUILD' | 'ITERATE' | 'FRONTEND_ITERATE' | string
+    fromAt: string
+    toAt: string
+    files: ReceiptFile[]
+    counts: ReceiptCounts
+}
+
+export interface ProjectReceiptResponse {
+    receipt: ProjectReceipt | null
+    latestVersion: number | null
+}
+
 export type GithubExportArtifact = 'backend' | 'frontend'
 export type GithubExportVisibility = 'private' | 'public'
 
@@ -474,6 +508,19 @@ export const projectApi = {
         const response = await api.get<{ project: Project }>(`/api/projects/${projectId}`)
         if (!response.data?.project) throw new Error('Project not found')
         return normalizeProjectStatus(response.data.project)
+    },
+
+    /**
+     * GET /projects/:projectId/receipt — the latest-pair diff receipt (W2).
+     * receipt is null until the project has at least two artifact versions
+     * (i.e. before any iteration).
+     */
+    async getReceipt(projectId: string): Promise<ProjectReceiptResponse> {
+        const response = await api.get<ProjectReceiptResponse>(`/api/projects/${projectId}/receipt`)
+        return {
+            receipt: response.data?.receipt ?? null,
+            latestVersion: response.data?.latestVersion ?? null,
+        }
     },
 
     async deleteProject(projectId: string) {
