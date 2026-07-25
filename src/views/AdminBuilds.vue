@@ -1,0 +1,315 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { LogOut, RefreshCw } from 'lucide-vue-next'
+import {
+  adminApi,
+  clearAdminToken,
+  type AdminBuild,
+} from '@/services/admin-api'
+
+const router = useRouter()
+const builds = ref<AdminBuild[]>([])
+const loading = ref(false)
+const error = ref('')
+const failuresOnly = ref(false)
+const selected = ref<AdminBuild | null>(null)
+const transcriptFor = ref('')
+const transcript = ref('')
+const transcriptTruncated = ref(false)
+const transcriptLoading = ref(false)
+
+const load = async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    builds.value = await adminApi.getBuilds({ hasFailures: failuresOnly.value || undefined, limit: 100 })
+  } catch (e: any) {
+    const status = e?.response?.status
+    if (status === 401 || status === 403) {
+      clearAdminToken()
+      router.replace('/admin')
+      return
+    }
+    error.value = e?.response?.data?.error || e?.message || 'Failed to load builds'
+  } finally {
+    loading.value = false
+  }
+}
+
+const select = async (b: AdminBuild) => {
+  selected.value = selected.value?._id === b._id ? null : b
+  transcriptFor.value = ''
+  transcript.value = ''
+}
+
+const showTranscript = async (b: AdminBuild, endpointName: string) => {
+  transcriptLoading.value = true
+  transcriptFor.value = endpointName
+  transcript.value = ''
+  transcriptTruncated.value = false
+  try {
+    const res = await adminApi.getTranscript(b._id, endpointName)
+    transcript.value = res.transcript ?? '(no transcript stored)'
+    transcriptTruncated.value = res.truncated
+  } catch (e: any) {
+    transcript.value = `(failed to load transcript: ${e?.message || 'error'})`
+  } finally {
+    transcriptLoading.value = false
+  }
+}
+
+const logout = () => {
+  clearAdminToken()
+  router.replace('/admin')
+}
+
+const fmtDuration = (b: AdminBuild) => {
+  if (!b.finishedAt) return '—'
+  const ms = new Date(b.finishedAt).getTime() - new Date(b.startedAt).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return '—'
+  const min = Math.floor(ms / 60000)
+  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`
+}
+
+const failedCount = (b: AdminBuild) =>
+  b.endpoints.filter((e) => e.status === 'failed' || e.status === 'hung').length
+
+onMounted(load)
+</script>
+
+<template>
+  <div class="admin-builds">
+    <div class="toolbar">
+      <h1>Builds</h1>
+      <label class="filter">
+        <input v-model="failuresOnly" type="checkbox" @change="load" />
+        failures only
+      </label>
+      <button class="btn-icon" title="Refresh" @click="load"><RefreshCw :size="16" /></button>
+      <button class="btn-icon" title="Sign out" @click="logout"><LogOut :size="16" /></button>
+    </div>
+
+    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="loading" class="dim">Loading…</p>
+    <p v-else-if="builds.length === 0" class="dim">No build records yet.</p>
+
+    <table v-if="builds.length" class="grid">
+      <thead>
+        <tr>
+          <th>started</th>
+          <th>kind</th>
+          <th>project</th>
+          <th>owner</th>
+          <th>outcome</th>
+          <th>failed eps</th>
+          <th>duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="b in builds" :key="b._id">
+          <tr class="row" :class="{ active: selected?._id === b._id }" @click="select(b)">
+            <td>{{ new Date(b.startedAt).toLocaleString() }}</td>
+            <td>{{ b.kind }}</td>
+            <td class="mono">{{ b.project }}</td>
+            <td class="mono">{{ b.owner }}</td>
+            <td>
+              <span class="chip" :class="b.outcome || 'running'">{{ b.outcome || 'running' }}</span>
+            </td>
+            <td>{{ failedCount(b) || '' }}</td>
+            <td>{{ fmtDuration(b) }}</td>
+          </tr>
+          <tr v-if="selected?._id === b._id" class="detail">
+            <td colspan="7">
+              <div class="stages">
+                <span
+                  v-for="(outcome, stage) in b.stageOutcomes"
+                  :key="stage"
+                  class="chip"
+                  :class="outcome.status === 'complete' ? 'complete' : 'failed'"
+                >
+                  {{ stage }}: {{ outcome.status }}
+                </span>
+              </div>
+              <div v-if="b.endpoints.length" class="endpoints">
+                <div v-for="ep in b.endpoints" :key="ep.name" class="endpoint">
+                  <span class="chip" :class="ep.status">{{ ep.status }}</span>
+                  <span class="mono">{{ ep.name }}</span>
+                  <span class="dim">{{ ep.iterations }} iters · {{ ep.escalationPath.join(' → ') }}</span>
+                  <span v-if="ep.failReason" class="dim">{{ ep.failReason }}</span>
+                  <button
+                    v-if="ep.hasTranscript"
+                    class="btn-link"
+                    @click.stop="showTranscript(b, ep.name)"
+                  >
+                    transcript
+                  </button>
+                </div>
+              </div>
+              <p v-else class="dim">No endpoint records.</p>
+              <div v-if="transcriptFor" class="transcript">
+                <div class="transcript-head">
+                  <strong class="mono">{{ transcriptFor }}</strong>
+                  <span v-if="transcriptTruncated" class="chip failed">TRUNCATED</span>
+                </div>
+                <pre v-if="!transcriptLoading">{{ transcript }}</pre>
+                <p v-else class="dim">Loading transcript…</p>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<style scoped>
+.admin-builds {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.toolbar h1 {
+  font-size: 1.25rem;
+  margin-right: auto;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.grid th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+}
+
+.grid td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: top;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover,
+.row.active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.dim {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.error {
+  color: #f87171;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.chip.complete,
+.chip.converged {
+  color: #4ade80;
+  border-color: #4ade8055;
+}
+
+.chip.failed,
+.chip.hung,
+.chip.aborted {
+  color: #f87171;
+  border-color: #f8717155;
+}
+
+.chip.running {
+  color: #facc15;
+  border-color: #facc1555;
+}
+
+.stages,
+.endpoints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.endpoints {
+  flex-direction: column;
+}
+
+.endpoint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.transcript {
+  margin-top: 0.75rem;
+}
+
+.transcript-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.transcript pre {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  max-height: 480px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>

@@ -15,7 +15,10 @@ import CreateBugReport from '@/views/CreateBugReport.vue'
 import EditBugReport from '@/views/EditBugReport.vue'
 import PublicProfile from '@/views/PublicProfile.vue'
 import Onboarding from '@/views/Onboarding.vue'
+import AdminLogin from '@/views/AdminLogin.vue'
+import AdminBuilds from '@/views/AdminBuilds.vue'
 import { authState, validateSession } from '@/services/api'
+import { getAdminToken } from '@/services/admin-api'
 
 const LOGIN_PATH = '/login'
 const REGISTER_PATH = '/register'
@@ -135,6 +138,21 @@ const router = createRouter({
             name: 'onboarding',
             component: Onboarding,
             meta: { requiresAuth: true }
+        },
+        // Operator observatory (W7). Server-side the /admin API re-gates every
+        // request on AdminAuthenticating._isAdmin — these client guards are UX,
+        // not security.
+        {
+            path: '/admin',
+            name: 'admin-login',
+            component: AdminLogin,
+            meta: { public: true, hideSidebar: true }
+        },
+        {
+            path: '/admin/builds',
+            name: 'admin-builds',
+            component: AdminBuilds,
+            meta: { public: true, hideSidebar: true, requiresAdminToken: true }
         }
     ]
 })
@@ -142,6 +160,10 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
     const requiresAuth = to.matched.some((r) => r.meta?.requiresAuth)
     const isPublic = to.matched.some((r) => r.meta?.public)
+
+    if (to.matched.some((r) => r.meta?.requiresAdminToken) && !getAdminToken()) {
+        return next('/admin')
+    }
 
     // Validate session before allowing access to protected routes
     if (requiresAuth) {

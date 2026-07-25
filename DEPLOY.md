@@ -25,9 +25,12 @@ Notes:
 
 ## Environment variables (dashboard only — Deploy ignores `.env`)
 
-None required. The frontend has zero `import.meta.env` build-time variables
-and `serve.ts` reads only `PORT` (local runs; Deploy manages its own port).
-If a variable is ever added, list it here by NAME (never the value).
+| Variable       | Purpose                                                        |
+|----------------|----------------------------------------------------------------|
+| `VITE_API_URL` | Build-time (read in `src/services/http.ts`): the deployed gateway origin, e.g. `https://<backend-app>.deno.net/api` (a trailing `/api` is stripped; call sites prefix `/api`). Unset ⇒ relative URLs through the Vite `/api` proxy (local dev only). |
+
+`serve.ts` itself reads only `PORT` (local runs; Deploy manages its own
+port). If a variable is ever added, list it here by NAME (never the value).
 
 ## Routing contract
 
