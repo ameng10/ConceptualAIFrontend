@@ -7,6 +7,8 @@ import {
   type GithubExportJob,
   type GithubExportStatusResponse,
   type GithubExportVisibility,
+  type ProjectReceipt,
+  type ReceiptFile,
 } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
 import { isHttp524 } from '@/services/http-errors'
@@ -17,7 +19,7 @@ import {
   getPendingGithubExport,
   setPendingGithubExport,
 } from '@/services/github-export'
-import { ArrowDownToLine, ArrowLeft, MonitorPlay, Square, ExternalLink, Github, Wand2 } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowLeft, MonitorPlay, Square, ExternalLink, Github, Wand2, ChevronRight, ChevronDown, ClipboardCopy } from 'lucide-vue-next'
 
 type AgentState = 'idle' | 'loading' | 'starting' | 'running' | 'done' | 'error'
 
@@ -132,6 +134,66 @@ const returnToSyncing = (failed: boolean) => {
 
 const downloadingFrontend = ref(false)
 const downloadingBackend = ref(false)
+
+// Diff receipt (W2): what the last iteration actually touched, by content hash.
+// Null until the project has at least two artifact versions (i.e. before any iteration).
+const receipt = ref<ProjectReceipt | null>(null)
+const receiptFetched = ref(false)
+const receiptCopied = ref(false)
+
+const VERDICT_ORDER: Record<string, number> = { regenerated: 0, added: 1, removed: 2, unchanged: 3 }
+const orderedReceiptFiles = computed<ReceiptFile[]>(() => {
+  if (!receipt.value) return []
+  return [...receipt.value.files].sort((a, b) =>
+    (VERDICT_ORDER[a.verdict] ?? 9) - (VERDICT_ORDER[b.verdict] ?? 9) || a.path.localeCompare(b.path),
+  )
+})
+
+const shortHash = (hash: string | null) => (hash ? `${hash.slice(0, 12)}…` : '—')
+
+const receiptHashPair = (f: ReceiptFile) => {
+  if (f.verdict === 'regenerated') return `${shortHash(f.before)} → ${shortHash(f.after)}`
+  if (f.verdict === 'removed') return `was ${shortHash(f.before)}`
+  return shortHash(f.after)
+}
+
+const loadReceipt = async () => {
+  if (receiptFetched.value) return
+  receiptFetched.value = true
+  try {
+    const res = await projectApi.getReceipt(projectId)
+    receipt.value = res.receipt
+  } catch {
+    // The receipt card is non-blocking for the build view; stay hidden on failure.
+    receiptFetched.value = false
+  }
+}
+
+const receiptJsonText = () => JSON.stringify(receipt.value, null, 2)
+
+const downloadReceiptJson = () => {
+  if (!receipt.value) return
+  const blob = new Blob([receiptJsonText()], { type: 'application/json' })
+  const blobUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = `${projectName.value || 'project'}_receipt.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(blobUrl)
+}
+
+const copyReceiptJson = async () => {
+  if (!receipt.value) return
+  try {
+    await navigator.clipboard.writeText(receiptJsonText())
+    receiptCopied.value = true
+    setTimeout(() => { receiptCopied.value = false }, 2000)
+  } catch {
+    // Clipboard unavailable (permissions/insecure context) — the download button remains.
+  }
+}
 
 const isExportProcessing = (job: GithubExportJob | null | undefined) => String(job?.status ?? '').toLowerCase() === 'processing'
 
@@ -564,6 +626,14 @@ watch(previewTimeRemaining, (newVal) => {
   }
 })
 
+// Fetch the diff receipt once the completed state shows (downloads present or the
+// project record is terminal) — covers both fresh loads and builds finishing live.
+watch([hasAnyDownload, hasTerminalProjectStatus], ([anyDownload, terminal]) => {
+  if (anyDownload || terminal) {
+    void loadReceipt()
+  }
+}, { immediate: true })
+
 const pollPreviewStatusOnce = async () => {
   try {
     const res = await projectApi.getPreviewStatus(projectId)
@@ -901,6 +971,59 @@ onMounted(async () => {
           <p v-if="!allDone" class="muted" style="margin-top: 0.75rem;">
             Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
           </p>
+        </div>
+
+        <!-- Diff receipt (W2): what the last iteration actually touched, by content hash -->
+        <div v-if="receipt" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <div class="revert-info">
+              <span class="revert-label">Iteration Receipt</span>
+              <span class="revert-desc">
+                v{{ receipt.from }} → v{{ receipt.to }} compared file-by-file (SHA-256).
+                Unchanged files are byte-identical — carried over, not regenerated.
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button class="receipt-btn" type="button" @click="copyReceiptJson">
+                <ClipboardCopy :size="14" />
+                <span>{{ receiptCopied ? 'Copied!' : 'Copy JSON' }}</span>
+              </button>
+              <button class="receipt-btn" type="button" @click="downloadReceiptJson">
+                <ArrowDownToLine :size="14" />
+                <span>receipt.json</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="receipt-counts">
+            <span class="receipt-chip chip-unchanged">{{ receipt.counts.unchanged }} unchanged</span>
+            <span class="receipt-chip chip-regenerated">{{ receipt.counts.regenerated }} regenerated</span>
+            <span class="receipt-chip chip-added">{{ receipt.counts.added }} added</span>
+            <span class="receipt-chip chip-removed">{{ receipt.counts.removed }} removed</span>
+          </div>
+
+          <p class="muted receipt-hint">
+            The exported repos carry this receipt (<code>ITERATION_RECEIPT.md</code> + <code>receipt.json</code>)
+            and a prover — run <code>deno run --allow-read scripts/verify_receipt.ts</code> to re-check the hashes yourself.
+          </p>
+
+          <details class="receipt-details">
+            <summary class="receipt-summary">
+              <span class="twisty">
+                <ChevronRight class="chev chev-right" :size="16" />
+                <ChevronDown class="chev chev-down" :size="16" />
+              </span>
+              <span>File list ({{ receipt.files.length }})</span>
+            </summary>
+            <div class="receipt-file-list">
+              <div v-for="f in orderedReceiptFiles" :key="f.path" class="receipt-file-row">
+                <span class="receipt-verdict" :class="`verdict-${f.verdict}`">{{ f.verdict }}</span>
+                <span class="receipt-path">{{ f.path }}</span>
+                <span class="receipt-hashes">{{ receiptHashPair(f) }}</span>
+              </div>
+            </div>
+          </details>
         </div>
 
         <div v-if="hasAnyDownload" class="github-export-section">
@@ -1648,6 +1771,169 @@ onMounted(async () => {
   }
 
   .github-status-pill {
+    white-space: normal;
+  }
+}
+
+/* Iteration receipt (W2) */
+.receipt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.receipt-btn:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+.receipt-counts {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.receipt-chip {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+}
+
+.chip-unchanged {
+  color: rgba(34, 197, 94, 0.9);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.chip-regenerated {
+  color: rgba(96, 165, 250, 0.95);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.chip-added {
+  color: rgba(250, 204, 21, 0.95);
+  border-color: rgba(250, 204, 21, 0.35);
+}
+
+.chip-removed {
+  color: rgba(239, 68, 68, 0.9);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.receipt-hint {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.receipt-hint code {
+  font-size: 0.75rem;
+}
+
+.receipt-details {
+  margin-top: 0.9rem;
+}
+
+.receipt-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  list-style: none;
+}
+
+.receipt-summary::-webkit-details-marker {
+  display: none;
+}
+
+.receipt-summary .twisty {
+  display: inline-flex;
+  align-items: center;
+}
+
+.receipt-details[open] > .receipt-summary .chev-right {
+  display: none;
+}
+
+.receipt-details:not([open]) > .receipt-summary .chev-down {
+  display: none;
+}
+
+.receipt-file-list {
+  margin-top: 0.6rem;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.receipt-file-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.receipt-file-row:last-child {
+  border-bottom: none;
+}
+
+.receipt-verdict {
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.verdict-unchanged {
+  color: rgba(34, 197, 94, 0.9);
+}
+
+.verdict-regenerated {
+  color: rgba(96, 165, 250, 0.95);
+}
+
+.verdict-added {
+  color: rgba(250, 204, 21, 0.95);
+}
+
+.verdict-removed {
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.receipt-path {
+  color: var(--text);
+  word-break: break-all;
+}
+
+.receipt-hashes {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+@media (max-width: 840px) {
+  .receipt-file-row {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .receipt-hashes {
     white-space: normal;
   }
 }
