@@ -161,7 +161,17 @@ router.beforeEach(async (to, _from, next) => {
     const requiresAuth = to.matched.some((r) => r.meta?.requiresAuth)
     const isPublic = to.matched.some((r) => r.meta?.public)
 
-    if (to.matched.some((r) => r.meta?.requiresAdminToken) && !getAdminToken()) {
+    // Admin observatory: EITHER an admin-realm token (password login at /admin)
+    // OR a normal signed-in session (password/Google/GitHub) is enough to attempt
+    // the route. An allowlisted operator is entitled via their ordinary session
+    // (admin_allowlist.sync.ts promotes them at login), and the server re-gates
+    // every /admin request on AdminAuthenticating._isAdmin regardless — so
+    // bouncing a signed-in operator to the admin password form here was purely a
+    // client-side false negative. Non-admins still get 403 from the API.
+    if (
+        to.matched.some((r) => r.meta?.requiresAdminToken) &&
+        !getAdminToken() && !isAuthenticated()
+    ) {
         return next('/admin')
     }
 

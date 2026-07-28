@@ -19,7 +19,16 @@ export function clearAdminToken() {
 }
 
 function adminHeaders() {
-  return { Authorization: `Bearer ${getAdminToken()}` }
+  // Fall back to the NORMAL user session when no admin-realm token exists.
+  // The backend authorizes /admin/* off whatever session the request carries
+  // (keepAdminFrames -> Sessioning._getUser -> AdminAuthenticating._isAdmin),
+  // so an allowlisted operator signing in with Google/GitHub/password is
+  // already entitled — they just never have an admin-realm token. Returning an
+  // explicit `Bearer ` here used to CLOBBER the good session token, because the
+  // http interceptor deliberately never overrides an explicit Authorization
+  // header. Empty headers let the interceptor attach the user session instead.
+  const token = getAdminToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 export interface AdminEndpointRecord {
