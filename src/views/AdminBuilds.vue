@@ -115,6 +115,7 @@ onMounted(load)
           <th>outcome</th>
           <th>failed eps</th>
           <th>duration</th>
+          <th>credits</th>
           <th>cost</th>
         </tr>
       </thead>
@@ -130,10 +131,11 @@ onMounted(load)
             </td>
             <td>{{ failedCount(b) || '' }}</td>
             <td>{{ fmtDuration(b) }}</td>
+            <td>{{ b.credits ?? '—' }}</td>
             <td>{{ fmtCost(b) }}</td>
           </tr>
           <tr v-if="selected?._id === b._id" class="detail">
-            <td colspan="8">
+            <td colspan="9">
               <div class="stages">
                 <span
                   v-for="(outcome, stage) in b.stageOutcomes"
@@ -220,15 +222,16 @@ onMounted(load)
   min-width: 900px;
 }
 
-/* started, kind, project, owner, outcome, failed, duration, cost */
-.grid th:nth-child(1), .grid td:nth-child(1) { width: 15%; }
-.grid th:nth-child(2), .grid td:nth-child(2) { width: 8%; }
-.grid th:nth-child(3), .grid td:nth-child(3) { width: 22%; }
-.grid th:nth-child(4), .grid td:nth-child(4) { width: 22%; }
-.grid th:nth-child(5), .grid td:nth-child(5) { width: 11%; }
-.grid th:nth-child(6), .grid td:nth-child(6) { width: 8%; }
+/* started, kind, project, owner, outcome, failed, duration, credits, cost */
+.grid th:nth-child(1), .grid td:nth-child(1) { width: 14%; }
+.grid th:nth-child(2), .grid td:nth-child(2) { width: 7%; }
+.grid th:nth-child(3), .grid td:nth-child(3) { width: 21%; }
+.grid th:nth-child(4), .grid td:nth-child(4) { width: 21%; }
+.grid th:nth-child(5), .grid td:nth-child(5) { width: 10%; }
+.grid th:nth-child(6), .grid td:nth-child(6) { width: 7%; }
 .grid th:nth-child(7), .grid td:nth-child(7) { width: 7%; }
-.grid th:nth-child(8), .grid td:nth-child(8) { width: 7%; }
+.grid th:nth-child(8), .grid td:nth-child(8) { width: 6%; }
+.grid th:nth-child(9), .grid td:nth-child(9) { width: 7%; }
 
 /* Long single-token values (ids, emails) truncate instead of forcing width. */
 .ellip {

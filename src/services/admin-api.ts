@@ -57,6 +57,9 @@ export interface AdminBuild {
    *  authoritative, so the UI falls back to them. */
   projectName?: string | null
   ownerEmail?: string | null
+  /** Design-time credit quote for the project (revenue side) — pair with costUsd
+   *  (COGS) to read a build's margin. Null once the design is gone. */
+  credits?: number | null
 }
 
 export const adminApi = {
