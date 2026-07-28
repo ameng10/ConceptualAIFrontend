@@ -55,6 +55,21 @@ export interface AdminBuild {
 }
 
 export const adminApi = {
+  /**
+   * "Should this user see the Admin entry point?" — answers 200 with a boolean
+   * for everyone (never 401/403), so ordinary users produce no console noise.
+   * Purely a UI hint: every admin DATA route re-gates on the server.
+   * Never throws; any failure resolves to false so the link simply stays hidden.
+   */
+  async amIAdmin(): Promise<boolean> {
+    try {
+      const res = await api.get('/api/admin/me', { headers: adminHeaders() })
+      return res.data?.isAdmin === true
+    } catch {
+      return false
+    }
+  },
+
   async login(email: string, password: string): Promise<void> {
     const res = await api.post('/api/admin/login', { email, password })
     const token = res.data?.accessToken

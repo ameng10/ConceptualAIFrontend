@@ -14,8 +14,10 @@ import {
   MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
 } from 'lucide-vue-next'
 import { authApi, authState } from '@/services/api'
+import { adminApi } from '@/services/admin-api'
 
 const props = defineProps<{
   collapsed?: boolean
@@ -43,9 +45,21 @@ const goToLogin = () => router.push('/login')
 const authSnapshot = ref(authState.get())
 const isSignedIn = ref(authState.isSignedIn())
 
+// Operator-only entry point. The server answers GET /admin/me with a plain
+// boolean for everyone (never 401/403), so this is silent for ordinary users
+// and the link simply never renders for them. UI hint only — every admin data
+// route re-gates on AdminAuthenticating._isAdmin server-side, so hiding the
+// link is convenience, not the security boundary.
+const isAdmin = ref(false)
+
+const refreshAdmin = async () => {
+  isAdmin.value = isSignedIn.value ? await adminApi.amIAdmin() : false
+}
+
 const refreshAuth = () => {
   authSnapshot.value = authState.get()
   isSignedIn.value = authState.isSignedIn()
+  void refreshAdmin()
 }
 
 const userDisplayName = computed(() => {
@@ -79,6 +93,7 @@ const toggleTheme = () => {
 }
 
 onMounted(() => {
+  void refreshAdmin()
   const savedTheme = localStorage.getItem('theme') || 'dark'
   theme.value = savedTheme
   document.documentElement.setAttribute('data-theme', savedTheme)
@@ -121,6 +136,18 @@ onMounted(() => {
         <div class="nav-item-content" :class="{ active: isActive }">
           <component :is="item.icon" :size="20" class="nav-icon" />
           <span v-if="!collapsed">{{ item.label }}</span>
+        </div>
+      </router-link>
+
+      <router-link
+        v-if="isAdmin"
+        to="/admin/builds"
+        class="nav-item"
+        v-slot="{ isActive }"
+      >
+        <div class="nav-item-content" :class="{ active: isActive }">
+          <ShieldCheck :size="20" class="nav-icon" />
+          <span v-if="!collapsed">Admin</span>
         </div>
       </router-link>
     </nav>
