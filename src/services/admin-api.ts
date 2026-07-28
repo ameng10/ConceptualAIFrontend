@@ -47,7 +47,7 @@ export interface AdminBuild {
   kind: 'build' | 'iterate'
   startedAt: string
   finishedAt?: string
-  outcome?: 'complete' | 'failed' | 'aborted'
+  outcome?: 'complete' | 'failed' | 'aborted' | 'deleted'
   stageOutcomes: Record<string, { status: string; durationMs?: number }>
   endpoints: AdminEndpointRecord[]
   costUsd?: number | null

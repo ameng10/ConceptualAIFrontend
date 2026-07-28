@@ -310,6 +310,14 @@ onMounted(load)
   border-color: #facc1555;
 }
 
+/* Neither success nor failure: the run never finished because its project was
+   removed. Muted so it reads as "no longer relevant" rather than an incident. */
+.chip.deleted {
+  color: #a1a1aa;
+  border-color: #a1a1aa55;
+  text-decoration: line-through;
+}
+
 .stages,
 .endpoints {
   display: flex;
