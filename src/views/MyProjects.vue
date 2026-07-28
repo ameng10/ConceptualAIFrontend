@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { History, Search, Trash2 } from 'lucide-vue-next'
 import { authState, projectApi, type Project } from '@/services/api'
+import { projectStatusLabel, projectStatusClass } from '@/services/project-status-label'
 
 const router = useRouter()
 
@@ -212,8 +213,8 @@ onMounted(() => {
           <p class="desc">{{ project.description }}</p>
 
           <div class="card-footer">
-            <span class="status-badge" :class="project.status">
-              {{ project.status }}
+            <span class="status-badge" :class="projectStatusClass(project.status)">
+              {{ projectStatusLabel(project.status) }}
             </span>
 
             <div class="card-actions">
@@ -482,6 +483,12 @@ h3 {
   backdrop-filter: blur(8px);
 }
 
+.status-badge.building {
+  color: #facc15;
+  border-color: #facc1555;
+}
+
+.status-badge.built,
 .status-badge.complete {
   background: rgba(34, 197, 94, 0.1);
   color: #22c55e;
