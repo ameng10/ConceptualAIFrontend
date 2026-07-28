@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { LogOut, RefreshCw } from 'lucide-vue-next'
+import { ArrowLeft, RefreshCw } from 'lucide-vue-next'
 import {
   adminApi,
   clearAdminToken,
@@ -59,9 +59,14 @@ const showTranscript = async (b: AdminBuild, endpointName: string) => {
   }
 }
 
-const logout = () => {
-  clearAdminToken()
-  router.replace('/admin')
+// Leave the observatory WITHOUT signing out. Admin access rides the ordinary
+// session now (the server gates each /admin route on _isAdmin), so this is an
+// exit from a view, not the end of a session — clearing anything here would
+// drop the operator out of the app entirely, which is not what leaving a
+// dashboard should do. The admin-realm token is left untouched for the same
+// reason; the 401/403 handler in load() is still what clears a stale one.
+const backToApp = () => {
+  router.push('/build')
 }
 
 const fmtDuration = (b: AdminBuild) => {
@@ -92,7 +97,7 @@ onMounted(load)
         failures only
       </label>
       <button class="btn-icon" title="Refresh" @click="load"><RefreshCw :size="16" /></button>
-      <button class="btn-icon" title="Sign out" @click="logout"><LogOut :size="16" /></button>
+      <button class="btn-icon" title="Back to app" @click="backToApp"><ArrowLeft :size="16" /></button>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
