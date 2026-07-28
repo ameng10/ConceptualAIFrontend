@@ -99,7 +99,8 @@ onMounted(load)
     <p v-if="loading" class="dim">Loading…</p>
     <p v-else-if="builds.length === 0" class="dim">No build records yet.</p>
 
-    <table v-if="builds.length" class="grid">
+    <div v-if="builds.length" class="grid-scroll">
+    <table class="grid">
       <thead>
         <tr>
           <th>started</th>
@@ -117,8 +118,8 @@ onMounted(load)
           <tr class="row" :class="{ active: selected?._id === b._id }" @click="select(b)">
             <td>{{ new Date(b.startedAt).toLocaleString() }}</td>
             <td>{{ b.kind }}</td>
-            <td class="mono">{{ b.project }}</td>
-            <td class="mono">{{ b.owner }}</td>
+            <td class="ellip" :title="b.project">{{ b.projectName || b.project }}</td>
+            <td class="ellip" :title="b.owner">{{ b.ownerEmail || b.owner }}</td>
             <td>
               <span class="chip" :class="b.outcome || 'running'">{{ b.outcome || 'running' }}</span>
             </td>
@@ -167,6 +168,7 @@ onMounted(load)
         </template>
       </tbody>
     </table>
+    </div>
   </div>
 </template>
 
@@ -197,22 +199,59 @@ onMounted(load)
   color: var(--text-dim);
 }
 
+.grid-scroll {
+  /* A single long value must scroll the table, never stretch a column and push
+     the headers out of step with their cells. */
+  overflow-x: auto;
+}
+
 .grid {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+  /* Fixed layout + explicit widths: with `auto`, an unbroken 36-char id sizes
+     its column from content and every other column re-flows around it. */
+  table-layout: fixed;
+  min-width: 900px;
+}
+
+/* started, kind, project, owner, outcome, failed, duration, cost */
+.grid th:nth-child(1), .grid td:nth-child(1) { width: 15%; }
+.grid th:nth-child(2), .grid td:nth-child(2) { width: 8%; }
+.grid th:nth-child(3), .grid td:nth-child(3) { width: 22%; }
+.grid th:nth-child(4), .grid td:nth-child(4) { width: 22%; }
+.grid th:nth-child(5), .grid td:nth-child(5) { width: 11%; }
+.grid th:nth-child(6), .grid td:nth-child(6) { width: 8%; }
+.grid th:nth-child(7), .grid td:nth-child(7) { width: 7%; }
+.grid th:nth-child(8), .grid td:nth-child(8) { width: 7%; }
+
+/* Long single-token values (ids, emails) truncate instead of forcing width. */
+.ellip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The expanded detail row spans everything and must NOT inherit the fixed
+   column widths or its content gets clipped. */
+.grid td[colspan] {
+  width: auto;
+  white-space: normal;
+  overflow: visible;
 }
 
 .grid th {
   text-align: left;
-  padding: 0.4rem 0.6rem;
+  padding: 0.5rem 0.6rem;
+  white-space: nowrap;
   color: var(--text-dim);
   font-weight: 500;
   border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
 }
 
 .grid td {
-  padding: 0.45rem 0.6rem;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   vertical-align: top;
 }

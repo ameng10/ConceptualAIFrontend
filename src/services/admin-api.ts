@@ -52,6 +52,11 @@ export interface AdminBuild {
   endpoints: AdminEndpointRecord[]
   costUsd?: number | null
   costIsLowerBound?: boolean
+  /** Human-facing labels joined server-side from the concepts that own them.
+   *  Null when the project or account has since been deleted — the ids remain
+   *  authoritative, so the UI falls back to them. */
+  projectName?: string | null
+  ownerEmail?: string | null
 }
 
 export const adminApi = {
