@@ -934,6 +934,19 @@ onMounted(async () => {
           <iframe :src="previewUrl" class="preview-iframe" title="Application Preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
         </div>
 
+        <!-- Preview sandboxes run without the user's third-party credentials, so anything
+             backed by an outside service is mocked in here. Shown while the preview is
+             opening AND once it is open, so the caveat is visible before the user starts
+             clicking around and concludes the app is broken. -->
+        <p
+          v-if="previewState === 'launching' || previewState === 'processing' || previewState === 'ready'"
+          class="preview-integration-note"
+        >
+          * Features that rely on outside integrations — payments, email, image hosting and
+          similar — will not work in the preview, which runs without your API credentials.
+          Deploy the app with your own keys to use them.
+        </p>
+
         <!-- Downloads (both repos, zipped) -->
         <div v-if="hasAnyDownload" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
           <div class="revert-info">
@@ -1615,6 +1628,13 @@ onMounted(async () => {
   font-size: 0.75rem;
   color: var(--text-dim);
   font-family: monospace;
+}
+
+.preview-integration-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 
 .preview-external-link {
