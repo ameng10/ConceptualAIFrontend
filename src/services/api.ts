@@ -299,6 +299,33 @@ export const authApi = {
         }
     },
 
+    /**
+     * Confirm the 6-digit code mailed at signup. Until this succeeds the account
+     * exists but cannot create projects (the server refuses with 403) — sign-in
+     * itself is deliberately not blocked.
+     */
+    async confirmEmail(email: string, code: string) {
+        const res = await api.post<{ user?: string; verified?: boolean; error?: string }>(
+            '/api/auth/verify',
+            { email, code },
+        )
+        return res.data
+    },
+
+    /**
+     * Ask for another code. Always resolves the same way whatever the address —
+     * the server answers identically for unknown, pending and already-verified
+     * addresses so this cannot be used to test whether an account exists. Do not
+     * add UI that claims to distinguish them.
+     */
+    async resendEmailCode(email: string) {
+        const res = await api.post<{ ok?: boolean; message?: string }>(
+            '/api/auth/verify/resend',
+            { email },
+        )
+        return res.data
+    },
+
     async logout() {
         const accessToken = getAccessToken()
         if (accessToken) {

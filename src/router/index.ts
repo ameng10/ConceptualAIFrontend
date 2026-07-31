@@ -9,6 +9,7 @@ import Settings from '@/views/Settings.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
+import VerifyEmail from '@/views/VerifyEmail.vue'
 import BugReportFeed from '@/views/BugReportFeed.vue'
 import PostDetail from '@/views/PostDetail.vue'
 import CreateBugReport from '@/views/CreateBugReport.vue'
@@ -48,6 +49,15 @@ const router = createRouter({
             meta: { public: true, hideSidebar: true }
         },
         {
+            // Signup email confirmation. Public: the account exists and is signed in,
+            // but a session is not required to type a code, and gating this behind auth
+            // would strand anyone who lands here after their tokens lapse.
+            path: '/verify-email',
+            name: 'verify-email',
+            component: VerifyEmail,
+            meta: { public: true, hideSidebar: true }
+        },
+        {
             // Federated sign-in redirect target: consumes #access/#refresh (or #error).
             path: '/auth/callback',
             name: 'auth-callback',
@@ -75,10 +85,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            // Docs are public: the marketing footer links here, so gating this route
+            // bounced prospective users to /login instead of showing them the docs.
             path: '/library',
             name: 'library',
             component: Library,
-            meta: { requiresAuth: true }
+            meta: { public: true }
         },
         {
             path: '/settings',

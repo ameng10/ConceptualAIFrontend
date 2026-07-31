@@ -17,7 +17,10 @@ const handleSubmit = async () => {
   isLoading.value = true
   try {
     await authApi.register(email.value, password.value, username.value, name.value)
-    router.replace({ path: '/onboarding', query: { welcomeDocs: '1' } })
+    // Straight to confirmation: the account exists and is signed in, but cannot
+    // create a project until the address is confirmed, so sending them to
+    // onboarding first would just walk them into a 403.
+    router.replace({ path: '/verify-email', query: { email: email.value.trim() } })
   } catch (e: any) {
     const data = e.response?.data
     error.value =
