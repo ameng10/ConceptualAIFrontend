@@ -36,7 +36,7 @@
       <main class="legal-wrap">
         <div class="legal-card glass">
           <h1>Privacy Policy</h1>
-          <p class="legal-updated">Last updated: July 22, 2026</p>
+          <p class="legal-updated">Last updated: July 31, 2026</p>
 
           <p>
             This policy describes how <strong>ConceptualAI, Inc.</strong> ("we", "us") collects, uses, and shares
@@ -53,20 +53,29 @@
               us. We never see your GitHub or Google password.
             </li>
             <li>
-              <strong>Content you submit.</strong> App descriptions and prompts, plan feedback, project names, and the
-              applications the service generates for you (code, tests, documentation, previews).
+              <strong>Content you submit.</strong> App descriptions and prompts, plan and design feedback, project
+              names, and the applications the service generates for you (code, tests, documentation, previews).
+            </li>
+            <li>
+              <strong>Connected accounts.</strong> If you connect GitHub to export your generated repositories, we
+              store an access token for that connection, server-side. You can revoke it at any time from your GitHub
+              account settings.
             </li>
             <li>
               <strong>Support communications.</strong> Messages, email addresses, and attachments you submit to our
-              support desk.
+              support desk, and posts you make to the public bug-report feed.
             </li>
             <li>
               <strong>Technical data.</strong> Standard server logs: IP address, browser user agent, request
               timestamps, and error diagnostics.
             </li>
             <li>
-              <strong>Cookies and local storage.</strong> We use them for signing you in (session tokens) and for
-              preferences such as your theme. We do not use advertising or cross-site tracking cookies.
+              <strong>Usage records.</strong> Which pipeline stages ran for your builds and how much model usage they
+              consumed. We use this to measure and improve the cost and reliability of the service.
+            </li>
+            <li>
+              <strong>Cookies and local storage.</strong> Used for signing you in (session tokens) and for preferences
+              such as your theme. We do not use advertising or cross-site tracking cookies.
             </li>
           </ul>
 
@@ -88,7 +97,26 @@
             <li><strong>Stripe</strong> — will process payments once paid features launch. Card details go directly to Stripe; we never store card numbers.</li>
           </ul>
 
-          <h2>4. Retention and deletion</h2>
+          <h2>4. Your generated app's own data</h2>
+          <p>This policy covers <strong>our</strong> service. It does not cover applications you generate and deploy.</p>
+          <p>
+            Once you deploy a generated app, its database, its users' data, and any outside services it connects to are
+            yours. You are the controller of that data, and you are responsible for its privacy policy, its security,
+            and its compliance obligations. We have no access to it.
+          </p>
+
+          <h2>5. Isolated builds</h2>
+          <p>
+            Builds run in isolated sandboxes. Your app's code is generated and tested there, and the sandbox is
+            destroyed when the build finishes.
+          </p>
+          <p>
+            Sandboxes and previews never receive live third-party credentials. Outside integrations run against
+            built-in mocks during generation and preview, so a build cannot send email, charge a card, or post to a
+            channel on your behalf.
+          </p>
+
+          <h2>6. Retention and deletion</h2>
           <p>
             Account data is kept while your account is active. Projects and generated applications are kept until you
             delete them or your account. Server logs are kept for a limited period for security and debugging. To
@@ -96,7 +124,7 @@
             <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your account's email address.
           </p>
 
-          <h2>5. Security</h2>
+          <h2>7. Security</h2>
           <p>
             Traffic is encrypted in transit (TLS). Passwords are stored as salted hashes. Secrets and credentials are
             kept in server-side configuration, never in the browser. No method of storage or transmission is 100%
@@ -104,7 +132,7 @@
             data.
           </p>
 
-          <h2>6. Your rights</h2>
+          <h2>8. Your rights</h2>
           <p>
             Depending on where you live, you may have rights to access, correct, export, or delete your personal
             information, or to object to certain processing. To exercise any of these rights, email
@@ -112,27 +140,25 @@
             required by applicable law.
           </p>
 
-          <h2>7. Children</h2>
+          <h2>9. Children</h2>
           <p>
             The service is not directed to children under 13 (or the equivalent minimum age in your jurisdiction), and
             we do not knowingly collect their data.
           </p>
 
-          <h2>8. Changes to this policy</h2>
+          <h2>10. Changes to this policy</h2>
           <p>
             We may update this policy over time. We will post the updated version here with a new "last updated" date;
             material changes may also be announced in the product.
           </p>
 
-          <h2>9. Contact</h2>
-          <p>
-            ConceptualAI, Inc. · <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
-          </p>
+          <h2>11. Contact</h2>
+          <p>ConceptualAI, Inc. · <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a></p>
 
           <div class="legal-footer">
             © 2026 ConceptualAI, Inc. ·
             <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
-            <a href="/refunds">Refund &amp; Cancellation Policy</a> ·
+            <a href="/refunds">Billing &amp; Refund Policy</a> ·
             <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
           </div>
         </div>

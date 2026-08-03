@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { marked } from 'marked'
+
+const router = useRouter()
 
 type DocItem = {
   fileName: string
@@ -14,15 +17,21 @@ const docsByPath = import.meta.glob('../../documentation/*.md', {
   import: 'default',
 }) as Record<string, string>
 
+// Explicit reading order for the sidebar. Any doc not listed here still shows up,
+// appended alphabetically — so adding a file to documentation/ never hides it, it
+// just lands at the bottom until it is ordered here.
 const docOrder = [
   'README.md',
-  'getting-started-beginner.md',
-  'get-mongodb-atlas-url.md',
-  'run-generated-app-locally.md',
-  'deploy-with-railway.md',
+  'getting-started.md',
   'concepts-and-syncs.md',
-  'design-phase-advanced.md',
+  'run-generated-app-locally.md',
+  'deploy-with-deno-deploy.md',
+  'choose-your-database.md',
+  'integrations.md',
   'troubleshooting.md',
+  'terms-of-service.md',
+  'privacy-policy.md',
+  'billing-and-credits.md',
 ]
 
 const prettyFallbackTitle = (fileName: string) =>
@@ -98,6 +107,16 @@ const onMarkdownClick = (event: MouseEvent) => {
   if (href.startsWith('http://') || href.startsWith('https://')) {
     link.setAttribute('target', '_blank')
     link.setAttribute('rel', 'noopener noreferrer')
+    return
+  }
+
+  if (href.startsWith('mailto:')) return
+
+  // Same-origin app path (e.g. "/posts"): route it in-app rather than blocking it.
+  // Single leading slash only — "//host" is protocol-relative and leaves the origin.
+  if (href.startsWith('/') && !href.startsWith('//')) {
+    event.preventDefault()
+    router.push(href)
     return
   }
 

@@ -1,109 +1,162 @@
 # Troubleshooting
 
-Back to docs home: [ConceptualAI User Documentation](./README.md)
+Grouped by where the problem happens: during the build, running the app, deploying it, or in the generated code itself.
 
-## Build is slow or seems stuck
+---
 
-What is normal:
+## During the build
 
-- Frontend generation can often take **15 to 30 minutes**
-- Implementation can be **instant** when there are no custom concepts
-- Sync generation can take up to **60 minutes**
-- Large apps can take longer than small apps
-- Any single sandboxed generation phase has a hard max of **4 hours**
+### It has been running a long time
 
-What to do:
+Build time scales with app size. Small apps finish well under an hour; large ones can take a couple of hours, mostly in wiring the API and generating the frontend. The status page shows progress throughout.
 
-- Wait a little longer
-- If a single phase passes 4 hours, treat it as broken and restart/resume that phase
-- Avoid launching many parallel runs for the same project
-- Retry with a simpler initial scope if needed
-
-What happens to your project state:
-
-- Completed outputs from earlier phases are persisted.
-- A timeout/failure should not erase your whole project.
-- Resume from the last completed phase instead of starting over unless data is clearly corrupted.
-
-## Plan is missing features
-
-- Use the **Modify Plan** action with specific feedback
-- Name exact features and user roles you need
-- Repeat until plan quality is acceptable
-
-See also: [Beginner App-Building Guide](./getting-started-beginner.md)
-
-## Generation errors
-
-You do **not** supply an AI key to generate apps — the platform provides the AI used during generation. So most generation failures are not caused by a key on your side.
+A build is only treated as failed when its sandbox stops making progress for **four hours**, at which point it is reclaimed automatically.
 
 What to do:
 
-- Retry the failing phase (see the slow/stuck section above).
-- If a single phase passes 4 hours, treat it as broken and restart/resume that phase.
-- Try a simpler initial scope if a phase keeps failing.
-- If generation consistently fails across projects, it is likely a platform-side issue rather than your configuration.
+- Give it time before assuming it is stuck — a moving status is a working build.
+- Do not start multiple runs for the same project. They compete rather than help.
+- If a run does fail, resume rather than restart. Completed stages are saved, and your project returns to the last one that finished.
+- If it keeps failing, try a smaller initial scope and iterate up.
 
-## AI errors in your generated app
+### The build failed
 
-These apply only when **your generated app** uses AI-backed features and you run it with your own provider key.
+You do not supply an AI key to build an app, so a failure is almost never a configuration problem on your side.
 
-Checks:
+- Resume the run from the project page.
+- If it fails again in the same place, simplify the scope and add the complex part back as an iteration.
+- If builds fail consistently across different projects, that is a problem on our side — [tell us](mailto:admin@conceptual-ai.app).
 
-- `AI_PROVIDER` and `AI_MODEL` are set in the generated backend `.env`
-- The provider key matches the configured provider (e.g. `GEMINI_API_KEY` when `AI_PROVIDER=gemini`)
-- The provider key is valid and not revoked
-- Your provider quota / rate limit is not exhausted
-- The AI output issue is not actually caused by missing context or an unrealistic input
+Failed builds cost nothing. See the [Billing & Refund Policy](./billing-and-credits.md).
 
-Guides: [Get an AI Provider Key](./get-ai-provider-key.md) · [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md)
+### The plan is missing features I asked for
 
-## Database connection errors
+Use **Modify plan** with specific feedback, naming the exact features and roles you need. Repeat until it is right. This is much cheaper than fixing it after the build.
 
-Checks:
+### The structure looks wrong
 
-- `MONGODB_URL` uses the full Atlas connection string
-- Username/password placeholders were replaced
-- Atlas IP allowlist includes your runtime IP
-- `DB_NAME` is set in backend `.env`
+Use **Modify design** instead — it re-runs the concept design and the quote without redoing the plan. See [Concepts and Syncs](./concepts-and-syncs.md#giving-feedback-that-works) for feedback that actually lands.
 
-Guide: [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
+---
 
-## Auth/session problems
+## Previews
 
-Checks:
+### The preview will not start
 
-- Backend `JWT_SECRET` is set and long enough
-- Frontend points to correct backend API URL
-- Access token is being sent with requests
+- The project must have a **completed build**. This is by far the most common cause.
+- You can have **one active preview at a time** — stop the existing one first.
+- Previews last **15 minutes** and then expire on their own.
+- Building or iterating stops the current preview, so it always matches the latest build.
 
-## Deployment works locally but not online
+### Payment / email / Slack does nothing in the preview
 
-Checks:
+That is correct behavior. **Previews mock every outside integration.** No card is charged, no email is sent, no message is posted — a preview never receives live credentials.
 
-- Production env vars are set in your host (Deno Deploy)
-- Frontend `VITE_API_URL` points to the deployed backend's `/api` URL (and was set before building)
-- Backend `REQUESTING_ALLOWED_DOMAIN` allows the frontend domain (CORS)
+AI is the exception and runs for real.
 
-Guide: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
+To test an integration properly, [deploy](./deploy-with-deno-deploy.md) with your own keys.
 
-## Troubleshooting a generated project (Advanced)
+---
 
-While troubleshooting a generated project is generally best suited for those with developing experience, this guide is designed to be accessible enough for anyone to follow.
+## Running it locally
 
-The most effective way to troubleshoot a generated project is as follows:
+### The backend will not start
 
-1. **Setup**: Open both the frontend and backend of the project in separate tabs/windows of an agentic IDE (like Cursor).
-2. **Manual Testing**: Run the project locally and manually look for bugs by interacting with the UI—click buttons, test features, and navigate through the app.
-3. **Frontend Agent First**: When you encounter a bug, copy any relevant output or errors from the backend terminal and provide it to the LLM agent in your frontend IDE tab. 
-   - Tell the agent what the bug is.
-   - Ask the agent to fix the issue if it's frontend-related, or to let you know if it suspects the issue is actually in the backend.
-4. **Backend Agent Handoff**: If the frontend agent determines it is a backend issue, switch to your backend IDE tab. Give the backend LLM agent the context of the bug and the frontend agent's findings, and ask it to fix the backend code.
-5. **Repeat**: This collaborative process between you and the agent(s) generally resolves most issues. Repeat these steps until there are no bugs left in the website.
+- `.env` exists in the backend folder (copied from `.env.template`, not left as the template).
+- `MONGODB_URL` is the full connection string, with `<username>` and `<password>` replaced by real values. Percent-encode special characters in the password.
+- `DB_NAME` is set.
+- `JWT_SECRET` is set and at least 32 characters.
 
-## Last resort recovery flow
+### Database connection errors
 
-1. Start from a smaller app prompt.
-2. Confirm plan quality first.
-3. Re-run phases from a clean baseline.
-4. Validate local setup before redeploy.
+- Your current IP is in the Atlas Network Access list.
+- Username and password are right, and the password is URL-encoded if it contains reserved characters.
+- The cluster is running, not paused.
+
+Guide: [Choose Your Database](./choose-your-database.md).
+
+### Login does not work, or sessions drop
+
+- `JWT_SECRET` is set and long enough.
+- The frontend's `VITE_API_URL` points at the backend.
+- Changing `JWT_SECRET` invalidates every existing session — expected, and everyone must log in again.
+
+### The frontend loads but no data appears
+
+Open your browser's dev tools and check the network tab:
+
+- **CORS error** → set `REQUESTING_ALLOWED_DOMAIN` on the backend to the frontend's origin.
+- **404 on every request** → `VITE_API_URL` is missing the `/api` path.
+- **Connection refused** → the backend is not running, or is on a different port.
+- **401 on everything** → an auth problem; see above.
+
+### An AI feature errors or returns nothing
+
+- `AI_PROVIDER` and `AI_MODEL` are set.
+- The key matches the provider — `GEMINI_API_KEY` when `AI_PROVIDER=gemini`.
+- The key is valid, not revoked, and the account has quota left.
+- The feature has enough context to work with. A document-aware feature with no documents has nothing to answer from.
+
+Guide: [Outside Integrations](./integrations.md#ai-providers).
+
+---
+
+## Deploying
+
+### It works locally but not deployed
+
+Work down this list:
+
+1. **Entrypoint is `src/main.ts`**, not `deno task start`. A task is not a valid entrypoint.
+2. **Build command is `deno task build`.** Without it the import barrels are stale and the app cannot boot.
+3. **Environment variables are set in the dashboard.** There is no `.env` file on Deno Deploy.
+4. **`VITE_API_URL` points at `<backend-url>/api`** and the frontend was rebuilt after it changed — it is baked in at build time.
+5. **`REQUESTING_ALLOWED_DOMAIN`** on the backend matches the frontend's URL.
+6. **Single page app mode is on** for the frontend, or every URL except `/` returns 404.
+
+### Database timeouts in production, but fine locally
+
+The IP allowlist. Deno Deploy has no fixed outbound IP addresses, so allowlisting your laptop does nothing for the deployed app — it needs `0.0.0.0/0` on Atlas, or a private endpoint on a paid tier. See [Choose Your Database](./choose-your-database.md#about-the-ip-allowlist).
+
+### Every URL except the home page 404s
+
+Single page app mode is off on the frontend deployment.
+
+### The frontend build fails on Deno Deploy
+
+If you see `failed to load config from .../vite.config.ts`, `Import "path" not a dependency`, or `require is not defined`: Deno Deploy runs npm scripts under Deno, which is stricter than Node. Config files must import Node built-ins with the `node:` prefix (`import path from "node:path"`) and use ESM imports rather than `require()`. Apps generated after July 9, 2026 already ship compatible configs.
+
+### An integration works in nothing but the mock
+
+Real credentials are only present where you put them. Check that the variables are set **in the production dashboard**, not only in your local `.env`, and that `*_MODE` variables are not pinned to `mock`.
+
+---
+
+## Debugging the generated code
+
+The code is yours, and it is ordinary TypeScript. Working through bugs with an AI coding assistant is effective, because the structure is small and self-contained.
+
+A workflow that works well:
+
+1. **Open both projects** — backend and frontend — in separate windows of an agentic editor.
+2. **Run locally and click around.** Use the app the way a user would and note what breaks.
+3. **Start with the frontend.** Copy any error from the browser console and the backend terminal, hand it to the assistant, describe the bug, and ask it to either fix the issue or tell you it looks like a backend problem.
+4. **Hand off to the backend** if it says so, carrying the frontend assistant's findings across as context.
+5. **Repeat.** Most issues resolve in a pass or two.
+
+Two things make this easier than debugging typical generated code:
+
+- **Concepts are isolated.** A bug is almost always inside one concept or one sync, not spread across the codebase.
+- **The tests already exist.** Run `deno task test` after each fix to confirm nothing else broke.
+
+## Still stuck?
+
+- Report it on the [bug report feed](/posts) so other users can see it too.
+- Email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app).
+
+## Last-resort recovery
+
+1. Start from a smaller app description.
+2. Get the plan right before approving.
+3. Build, and confirm it runs locally.
+4. Add the complicated parts back one at a time with **Modify this app**.

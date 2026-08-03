@@ -1,47 +1,35 @@
-# ConceptualAI User Documentation
+# ConceptualAI Documentation
 
-Welcome. These docs are organized by skill level.
+ConceptualAI turns a plain-language description into a complete, tested web application — a Deno backend, a React frontend, a test suite, an OpenAPI specification, and documentation. You own the code.
 
-## Start Here
+**New here?** Read [Getting Started](./getting-started.md). It walks the whole path, from writing a description to deploying a live app.
 
-- **New user (recommended first):** [Beginner App-Building Guide](./getting-started-beginner.md)
-- **If setup fails:** [Troubleshooting](./troubleshooting.md)
-- **Timeout note:** sandboxed generation phases have a 4-hour max; if one exceeds that, treat it as broken and resume/retry from the last completed state.
+## Build
 
-## Generating an App
+- **[Getting Started](./getting-started.md)** — write a description, approve the plan, watch it build, preview it, iterate on it.
+- **[Concepts and Syncs](./concepts-and-syncs.md)** — how your app is put together, and how to steer it at the design gate.
 
-- You do **not** need to bring your own AI key to generate apps — the platform supplies the AI used during generation.
-- [Test Your App Instantly with Previews](./previews.md)
+## Run and deploy
 
-## Setup Guides (for running your generated app)
+- **[Run Your Generated App Locally](./run-generated-app-locally.md)** — do this first. It is the fastest way to find problems.
+- **[Deploy Your App](./deploy-with-deno-deploy.md)** — put it online with Deno Deploy: exact build settings, environment variables, and API-key handling.
+- **[Choose Your Database](./choose-your-database.md)** — MongoDB by default; Postgres and Turso work with no code changes.
+- **[Outside Integrations](./integrations.md)** — every external service your app can use, what each needs, and what it costs.
 
-- [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
-- [Run Your Generated App Locally](./run-generated-app-locally.md)
+## When something breaks
 
-## AI in Generated Apps
-
-- [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md)
-- Generated apps may include AI-backed features such as chat, extraction, moderation, planning, or document-aware assistance depending on the approved plan.
-- If your generated app uses AI, you supply a provider key for that app: configure its backend `.env` with `AI_PROVIDER`, `AI_MODEL`, and the matching provider API key. See [Get an AI Provider Key](./get-ai-provider-key.md).
-
-## Advanced Topics
-
-- [Concepts and Syncs (Advanced)](./concepts-and-syncs.md)
-- [Design Phase (Advanced)](./design-phase-advanced.md)
-
-## Sharing Your App Online
-
-- [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
+- **[Troubleshooting](./troubleshooting.md)** — build problems, deploy problems, and how to debug a generated app.
 
 ## Legal
 
-- [Terms of Service](./terms-of-service.md)
+- **[Terms of Service](./terms-of-service.md)**
+- **[Privacy Policy](./privacy-policy.md)**
+- **[Billing & Refund Policy](./billing-and-credits.md)**
 
-## Suggested Reading Order
+## Three things worth knowing up front
 
-1. [Beginner App-Building Guide](./getting-started-beginner.md)
-2. [Test Your App Instantly with Previews](./previews.md)
-3. [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
-4. [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md) (only if your app uses AI)
-5. [Run Your Generated App Locally](./run-generated-app-locally.md)
-6. [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
+1. **You do not need an AI key to build an app.** We supply the AI that generates your application. You only supply keys if the app you generate uses outside services itself — and then those keys are yours, in your app's environment, billed to your account. See [Outside Integrations](./integrations.md).
+
+2. **Previews mock every outside service.** A preview runs your app for real, but Stripe, email, Slack, storage, and the rest run against built-in fakes. Nothing charges a card or sends a message. AI is the exception — it runs live. Test integrations after you deploy with your own keys.
+
+3. **We guarantee a delivered application, not a bug-free one.** Generated code is written by AI and can contain defects. Review and test it before you put it in front of real users. See the [Terms of Service](./terms-of-service.md).

@@ -1,80 +1,108 @@
-# Concepts and Syncs (Advanced)
+# Concepts and Syncs
 
-This is an advanced explanation of the architecture style used by ConceptualAI.
+This explains how your app is built, and how to steer it. You do not need any of this to use ConceptualAI — but it is what the review gate is showing you, so it helps to know what you are looking at.
 
-If you want the quick practical path, use: [Beginner App-Building Guide](./getting-started-beginner.md)
+## Concepts
 
-## Concept (what it means)
+A **concept** is a self-contained unit of behavior with its own state and its own actions.
 
-A **concept** is a focused unit of behavior with its own state and actions.
+Think of concepts as small specialists. One manages authentication. Another manages posting. Another manages profiles. Each stays responsible for one coherent area and knows nothing about the others.
 
-Think of concepts like small specialists:
+That independence is the whole point: a concept can be understood, tested, and reused on its own.
 
-- One concept manages authentication
-- Another manages posting
-- Another manages profiles
+## Syncs
 
-Each concept stays responsible for one coherent area.
+A **sync** is a coordination rule. It connects concepts without merging them into one tangled service.
 
-## Sync (what it means)
+When a request arrives, a sync checks conditions, calls actions across whichever concepts are involved, and shapes the response. The concepts never call each other directly — the sync does the wiring.
 
-A **sync** is an event-based coordination rule.
+So `POST /posts` might be one sync that verifies a session (Sessioning), checks permissions (Accessing), and creates the post (Posting). Three specialists, one rule composing them.
 
-It connects concepts without forcing them to become one giant class.
+## Why it is built this way
 
-In simple terms:
-
-- A user does something (request/event)
-- A sync checks conditions
-- The sync triggers actions across concepts
-- The system returns a response
-
-## Why this helps
-
-- Better modularity (small parts instead of one giant service)
-- Better legibility (easier to reason about behavior)
-- Better reuse (concepts can be composed in different apps)
+- **Modularity** — small parts instead of one large service.
+- **Legibility** — you can read one concept and understand it completely.
+- **Reuse** — the same concept works across different apps.
+- **Safer iteration** — changing one concept does not ripple through unrelated behavior, which is what makes targeted regeneration possible.
 
 ## The concept library
 
-Because concepts are self-contained, many of them are not specific to any single application. Authentication, posting, liking, tagging, scheduling — these behaviors appear across countless apps with the same core logic.
+Because concepts are self-contained, most are not specific to any single application. Authentication, posting, liking, tagging, scheduling, payments — these behave the same way across countless apps.
 
-ConceptualAI maintains a **library of pre-built concepts** that have already been implemented and tested. During the design phase, the system matches your app's needs against this library and pulls in any concept that fits. Only truly app-specific behavior needs to be generated from scratch.
+We maintain a **library of pre-built concepts** that are already implemented and tested. During design, your app's needs are matched against that library, and anything that fits is pulled in. Only genuinely app-specific behavior gets generated from scratch.
 
-This matters for several reasons:
+This matters because:
 
-- **Faster generation.** Reusing a proven concept skips implementation and testing for that piece entirely.
-- **Higher quality.** Library concepts have been refined over many projects. They handle edge cases (like timing-safe password comparison, or pagination with multiple sort modes) that a one-off generation might miss.
-- **Consistency.** Every app that uses the same library concept gets the same reliable interface, making it easier to reason about behavior across projects.
-- **Composability.** Library concepts are designed to work together through syncs. Authenticating + Sessioning + Profiling compose cleanly because they were built with that pattern in mind.
+- **It is faster.** A library concept skips implementation and testing entirely.
+- **It is better.** Library concepts have been refined across many projects and handle edge cases a one-off generation tends to miss — timing-safe password comparison, pagination with multiple sort modes, webhook signature verification.
+- **It is consistent.** Every app using a given library concept gets the same reliable interface.
+- **It composes.** Authenticating, Sessioning, and Profiling fit together cleanly because they were designed to.
 
-When the design phase identifies a need that no library concept covers, it generates a custom concept instead. The generated app can mix library and custom concepts freely — they follow the same interface conventions.
+Your app can mix library and custom concepts freely — they follow the same conventions.
 
-## Daniel Jackson references
+## What you see at the review gate
 
-To understand the design philosophy in depth:
+The concept design shown next to your plan is this structure: which library concepts were matched, which custom ones will be generated, and how your features map onto them. The credit quote is priced from it — the actions and queries across those concepts.
 
-- **Software Abstractions** by Daniel Jackson (book):
-  - https://mitpress.mit.edu/9780262528900/software-abstractions
-- **The Essence of Software** perspective:
-  - https://press.princeton.edu/ideas/daniel-jackson-on-the-essence-of-software
-- **Concept + sync tutorial context**:
-  - https://essenceofsoftware.com/tutorials/concept-basics/sync
-- **Recent paper artifact listing (DSpace@MIT)**:
-  - https://hdl.handle.net/1721.1/164199
+It is worth a minute of reading, because it is the cheapest point to change anything.
 
-## How this affects your generated app
+### Reviewing it
 
-If your generated app feels "off," it is often a concept boundary or sync logic issue.
+Look for:
 
-Where to intervene:
+- Do the concept names match real ideas in your domain?
+- Are unrelated responsibilities bundled together?
+- Is there a clear home for user permissions?
+- Would a feature you are likely to want next be blocked by this structure?
 
-- Early: update plan and design feedback
-- Mid-pipeline: modify design to separate responsibilities
-- Later: manually adjust generated code after export
+### Giving feedback that works
 
-## Related docs
+Be specific about structure. Vague requests produce nothing.
 
-- [Design Phase (Advanced)](./design-phase-advanced.md)
+Weak:
+
+> Make it better.
+
+Strong:
+
+> Split notifications and messaging into separate concepts. Keep read-state in messaging only.
+
+More examples:
+
+- "Use separate concepts for billing, invoicing, and subscription state."
+- "Keep moderation logic separate from posting logic."
+- "Require profile onboarding before a user can post."
+
+Use **Modify design** for structural changes like these — it re-runs the design and the quote without redoing the whole plan. Use **Modify plan** when the *features* are wrong, not the structure.
+
+## Where to intervene
+
+If a generated app feels off, it is usually a concept boundary or a sync condition. In order of cost:
+
+- **At the gate** — change the plan or the design. Cheapest and most effective.
+- **After the build** — use **Modify this app** with plain-language feedback. The pipeline re-enters and regenerates only the concepts, syncs, and pages your change touches, leaving everything else byte-identical.
+- **In your own editor** — the code is yours. Concepts are ordinary TypeScript classes and syncs are ordinary functions, both readable on their own.
+
+## Proof of what changed
+
+Every iteration ships a receipt with the code:
+
+- `ITERATION_RECEIPT.md` — a readable summary.
+- `receipt.json` — every file with before and after hashes, marked `unchanged`, `regenerated`, `added`, or `removed`.
+- `scripts/verify_receipt.ts` — re-hashes the repository against the receipt.
+
+`unchanged` means byte-identical: that file was carried over, not regenerated. Run `deno run --allow-read scripts/verify_receipt.ts` to confirm it yourself. No dependencies, no network — the claim is independently checkable.
+
+## Where the ideas come from
+
+Concept design comes from Daniel Jackson's work at MIT:
+
+- *The Essence of Software* — [princeton.edu](https://press.princeton.edu/ideas/daniel-jackson-on-the-essence-of-software)
+- *Software Abstractions* — [MIT Press](https://mitpress.mit.edu/9780262528900/software-abstractions)
+- Concept and sync tutorial — [essenceofsoftware.com](https://essenceofsoftware.com/tutorials/concept-basics/sync)
+- Paper artifacts — [DSpace@MIT](https://hdl.handle.net/1721.1/164199)
+
+## Related
+
+- [Getting Started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
-- [Beginner App-Building Guide](./getting-started-beginner.md)

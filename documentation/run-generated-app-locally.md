@@ -1,71 +1,96 @@
 # Run Your Generated App Locally
 
-Use this after generation to verify everything works before deployment.
+Do this before you deploy. It takes a few minutes and catches most problems while they are still cheap to fix.
 
-Back to beginner guide: [Beginner App-Building Guide](./getting-started-beginner.md)
+You need [Deno](https://deno.com/) for the backend, [Node.js](https://nodejs.org/) for the frontend, and a database URL.
 
-## 1) Prepare environment files
+## 1 — Get the code
 
-In generated backend:
+Download the zip from the finished-project page, or use **GitHub Export** and clone the two repositories. You will have two folders: a backend and a frontend.
 
-- Rename `.env.template` to `.env`
-- Set `MONGODB_URL`, `DB_NAME`, `JWT_SECRET`
-- If the app uses AI-backed features, also set `AI_PROVIDER`, `AI_MODEL`, and the matching provider API key such as `GEMINI_API_KEY`
+## 2 — Configure the backend
 
-Why these matter:
+In the backend folder, copy `.env.template` to `.env` and fill it in:
 
-- `MONGODB_URL`: points your backend to your MongoDB server.
-- `DB_NAME`: selects the database to read/write.
-- `JWT_SECRET`: secures and validates login tokens.
-- `AI_PROVIDER` and `AI_MODEL`: choose which model backend AI features use.
-- Provider API key such as `GEMINI_API_KEY`: authorizes AI calls for features that rely on `src/utils/ai.ts`.
+```dotenv
+MONGODB_URL=mongodb+srv://...
+DB_NAME=myapp
+JWT_SECRET=<at least 32 random characters>
+```
 
-In generated frontend:
+- `MONGODB_URL` — where your database lives. Need one? [Choose Your Database](./choose-your-database.md). Postgres and Turso work too.
+- `DB_NAME` — which database inside that server to use.
+- `JWT_SECRET` — signs login tokens. Generate one with `openssl rand -base64 32`.
 
-- Rename `.env.template` to `.env`
-- For local runs, the default `VITE_API_URL=http://localhost:8000/api` is usually already correct.
-- Only change frontend `.env` values for non-local runs (for example, pointing `VITE_API_URL` at a deployed backend domain).
+**Your `.env.template` is generated for your app**, so it lists exactly the variables your app needs — including one section per outside integration it uses. Anything you leave unset falls back to a built-in mock, except AI, which needs a real key. See [Outside Integrations](./integrations.md).
 
-Help links:
+Keep `.env` out of git. It is already in `.gitignore`.
 
-- [Get a MongoDB Atlas Connection URL (Free Tier)](./get-mongodb-atlas-url.md)
-- [Get an AI Provider Key](./get-ai-provider-key.md) (only if your app uses AI features)
+## 3 — Configure the frontend
 
-## 2) Install dependencies
+In the frontend folder, copy `.env.example` to `.env`.
 
-From each generated project folder (backend and frontend), install dependencies using the package manager listed in that project.
+The default is already correct for local development:
 
-## 3) If the app uses AI features
+```dotenv
+VITE_API_URL=http://localhost:8000/api
+```
 
-Before starting the app, make sure the backend `.env` includes:
+Only change this when pointing at a deployed backend. Note it is read at **build time**, so a change needs a rebuild.
 
-- `AI_PROVIDER`
-- `AI_MODEL`
-- The matching provider API key such as `GEMINI_API_KEY`
+## 4 — Start the backend
 
-Then test the AI feature with a few representative inputs and confirm the output covers the intended scope, not just that it returns something.
+From the backend folder:
 
-Use: [AI Capabilities in Generated Apps](./generated-app-ai-capabilities.md)
+```bash
+deno task start
+```
 
-## 4) Start backend, then frontend
+It serves on `http://localhost:8000`, with the API under `/api`. Wait for it to report that it is listening before starting the frontend — the frontend expects the API to answer.
 
-Run backend first so frontend can connect.
+If it fails immediately, the message is almost always about the database URL or a missing `JWT_SECRET`.
 
-Then run frontend and open the local URL shown in terminal.
+## 5 — Start the frontend
 
-## 5) Basic test checklist
+From the frontend folder, in a second terminal:
+
+```bash
+npm install
+npm run dev
+```
+
+Open the URL it prints (usually `http://localhost:5173`).
+
+## 6 — Test it
+
+Work through this list. It is the same list worth repeating after you deploy.
 
 - Can a new user register?
-- Can the user log in?
-- Do core pages load without errors?
-- Do create/edit/delete actions work for your key feature?
-- Do errors show clearly when something fails?
-- If the app uses AI, do AI-backed responses have the right structure, scope, and usefulness?
+- Can that user log in, and stay logged in across a refresh?
+- Do the core pages load without console errors?
+- Do create, edit, and delete work for your main feature?
+- Do errors show clearly on invalid input, rather than failing silently?
+- Are permissions right — can a user see or change something they should not?
+- If your app uses AI, does the output actually cover the scope and constraints you asked for?
 
-## 6) If something breaks
+Generated code can contain bugs. Finding them here is the point of this step.
 
-Use: [Troubleshooting](./troubleshooting.md)
+## 7 — Run the test suite
 
-## 7) Ready to publish?
+Your app ships with tests. From the backend folder:
 
-Use: [Deploy Your Generated App with Deno Deploy](./deploy-with-deno-deploy.md)
+```bash
+deno task test
+```
+
+## 8 — Look at the API docs
+
+The backend ships an `openapi.yaml` describing every endpoint. Paste it into any OpenAPI viewer to browse the full API, or read the generated `README.md`, which lists the endpoints alongside an explanation of your app's structure.
+
+## Something broken?
+
+[Troubleshooting](./troubleshooting.md) covers the common failures — database connections, auth, CORS — and how to debug generated code effectively.
+
+## Ready to publish?
+
+[Deploy Your App](./deploy-with-deno-deploy.md).

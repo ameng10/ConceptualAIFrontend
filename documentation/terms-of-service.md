@@ -1,74 +1,104 @@
 # Terms of Service
 
-This document sets the basic terms for using this service.
+**Last updated: July 31, 2026**
 
-Back to docs home: [ConceptualAI User Documentation](./README.md)
+The ConceptualAI service at [conceptual-ai.app](https://conceptual-ai.app) (the "service") is operated by **ConceptualAI, Inc.** ("we", "us"). These terms set the conditions for using the service. Questions: [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app).
+
+Related: [Privacy Policy](./privacy-policy.md) · [Billing & Refund Policy](./billing-and-credits.md)
 
 ## 1. Acceptance of terms
 
-By using the service, you agree to these Terms of Service.
-
-If you do not agree, do not use the service.
+By using the service, you agree to these Terms of Service. If you do not agree, do not use the service.
 
 ## 2. The service
 
-The service generates applications for you using AI.
+The service generates complete web applications from descriptions you write. A run produces a backend, a frontend, a test suite, an OpenAPI specification, and documentation, which you can download or export to your own GitHub repositories.
 
-That means:
+- The AI used to **generate** apps is provided by us. You do not supply an AI key to build an app.
+- The service is currently provided at no charge during beta. A credit-based usage model is planned; see the [Billing & Refund Policy](./billing-and-credits.md).
+- Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you use in your own generated app.
 
-- The AI used to generate apps is provided by the service; you do not need to supply your own AI key to generate apps.
-- The service is currently provided at no charge. A credit-based usage model is planned and, once introduced, may govern future usage.
-- Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you separately use.
+## 3. What we guarantee
 
-## 3. Keys you supply for your generated apps
+**We guarantee delivery of an output.** When you approve a build, we guarantee that the run delivers a complete generated application to you — backend source, frontend source, a test suite, an OpenAPI specification, and generated documentation — available as a download and as a GitHub export.
 
-Generated apps may include AI-backed features that require a third-party provider API key **you** supply when you run or deploy your app.
+That deliverable is what the service promises. If a run does not deliver it, that is our failure, and our obligation is to re-run the build at no charge to you or to restore any credits it consumed. **That is your sole and exclusive remedy for non-delivery.**
 
-For any such key, you are responsible for:
+## 4. What we do not guarantee
+
+**We do not guarantee that the output is free of defects, and we are not liable for defects in it.**
+
+Generated applications are written by AI. They may contain bugs, logic errors, security weaknesses, incomplete or missing features, inefficient implementations, inaccessible interfaces, or behavior that differs from what you intended or described. Specifically, we do not warrant that output will be:
+
+- Correct, or free of bugs
+- Complete, or a faithful implementation of your description
+- Secure, or free of vulnerabilities
+- Performant, scalable, or efficient
+- Compliant with any law, regulation, standard, or third-party policy
+- Fit for any particular purpose
+- Free of third-party claims, including intellectual-property claims
+
+Output is delivered **as-is**. Reviewing, testing, correcting, securing, and validating it before any real-world use is entirely your responsibility.
+
+**A delivered output that contains bugs is not a delivery failure.** Defects in a delivered application are within the expected behavior of the service, are not grounds for a refund or credit, and do not entitle you to any remedy under section 3.
+
+## 5. No refunds
+
+Purchases are final. We do not provide refunds, whether for credits, subscriptions, or any other charge, including for:
+
+- Bugs, errors, or omissions in a delivered output
+- Output that does not match what you expected or intended
+- A change of mind, or a decision not to use a delivered application
+- Dissatisfaction with the quality, structure, or design of generated code
+
+The only exception is section 3: if we fail to deliver an output for an approved build, we re-run it or restore the credits. Nothing in this section limits any refund or cancellation rights you have under the consumer-protection laws of your place of residence. Full details: [Billing & Refund Policy](./billing-and-credits.md).
+
+## 6. Ownership of output
+
+You own the applications the service generates for you. We claim no ownership of your prompts, your project descriptions, or the code, tests, and documentation produced for you, and you may use, modify, publish, distribute, and sell them freely.
+
+Two limits apply:
+
+- Generated applications incorporate components from our concept library and third-party open-source packages, which remain licensed under their own terms. Those licenses travel with the code.
+- Similar prompts can produce similar output for different users. Your ownership of your output does not give you rights against another user's output, and we may continue to serve any other user.
+
+## 7. Your account
+
+You must provide accurate account information, keep your credentials secure, and be old enough to form a binding contract where you live. You are responsible for everything done under your account. You may close your account at any time by emailing [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address.
+
+## 8. Keys you supply for your generated apps
+
+Your generated app may integrate outside services — AI providers, payment processing, email, storage, and others — using API keys **you** supply when you run or deploy it. For any such key, you are responsible for:
 
 - Providing a valid API key you are authorized to use
 - Securing your key and your provider account
 - Monitoring usage, limits, and billing in your provider dashboard
 - Revoking or rotating your key if you believe it has been exposed
 
-## 4. Costs and billing
+Keys you supply for your own app are never sent to us. They live in your app's environment, on infrastructure you control.
 
-You are solely responsible for all third-party API charges, usage fees, overages, and related costs incurred through any provider key you supply for your own generated apps.
+## 9. Third-party costs
 
-This applies regardless of:
+You are solely responsible for all third-party API charges, usage fees, overages, hosting costs, and related expenses incurred through any provider key or account you supply for your own generated apps. This applies regardless of:
 
 - What inputs your app submits
 - What outputs are returned
 - Whether the output is useful, incorrect, incomplete, harmful, repetitive, or unexpected
-- Whether requests are large, frequent, automated, mistaken, or triggered by generated system behavior using your key
+- Whether requests are large, frequent, automated, mistaken, or triggered by generated code using your key
 
-We are never liable for third-party API costs incurred on a key you supply.
+We are never liable for third-party costs incurred on a key or account you supply.
 
-## 5. Prompts, outputs, and generated results
+## 10. Prompts and inputs
 
 You understand and agree that:
 
-- You provide prompts and other inputs to the service
-- The service may send those inputs to third-party AI providers to fulfill your requests
+- You provide prompts, descriptions, and feedback to the service
+- We send those inputs to third-party AI providers to fulfill your requests
 - AI output is probabilistic and may be wrong, incomplete, misleading, offensive, or otherwise unsuitable
-- Generated code, plans, documents, or other outputs are provided as-is
 
-Any decision to rely on, publish, ship, deploy, distribute, or otherwise use output is solely your responsibility.
+Any decision to rely on, publish, ship, deploy, distribute, or commercialize output is solely your responsibility.
 
-## 6. No warranty on output
-
-The service does not guarantee that outputs will be:
-
-- Correct
-- Complete
-- Safe
-- Secure
-- Fit for any particular purpose
-- Free of bugs, legal issues, policy issues, or third-party claims
-
-Any use of output is at your own risk.
-
-## 7. Acceptable use
+## 11. Acceptable use
 
 You agree not to use the service:
 
@@ -78,65 +108,51 @@ You agree not to use the service:
 - To use keys, accounts, or data you do not have permission to use
 - To build or operate harmful, deceptive, or unlawful systems
 
-## 8. Service availability
+## 12. Service availability
 
-The service is provided on an as-is and as-available basis.
+The service is provided on an as-is and as-available basis. We do not guarantee uptime, availability, throughput, persistence of any in-progress work, or compatibility with every provider, key, model, or generated app. We may change, limit, suspend, or discontinue the service at any time.
 
-We do not guarantee:
+Previews are temporary testing environments, not hosting. They expire automatically and are not a place to run anything real.
 
-- Uptime
-- Availability
-- Throughput
-- Persistence of any in-progress work
-- Compatibility with every provider, key, model, or generated app
-
-We may change, limit, suspend, or discontinue the service at any time.
-
-## 9. Abuse prevention and suspension
+## 13. Abuse prevention and suspension
 
 We may rate-limit, restrict, suspend, or terminate access if we believe use is abusive, risky, unlawful, or harmful to the service or other users.
 
-## 10. Third-party services
+## 14. Third-party services
 
-The service may depend on third-party providers, infrastructure, model APIs, hosting, databases, or software packages.
+The service depends on third-party providers, infrastructure, model APIs, hosting, databases, and software packages. We are not responsible for third-party outages, pricing changes, policy changes, model behavior, data handling, or billing.
 
-We are not responsible for third-party outages, pricing changes, policy changes, model behavior, data handling, or billing.
+## 15. Data and privacy
 
-## 11. Data and privacy
-
-You should not submit highly sensitive, regulated, or confidential material unless you have independently determined that doing so is appropriate for your own risk tolerance and obligations.
+Our [Privacy Policy](./privacy-policy.md) describes what we collect and how we use it. You should not submit highly sensitive, regulated, or confidential material unless you have independently determined that doing so is appropriate for your own risk tolerance and obligations.
 
 You are responsible for your own compliance obligations relating to data, privacy, intellectual property, employment, healthcare, finance, education, export controls, and any other regulated context.
 
-## 12. Limitation of liability
+## 16. Limitation of liability
 
-To the maximum extent permitted by law, the service providers are not liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of profits, revenue, data, goodwill, business opportunity, or other losses arising from or related to use of the service.
+To the maximum extent permitted by law, ConceptualAI, Inc. and its officers, employees, and suppliers are not liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of profits, revenue, data, goodwill, or business opportunity arising from or related to use of the service. This includes, without limitation, claims arising from:
 
-This includes, without limitation, claims, losses, damages, or consequences arising from:
-
-- Your reliance on generated output
-- Your interpretation or use of generated output
+- Bugs, defects, vulnerabilities, or unexpected behavior in generated output
+- Your reliance on, or interpretation of, generated output
 - Actions taken or not taken based on generated output
 - Distribution, publication, deployment, or commercialization of generated output
-- Errors, omissions, harmful content, or unexpected behavior in generated output
 
-To the maximum extent permitted by law, total liability relating to this free service is zero dollars or, if a court does not permit that limitation, the minimum amount permitted by applicable law.
+To the maximum extent permitted by law, our total liability for all claims relating to the service is limited to the greater of (a) the amount you paid us in the three months before the claim arose, or (b) one hundred U.S. dollars.
 
-## 13. Indemnity
+## 17. Indemnity
 
-You agree to defend, indemnify, and hold harmless the service providers from claims, damages, losses, liabilities, costs, and expenses arising out of:
+You agree to defend, indemnify, and hold harmless ConceptualAI, Inc. from claims, damages, losses, liabilities, costs, and expenses arising out of your use of the service, your prompts, data, or API keys, your use of generated output, or your violation of these terms or any third-party rules.
 
-- Your use of the service
-- Your prompts, data, or API keys
-- Your use of generated output
-- Your violation of these terms or any third-party rules
+## 18. Governing law
 
-## 14. Changes to these terms
+These terms are governed by the laws of the State of Delaware, United States, without regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts located in Delaware, and you consent to their jurisdiction.
 
-These terms may be updated over time.
+## 19. Changes to these terms
 
-Your continued use of the service after changes means you accept the updated terms.
+These terms may be updated over time. We will post the updated version with a new "last updated" date. Your continued use of the service after changes means you accept the updated terms.
 
-## 15. Contact and legal review
+## 20. Contact
 
-If you have questions about these terms, we encourage you to consult your own legal counsel.
+Questions about these terms: [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app). If you have questions about how these terms apply to you, we encourage you to consult your own legal counsel.
+
+© 2026 ConceptualAI, Inc.

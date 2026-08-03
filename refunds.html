@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Refund &amp; Cancellation Policy — ConceptualAI</title>
-    <meta name="description" content="Refund and cancellation policy for ConceptualAI, the AI app-generation platform operated by ConceptualAI, Inc." />
+    <title>Billing &amp; Refund Policy — ConceptualAI</title>
+    <meta name="description" content="Billing, credits, and refund policy for ConceptualAI, operated by ConceptualAI, Inc. We guarantee a delivered output; purchases are final." />
     <link rel="canonical" href="https://conceptual-ai.app/refunds" />
     <script>
       try {
@@ -35,72 +35,120 @@
 
       <main class="legal-wrap">
         <div class="legal-card glass">
-          <h1>Refund &amp; Cancellation Policy</h1>
-          <p class="legal-updated">Last updated: July 22, 2026</p>
+          <h1>Billing &amp; Refund Policy</h1>
+          <p class="legal-updated">Last updated: July 31, 2026</p>
 
           <p>
-            This policy explains how refunds and cancellations work for the ConceptualAI service at
+            How pricing, credits, and refunds work for the ConceptualAI service at
             <a href="https://conceptual-ai.app">conceptual-ai.app</a>, operated by
             <strong>ConceptualAI, Inc.</strong> Questions:
             <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
           </p>
 
-          <h2>1. During beta: the service is free</h2>
+          <h2>1. During beta, the service is free</h2>
           <p>
-            ConceptualAI is currently free during beta. No charges are made, so there is nothing to refund. The
-            sections below describe how refunds and cancellations will work once usage-based credits — purchased
-            outright or through monthly subscriptions — launch.
+            ConceptualAI is free during beta. No charges are made and no payment method is required. You will still see
+            a <strong>credit quote</strong> on the review screen before each build — during beta it is an estimate of
+            what the build would cost, shown so the pricing is never a surprise later. Nothing is deducted and nothing
+            is billed.
           </p>
+          <p>The sections below describe how billing works once credits launch.</p>
 
           <h2>2. You see the price before anything runs</h2>
           <p>
-            Every build is quoted in credits from your approved plan before it runs, and nothing is spent until you
-            approve. You are never charged for work you did not approve at a price you did not see.
+            Every build is quoted in credits from your approved plan, before it runs. The quote appears on the same
+            screen as the plan and the concept design, and the build does not start until you approve all three
+            together.
           </p>
-
-          <h2>3. Failed builds cost nothing</h2>
           <p>
-            A pipeline run that fails or is aborted consumes no credits. We do not bill for retries or for fixing
-            errors the generator introduced.
+            You are never charged for work you did not approve at a price you did not see. An iteration is quoted the
+            same way, priced from the new operations it adds rather than from the whole app.
           </p>
 
-          <h2>4. Credit purchases</h2>
-          <ul>
-            <li>
-              <strong>Unused credits:</strong> refundable on request within 14 days of purchase, to the original
-              payment method.
-            </li>
-            <li>
-              <strong>Spent credits:</strong> non-refundable once consumed by a successful build, since the underlying
-              compute and generation costs have been incurred — except as described in section 3 (failed builds are
-              never charged) or where required by law.
-            </li>
-          </ul>
+          <h2>3. What a credit buys</h2>
+          <p>
+            A credit buys a <strong>delivered output</strong>: a complete generated application — backend, frontend,
+            test suite, OpenAPI specification, and documentation — that you can download or export to GitHub.
+          </p>
+          <p>
+            A build is priced from the size of the approved design, measured in the actions and queries of the concepts
+            it contains. Bigger apps cost more because they take more work to generate, test, and assemble.
+          </p>
 
-          <h2>5. Subscriptions</h2>
+          <h2>4. Failed builds cost nothing</h2>
+          <p>
+            A run that fails to deliver an output consumes no credits. If credits were already deducted, they are
+            restored. We do not bill for retries of a failed run.
+          </p>
+
+          <h2>5. We guarantee delivery, not perfection</h2>
+          <p>This is the part worth reading closely.</p>
+          <p>
+            <strong>We guarantee that an approved build delivers an output.</strong> If it does not, we re-run it at no
+            charge or restore the credits. That is the guarantee, and it is the sole remedy for non-delivery.
+          </p>
+          <p>
+            <strong>We do not guarantee that the output is free of bugs, and we are not liable for the bugs it
+            contains.</strong> Generated code is written by AI. It can contain defects, security weaknesses, missing
+            features, or behavior that differs from what you intended. Reviewing, testing, and fixing it is your
+            responsibility. See <a href="/terms">Terms of Service, sections 3 and 4</a>.
+          </p>
+          <p>
+            A delivered application that contains bugs <strong>is a delivered output</strong>. It is not a failed build,
+            and it is not refundable.
+          </p>
+
+          <h2>6. No refunds</h2>
+          <p>Purchases are final. We do not refund credits or subscription charges, including for:</p>
+          <ul>
+            <li>Bugs, errors, or omissions in a delivered output</li>
+            <li>Output that does not match what you expected or intended</li>
+            <li>A change of mind, or a decision not to use a delivered application</li>
+            <li>Dissatisfaction with the quality, structure, or design of generated code</li>
+            <li>Unused credits, once purchased</li>
+          </ul>
+          <p>
+            The single exception is section 4: a build that fails to deliver an output is re-run or its credits
+            restored.
+          </p>
+
+          <h2>7. Subscriptions</h2>
           <ul>
             <li>You can cancel a subscription at any time from your billing page or by emailing us.</li>
-            <li>Cancellation takes effect at the end of the current billing period; you keep access, and any credits the plan grants, until then.</li>
-            <li>We do not charge again after cancellation. Partial-period refunds are not provided unless required by law.</li>
+            <li>Cancellation takes effect at the end of the current billing period. You keep access, and any credits the plan has already granted, until then.</li>
+            <li>We do not charge again after cancellation. Partial-period refunds are not provided.</li>
           </ul>
 
-          <h2>6. How to request a refund</h2>
+          <h2>8. Third-party costs are separate</h2>
+          <p>Credits cover generating your app. They do not cover what your app costs to <strong>run</strong>.</p>
           <p>
-            Email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your account's email
-            address with the purchase you're asking about. We respond within 5 business days, and approved refunds are
-            returned to the original payment method.
+            Once you deploy, you pay your own providers directly — database hosting, application hosting, and any
+            outside integrations your app uses, including AI provider keys. Those bills come from those providers, not
+            from us, and we are never liable for them.
           </p>
 
-          <h2>7. Statutory rights</h2>
+          <h2>9. Payment processing</h2>
           <p>
-            Nothing in this policy limits any refund or cancellation rights you have under the consumer-protection
-            laws of your place of residence.
+            When paid features launch, payments will be processed by <strong>Stripe</strong>. Card details go directly
+            to Stripe; we never see or store card numbers.
+          </p>
+
+          <h2>10. Statutory rights</h2>
+          <p>
+            Nothing in this policy limits any refund or cancellation rights you have under the consumer-protection laws
+            of your place of residence.
+          </p>
+
+          <h2>11. Questions</h2>
+          <p>
+            Email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your account's email
+            address. We respond within 5 business days.
           </p>
 
           <div class="legal-footer">
             © 2026 ConceptualAI, Inc. ·
             <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
-            <a href="/refunds">Refund &amp; Cancellation Policy</a> ·
+            <a href="/refunds">Billing &amp; Refund Policy</a> ·
             <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
           </div>
         </div>
