@@ -119,140 +119,137 @@ body.static-page {
   opacity: 0.18;
 }
 
-/* ---------- hero prompt form ---------- */
+/* ---------- hero prompt card (ported from AppDescriptionInput.vue + CreateProject.vue —
+   the landing hero replicates the builder's create screen; keep these in sync) ---------- */
 
-.hero-form {
+.input-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Gradient border ring (no interior tint) */
+.input-card::before {
+  content: '';
+  position: absolute;
+  /* Slightly overlap outside edge to avoid antialiasing "white halo" */
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #22c55e 0%, #2dd4bf 50%, #3b82f6 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.input-group {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 1.1rem;
 }
 
-.hero-input,
-.hero-textarea {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  border-radius: calc(var(--radius) - 8px);
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 1rem;
-  transition: var(--transition);
-  resize: vertical;
-}
-
-.hero-input:focus,
-.hero-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--grad-color-1);
-}
-
-.hero-form-footer {
+.group-label {
   display: flex;
-  justify-content: flex-end;
-}
-
-/* ---------- factory console (ported from LandingHero.vue) ---------- */
-
-.console-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  box-shadow: var(--glass-shadow);
-}
-
-.console-top {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.console-title {
-  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.console-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  color: var(--text-dim);
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+  color: var(--neon-teal);
+  text-shadow: 0 0 10px rgba(45, 212, 191, 0.2);
 }
 
-.console-panel {
-  border: 1px solid var(--border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+.input-card .divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 1.5rem 0;
 }
 
-.step-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.step-row-pass {
-  border-color: rgba(52, 211, 153, 0.35);
-  background: rgba(16, 185, 129, 0.06);
-}
-
-.step-title {
-  font-weight: 900;
-  letter-spacing: -0.01em;
+.ghost-input,
+.ghost-textarea {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--text);
+  font-family: inherit;
 }
 
-.step-chip {
-  flex: 0 0 auto;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  color: rgb(52 211 153);
+.ghost-input {
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
-.step-chip.pass {
-  border-color: rgba(52, 211, 153, 0.4);
-  animation: passPulse 2.4s ease-in-out infinite;
+.ghost-textarea {
+  font-size: 1.0625rem;
+  min-height: 100px;
+  resize: none;
+  line-height: 1.6;
 }
 
-@keyframes passPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+.ghost-input:focus,
+.ghost-textarea:focus {
+  outline: none;
+}
+
+.ghost-input::placeholder,
+.ghost-textarea::placeholder {
+  color: var(--text-dim);
+  opacity: 0.3;
+}
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+/* Matches the builder's compact submit (CreateProject.vue's deep override) */
+.input-footer .btn-primary {
+  border-radius: 10px;
+  padding: 0.42rem 0.9rem;
+  font-size: 0.875rem;
+  letter-spacing: -0.01em;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.15);
+}
+
+.input-footer .btn-primary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quick-tips {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+
+@media (max-width: 720px) {
+  .input-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
-  50% {
-    box-shadow: 0 0 14px rgba(52, 211, 153, 0.35);
+
+  .input-footer .btn-primary {
+    width: 100%;
+    justify-content: center;
   }
 }
 

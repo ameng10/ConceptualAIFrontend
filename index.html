@@ -79,87 +79,73 @@
         <div class="pointer-events-none absolute -inset-20 bg-[image:var(--grad-wave)] opacity-20 blur-3xl"></div>
         <div class="pointer-events-none absolute inset-0 landing-grid"></div>
 
-        <div class="mx-auto w-full max-w-6xl px-4 pb-16 pt-14 md:pb-24 md:pt-20">
-          <!-- One composed hero: headline → prompt form → trust chips → console visual -->
-          <div class="mx-auto max-w-3xl text-center">
-            <div class="kicker">Start with your app idea</div>
-            <h1 class="mt-4 text-balance text-4xl font-black leading-[1.08] tracking-tight md:text-6xl">
-              Describe your app.
-              <span class="bg-[image:var(--grad-wave)] bg-clip-text text-transparent">Get the codebase.</span>
-            </h1>
-            <p class="mx-auto mt-5 max-w-2xl text-pretty text-lg text-text-dim">
-              Work with the AI on a plan. We build it on our servers — assembled from pre-tested building blocks and
-              checked by a generated test suite against a real database. What comes out is yours: backend and frontend
-              repos, tests, API docs, ready to deploy.
-            </p>
+        <!-- The first screen mirrors the builder's create screen (CreateProject.vue +
+             AppDescriptionInput.vue) so signing in lands users in a familiar room.
+             Keep copy, structure, and styles in sync with those components.
+             65px ≈ sticky header height: the hero fills the rest of the first
+             viewport so the gallery starts cleanly below the fold. -->
+        <div class="mx-auto flex min-h-[calc(100svh-65px)] w-full max-w-6xl flex-col items-center justify-center px-4 py-12">
+          <div class="text-center">
+            <h1 class="animated-gradient-text pb-1 text-4xl font-bold leading-[1.2] md:text-[3.5rem]">What are you building?</h1>
+            <p class="mx-auto mt-4 max-w-[600px] text-lg text-text-dim">Architect your conceptual backend in minutes.</p>
+          </div>
 
-            <form action="/build" method="get" class="hero-form glass mt-8 text-left">
+          <form action="/build" method="get" id="hero-builder-form" class="input-card glass mt-10 w-full max-w-[800px]">
+            <div class="input-group">
+              <label class="group-label" for="hero-name">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>
+                Project Name
+              </label>
               <input
+                id="hero-name"
                 type="text"
                 name="name"
-                class="hero-input"
+                class="ghost-input"
                 placeholder="Agency Client Portal"
-                aria-label="App name"
                 maxlength="120"
+                autocomplete="off"
+                data-typewriter="name"
               />
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="input-group">
+              <label class="group-label" for="hero-description">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Requirements
+              </label>
               <textarea
+                id="hero-description"
                 name="description"
-                class="hero-textarea"
+                class="ghost-textarea"
                 rows="4"
                 placeholder="Build a client portal for my design agency — project status, file approvals, Stripe invoices..."
-                aria-label="Describe your app"
+                data-typewriter="description"
               ></textarea>
-              <div class="hero-form-footer">
-                <button type="submit" class="btn btn-primary start-building-btn">
-                  Continue to Builder
-                  <span aria-hidden="true">→</span>
-                </button>
-              </div>
-            </form>
-
-            <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-text-dim">
-              <span class="hero-chip">✓ Both repos are yours</span>
-              <span class="hero-chip">✓ Tested before it's done</span>
-              <span class="hero-chip">✓ Payments, email &amp; AI built in</span>
             </div>
-          </div>
 
-          <!-- HERO VISUAL: Factory Console, ending green -->
-          <div class="relative mx-auto mt-14 max-w-2xl md:mt-16">
-            <div class="absolute -inset-6 -z-10 rounded-[32px] bg-[image:var(--grad-wave)] opacity-25 blur-2xl"></div>
-            <div class="console-card glass">
-              <div class="console-top">
-                <div class="console-title">Factory Console</div>
-                <div class="console-pill">Autonomous</div>
-              </div>
-              <div class="grid gap-4 p-6">
-                <div class="console-panel rounded-2xl p-4">
-                  <div class="flex items-center justify-between">
-                    <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-text-dim">Factory Output</div>
-                    <div class="text-xs font-extrabold uppercase tracking-[0.16em] text-neon-teal">pipeline</div>
-                  </div>
-                  <div class="mt-4 space-y-3 text-[13px] leading-relaxed">
-                    <div class="step-row"><div class="step-title">Planning</div><div class="step-chip done">Complete</div></div>
-                    <div class="step-row"><div class="step-title">Structuring</div><div class="step-chip done">Complete</div></div>
-                    <div class="step-row"><div class="step-title">Building</div><div class="step-chip done">Complete</div></div>
-                    <div class="step-row"><div class="step-title">Connecting</div><div class="step-chip done">Complete</div></div>
-                    <div class="step-row"><div class="step-title">Assembling</div><div class="step-chip done">Complete</div></div>
-                    <div class="step-row step-row-pass"><div class="step-title">Testing</div><div class="step-chip pass">313 / 313 passing</div></div>
-                  </div>
-                </div>
-              </div>
+            <div class="input-footer">
+              <p class="hint">Shift + Enter for new line</p>
+              <button type="submit" class="btn btn-primary">
+                Generate Backend
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
             </div>
+          </form>
+
+          <p class="quick-tips mt-6">Try: "A marketplace with items and reviews" or "A social app with following and posting"</p>
+
+          <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-text-dim">
+            <span class="hero-chip">✓ Both repos are yours</span>
+            <span class="hero-chip">✓ Tested before it's done</span>
+            <span class="hero-chip">✓ Payments, email &amp; AI built in</span>
           </div>
 
-          <div class="mt-10 text-center">
-            <a
-              href="#demos"
-              class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-6 py-3 text-base font-extrabold text-text no-underline transition hover:bg-white/10"
-            >
-              See the live demos
-              <span aria-hidden="true">↓</span>
-            </a>
-          </div>
+          <a href="#demos" class="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-text-dim no-underline transition hover:text-text">
+            Five real apps below — one prompt each
+            <span aria-hidden="true">↓</span>
+          </a>
         </div>
       </section>
 

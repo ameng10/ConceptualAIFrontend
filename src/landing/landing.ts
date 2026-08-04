@@ -49,6 +49,68 @@ if (landing) {
   update()
 }
 
+// Builder-replica hero (index.html only): the same paired typewriter placeholders and
+// Enter-to-submit behavior as the builder's AppDescriptionInput.vue — keep the phrases
+// and timings in sync with that component.
+const heroForm = document.getElementById('hero-builder-form') as HTMLFormElement | null
+if (heroForm) {
+  const nameField = heroForm.querySelector<HTMLInputElement>('[data-typewriter="name"]')
+  const descField = heroForm.querySelector<HTMLTextAreaElement>('[data-typewriter="description"]')
+
+  const namePhrases = ['Agency Client Portal', 'Membership Community', 'Booking Marketplace']
+  const descPhrases = [
+    'Build a client portal for my design agency — project status, file approvals, Stripe invoices...',
+    'Build a paid community with supporter subscriptions and a members-only feed...',
+    'Build a marketplace where hosts list classes and guests book paid time slots...',
+  ]
+
+  if (nameField && descField) {
+    let phrase = 0
+    let nameChars = 0
+    let descChars = 0
+    let deleting = false
+
+    const tick = () => {
+      const namePhrase = namePhrases[phrase] ?? ''
+      const descPhrase = descPhrases[phrase] ?? ''
+
+      if (!deleting) {
+        if (nameChars < namePhrase.length) nameChars += 1
+        if (descChars < descPhrase.length) descChars += 1
+      } else {
+        if (nameChars > 0) nameChars -= 1
+        if (descChars > 0) descChars -= 1
+      }
+
+      nameField.placeholder = namePhrase.slice(0, nameChars)
+      descField.placeholder = descPhrase.slice(0, descChars)
+
+      if (!deleting && nameChars >= namePhrase.length && descChars >= descPhrase.length) {
+        deleting = true
+        window.setTimeout(tick, 1600)
+      } else if (deleting && nameChars <= 0 && descChars <= 0) {
+        deleting = false
+        phrase = (phrase + 1) % namePhrases.length
+        window.setTimeout(tick, 300)
+      } else {
+        window.setTimeout(tick, deleting ? 14 : 30)
+      }
+    }
+
+    // Start empty like the builder does (the HTML placeholders are the no-JS fallback).
+    nameField.placeholder = ''
+    descField.placeholder = ''
+    window.setTimeout(tick, 450)
+
+    descField.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault()
+        heroForm.requestSubmit()
+      }
+    })
+  }
+}
+
 // Demo gallery arrows — scroll one card per click; the row itself is native scroll-snap.
 const demoRow = document.getElementById('demo-row')
 if (demoRow) {
