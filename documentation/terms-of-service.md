@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Last updated: July 31, 2026**
+**Last updated: August 8, 2026**
 
 The ConceptualAI service at [conceptual-ai.app](https://conceptual-ai.app) (the "service") is operated by **ConceptualAI, Inc.** ("we", "us"). These terms set the conditions for using the service. Questions: [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app).
 
@@ -22,7 +22,7 @@ The service generates complete web applications from descriptions you write. A r
 
 **We guarantee delivery of an output.** When you approve a build, we guarantee that the run delivers a complete generated application to you — backend source, frontend source, a test suite, an OpenAPI specification, and generated documentation — available as a download and as a GitHub export.
 
-That deliverable is what the service promises. If a run does not deliver it, that is our failure, and our obligation is to re-run the build at no charge to you or to restore any credits it consumed. **That is your sole and exclusive remedy for non-delivery.**
+That deliverable is what the service promises. If a run does not deliver it, that is our failure, and our obligation is to **re-run the build at no charge to you**: re-approving the same design does not deduct credits again. **That free re-run is your sole and exclusive remedy for non-delivery.** Credits are not restored, and no refund is due.
 
 ## 4. What we do not guarantee
 
@@ -51,7 +51,13 @@ Purchases are final. We do not provide refunds, whether for credits, subscriptio
 - A change of mind, or a decision not to use a delivered application
 - Dissatisfaction with the quality, structure, or design of generated code
 
-The only exception is section 3: if we fail to deliver an output for an approved build, we re-run it or restore the credits. Nothing in this section limits any refund or cancellation rights you have under the consumer-protection laws of your place of residence. Full details: [Billing & Refund Policy](./billing-and-credits.md).
+The only exception is section 3: if we fail to deliver an output for an approved build, we re-run it at no charge.
+
+Credits are deducted when you approve a build, and **a run that has started is charged**, including one you cancel, delete, or abandon part-way through. Credits are not money, have no cash value, and cannot be transferred or withdrawn. Plan credits do not roll over and expire at the end of each billing period; purchased credits expire 12 months after your most recent payment.
+
+Payments are processed by Stripe acting as **merchant of record**, which means Stripe is the seller of record on your purchase and may issue a refund under its own policies, including without our prior approval. Where a payment is reversed by refund or chargeback, we remove the corresponding credits and may place the account on hold until the matter is resolved.
+
+Nothing in this section limits any refund or cancellation rights you have under the consumer-protection laws of your place of residence. Full details: [Billing & Refund Policy](./billing-and-credits.md).
 
 ## 6. Ownership of output
 
@@ -64,7 +70,11 @@ Two limits apply:
 
 ## 7. Your account
 
-You must provide accurate account information, keep your credentials secure, and be old enough to form a binding contract where you live. You are responsible for everything done under your account. You may close your account at any time by emailing [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address.
+You must provide accurate account information, keep your credentials secure, and be old enough to form a binding contract where you live. You are responsible for everything done under your account. You may close your account at any time by emailing [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address; cancel any active subscription first, or ask us to cancel it as part of closing the account.
+
+Closing your account deletes your projects, their generated artifacts, your credit balance and your plan. It does not refund anything, and **records of payments are retained** — we keep the record of what was paid, when and for what, because we are required to and because it is what a refund or chargeback is reconciled against.
+
+One account per person or organisation. Creating additional accounts to obtain repeated free allowances is a breach of section 11.
 
 ## 8. Keys you supply for your generated apps
 

@@ -36,7 +36,7 @@
       <main class="legal-wrap">
         <div class="legal-card glass">
           <h1>Billing &amp; Refund Policy</h1>
-          <p class="legal-updated">Last updated: July 31, 2026</p>
+          <p class="legal-updated">Last updated: August 8, 2026</p>
 
           <p>
             How pricing, credits, and refunds work for the ConceptualAI service at
@@ -52,7 +52,7 @@
             what the build would cost, shown so the pricing is never a surprise later. Nothing is deducted and nothing
             is billed.
           </p>
-          <p>The sections below describe how billing works once credits launch.</p>
+          <p>Everything below describes how billing works once credits launch. It takes effect only when charging is switched on, and we will say so on this page before it does.</p>
 
           <h2>2. You see the price before anything runs</h2>
           <p>
@@ -75,17 +75,31 @@
             it contains. Bigger apps cost more because they take more work to generate, test, and assemble.
           </p>
 
-          <h2>4. Failed builds cost nothing</h2>
+          <h2>4. Approving a build charges it</h2>
           <p>
-            A run that fails to deliver an output consumes no credits. If credits were already deducted, they are
-            restored. We do not bill for retries of a failed run.
+            Credits are deducted when you approve the plan &mdash; that is the moment you accept the quote, and it is
+            the only moment a build is charged. Everything the build does afterwards (implementation, sync generation,
+            assembly, packaging) is covered by that single charge. There is no second charge for a later stage.
+          </p>
+          <p>
+            <strong>A run that has started is charged, including one you cancel or delete part-way through.</strong>
+            By then the work has been done and paid for on our side.
+          </p>
+          <p>
+            <strong>Credits are never restored.</strong> If a build does not deliver, the remedy is a free re-run
+            &mdash; see section 5 &mdash; not a credit back.
           </p>
 
           <h2>5. We guarantee delivery, not perfection</h2>
           <p>This is the part worth reading closely.</p>
           <p>
             <strong>We guarantee that an approved build delivers an output.</strong> If it does not, we re-run it at no
-            charge or restore the credits. That is the guarantee, and it is the sole remedy for non-delivery.
+            charge: re-approving the same design does not deduct credits again. That free re-run is the guarantee, and
+            it is the sole remedy for non-delivery. Re-running is automatic &mdash; you will not be charged twice for
+            the same approved design, whether the retry is ours or yours.
+          </p>
+          <p>
+            If you change the design and approve it again, that is a different build at a new quote, and it is charged.
           </p>
           <p>
             <strong>We do not guarantee that the output is free of bugs, and we are not liable for the bugs it
@@ -106,20 +120,56 @@
             <li>A change of mind, or a decision not to use a delivered application</li>
             <li>Dissatisfaction with the quality, structure, or design of generated code</li>
             <li>Unused credits, once purchased</li>
+            <li>A build you cancelled, deleted, or abandoned after approving it</li>
           </ul>
+          <p>The single exception is section 5: a build that fails to deliver is re-run at no charge.</p>
           <p>
-            The single exception is section 4: a build that fails to deliver an output is re-run or its credits
-            restored.
+            If a payment is reversed &mdash; a refund we issue, or a chargeback your bank raises &mdash; we remove the
+            corresponding credits from your balance, and we may place the account on hold until the matter is resolved.
           </p>
 
-          <h2>7. Subscriptions</h2>
+          <h2>7. How long credits last</h2>
+          <p>Credits have two different lifetimes, and the difference matters.</p>
+          <ul>
+            <li><strong>Plan credits</strong> are the monthly allowance included with a subscription. They <strong>do
+              not roll over</strong>. Each payment resets the allowance for that period, and whatever is unused expires
+              at the end of it.</li>
+            <li><strong>Purchased credits</strong> are credits you buy outright. They last <strong>12 months from your
+              most recent payment</strong>, and any payment &mdash; a credit purchase or a subscription renewal &mdash;
+              extends that window. An active customer does not lose purchased credits.</li>
+          </ul>
+          <p>Builds spend the plan allowance first, so the credits that expire soonest are used first.</p>
+          <p>
+            Credits are a claim on future compute at today's price. They are not money, they have no cash value, and
+            they cannot be transferred between accounts or withdrawn.
+          </p>
+
+          <h2>8. Plan limits</h2>
+          <p>Each plan sets two limits, both shown on the pricing page:</p>
+          <ul>
+            <li><strong>A maximum app size</strong>, expressed in credits. If a design quotes above your plan's limit,
+              the build is refused and you are told which plan would fit it. Buying more credits does not lift this
+              limit &mdash; it is what the subscription buys.</li>
+            <li><strong>A weekly planning limit.</strong> Creating a plan, modifying one, answering its questions, and
+              iterating on a finished app each count as one planning turn against a rolling seven-day window.</li>
+          </ul>
+          <p>
+            Iterating on an app your plan can already hold is not limited by size &mdash; only the planning turns are
+            counted.
+          </p>
+
+          <h2>9. Subscriptions</h2>
           <ul>
             <li>You can cancel a subscription at any time from your billing page or by emailing us.</li>
-            <li>Cancellation takes effect at the end of the current billing period. You keep access, and any credits the plan has already granted, until then.</li>
+            <li>Cancellation takes effect at the end of the current billing period. You keep access until then.</li>
+            <li><strong>The plan allowance for that period expires with it</strong>, as it does at the end of every
+              period. Purchased credits are unaffected and keep their own 12-month window.</li>
             <li>We do not charge again after cancellation. Partial-period refunds are not provided.</li>
+            <li>If a renewal payment fails, we keep your plan's app-size limit for a short grace period while the
+              payment is retried. The allowance itself is not extended.</li>
           </ul>
 
-          <h2>8. Third-party costs are separate</h2>
+          <h2>10. Third-party costs are separate</h2>
           <p>Credits cover generating your app. They do not cover what your app costs to <strong>run</strong>.</p>
           <p>
             Once you deploy, you pay your own providers directly — database hosting, application hosting, and any
@@ -127,19 +177,42 @@
             from us, and we are never liable for them.
           </p>
 
-          <h2>9. Payment processing</h2>
+          <h2>11. Payment processing and who you are buying from</h2>
           <p>
-            When paid features launch, payments will be processed by <strong>Stripe</strong>. Card details go directly
-            to Stripe; we never see or store card numbers.
+            Payments are processed by <strong>Stripe</strong>, which acts as the <strong>merchant of record</strong> for
+            this service. That means Stripe is the seller of record on your purchase, handles sales tax and VAT where
+            they apply, and appears on your statement and your receipt. Card details go directly to Stripe; we never
+            see or store card numbers.
+          </p>
+          <p>
+            Because Stripe is the merchant of record, Stripe may issue a refund on a purchase under its own policies,
+            including without our prior approval. Where that happens we remove the corresponding credits, as described
+            in section 6.
           </p>
 
-          <h2>10. Statutory rights</h2>
+          <h2>12. Account deletion and what we keep</h2>
+          <p>
+            To delete your account, email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your
+            account's email address. We delete your account, your projects and their generated artifacts, your credit
+            balance, and your plan.
+          </p>
+          <p>
+            <strong>Records of payments are retained.</strong> We keep the record of what was paid, when, and for what,
+            because we are required to and because it is what a refund or chargeback is reconciled against. Deleting
+            your account does not delete that record and does not refund anything.
+          </p>
+          <p>
+            Cancel any active subscription before requesting deletion, or tell us to cancel it &mdash; we cancel at
+            Stripe as the first step of deletion so that a deleted account is never billed again.
+          </p>
+
+          <h2>13. Statutory rights</h2>
           <p>
             Nothing in this policy limits any refund or cancellation rights you have under the consumer-protection laws
             of your place of residence.
           </p>
 
-          <h2>11. Questions</h2>
+          <h2>14. Questions</h2>
           <p>
             Email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a> from your account's email
             address. We respond within 5 business days.

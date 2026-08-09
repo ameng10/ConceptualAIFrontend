@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: July 31, 2026**
+**Last updated: August 8, 2026**
 
 How **ConceptualAI, Inc.** ("we", "us") collects, uses, and shares information when you use the ConceptualAI service at [conceptual-ai.app](https://conceptual-ai.app). Privacy questions and requests: [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app).
 
@@ -32,7 +32,7 @@ We share data with providers only as needed to run the service:
 - **AI model providers** — process your prompts and project context to generate plans, code, and tests.
 - **Cloud infrastructure** — database hosting (MongoDB Atlas), application hosting (Deno Deploy), and isolated build sandboxes (Modal).
 - **Email delivery providers** — send transactional and support email.
-- **Stripe** — will process payments once paid features launch. Card details go directly to Stripe; we never store card numbers.
+- **Stripe** — processes payments and acts as the **merchant of record** for paid features. Card details go directly to Stripe; we never see or store card numbers. Stripe receives your email address and billing details to process the payment and to meet its own tax and compliance obligations.
 
 ## 4. Your generated app's own data
 
@@ -49,6 +49,8 @@ Sandboxes and previews never receive live third-party credentials. Outside integ
 ## 6. Retention and deletion
 
 Account data is kept while your account is active. Projects and generated applications are kept until you delete them or your account. Server logs are kept for a limited period for security and debugging. To delete your account and associated data, email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address.
+
+**Payment records are an exception.** Records of what was paid, when and for what are retained after account deletion, because we are required to keep them and because they are what a refund or chargeback is reconciled against. They are kept separately from your account and are not used to re-identify you for any other purpose.
 
 ## 7. Security
 
