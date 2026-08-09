@@ -106,8 +106,12 @@ async function manage() {
     const { url } = await openBillingPortal()
     window.location.assign(url)
   } catch (e) {
-    failed.value =
-      "We couldn't open the billing portal. If you don't have a subscription yet, choose a plan first."
+    const status = (e as { response?: { status?: number } })?.response?.status
+    const fromServer = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    failed.value = status === 409
+      ? "We couldn't open the billing portal. If you don't have a subscription yet, choose a plan first."
+      : fromServer ||
+        "We couldn't open the billing portal just now. Please try again, or email admin@conceptual-ai.app."
     console.error('[billing] portal failed', e)
   } finally {
     portalBusy.value = false
