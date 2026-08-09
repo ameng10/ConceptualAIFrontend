@@ -6,11 +6,11 @@ How pricing, credits, and refunds work for the ConceptualAI service at [conceptu
 
 Related: [Terms of Service](./terms-of-service.md) · [Privacy Policy](./privacy-policy.md)
 
-## 1. During beta, the service is free
+## 1. What you pay for
 
-ConceptualAI is free during beta. No charges are made and no payment method is required. You will still see a **credit quote** on the review screen before each build — during beta it is an estimate of what the build would cost, shown so the pricing is never a surprise later. Nothing is deducted and nothing is billed.
+ConceptualAI charges in **credits**. Every build is quoted in credits before it runs, and that quote is what you pay.
 
-Everything below describes how billing works once credits launch. It takes effect only when charging is switched on, and we will say so on this page before it does.
+You can buy credits outright, or take a monthly plan that includes a credit allowance and raises the size of app you are allowed to build. There is a **Free plan** that needs no payment method: it can build small apps, and it can buy credits without subscribing. The plans, their allowances and their limits are on the pricing page.
 
 ## 2. You see the price before anything runs
 

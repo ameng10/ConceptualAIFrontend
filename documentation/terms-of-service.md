@@ -15,7 +15,7 @@ By using the service, you agree to these Terms of Service. If you do not agree, 
 The service generates complete web applications from descriptions you write. A run produces a backend, a frontend, a test suite, an OpenAPI specification, and documentation, which you can download or export to your own GitHub repositories.
 
 - The AI used to **generate** apps is provided by us. You do not supply an AI key to build an app.
-- The service is currently provided at no charge during beta. A credit-based usage model is planned; see the [Billing & Refund Policy](./billing-and-credits.md).
+- The service is sold in credits, through monthly plans and outright credit purchases. See the [Billing & Refund Policy](./billing-and-credits.md).
 - Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you use in your own generated app.
 
 ## 3. What we guarantee

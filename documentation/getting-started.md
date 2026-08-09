@@ -24,7 +24,7 @@ A few minutes later you land at the one gate in the process. It shows three thin
 
 - **The plan** — the features and user roles we understood from your description.
 - **The concept design** — the building blocks your app will be made from. Some are pulled from our tested library; some are generated for your app specifically. See [Concepts and Syncs](./concepts-and-syncs.md).
-- **A credit quote** — what the build will cost, priced from the size of that design. During beta the service is free and nothing is deducted.
+- **A credit quote** — what the build will cost, priced from the size of that design. Nothing is charged until you approve all three together.
 
 **Read the plan before you approve.** This is the cheapest moment to change anything. Look for features you wanted that are missing, features you did not ask for, and wrong assumptions about who can do what.
 
