@@ -296,27 +296,42 @@ async function buyCredits() {
 
 .tiers {
   display: grid;
-  /* All five must sit on ONE row on desktop — Unlimited wrapping alone read as a
-     different kind of thing rather than the top of the same ladder. */
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: 1rem;
+  /* EXPLICIT five columns, not auto-fit. auto-fit drops a card to the next row the
+     moment the container is one pixel narrower than 5 x min-width + gaps, and the
+     container here is the viewport minus the sidebar — so the breakpoint was luck.
+     `minmax(0, 1fr)` lets the columns shrink instead of wrapping, which is what keeps
+     Unlimited on the same row as the ladder it belongs to. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
   margin-bottom: 2rem;
+}
+
+/* Below desktop, wrap deliberately rather than squeezing five unreadable columns. */
+@media (max-width: 1180px) {
+  .tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+}
+@media (max-width: 760px) {
+  .tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .tiers { grid-template-columns: 1fr; }
 }
 .tier-card {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 1rem;
-  padding: 1.5rem;
+  gap: 0.875rem;
+  padding: 1.25rem;
+  min-width: 0;
 }
 .tier-card.current { border-color: var(--primary); }
-.tier-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.tier-top { display: flex; align-items: center; justify-content: space-between; gap: 0.375rem; flex-wrap: wrap; }
 .current-pill {
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--primary);
 }
-.price { margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }
+.price { margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; }
 .from { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 .per { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 
