@@ -31,18 +31,11 @@ const loadError = ref<string | null>(null)
 const busyTier = ref<Tier | null>(null)
 const buyingCredits = ref(false)
 const failed = ref<string | null>(null)
+import PurchaseConsent from '@/components/PurchaseConsent.vue'
+
 const creditQty = ref(10)
 
-/**
- * The withdrawal-right acknowledgement, collected HERE.
- *
- * It cannot ride on Stripe's checkbox: Managed Payments rejects `custom_text` outright
- * ("You cannot use custom_text with Managed Payments"), so a merchant-of-record
- * checkout shows only Stripe's default terms line. Article 16(m) removes an EU/UK
- * consumer's 14-day withdrawal right only where they expressly consented to immediate
- * performance AND acknowledged losing the right — and the CJEU reads that strictly, so
- * it has to be on the face of what is actually ticked. This is that tick.
- */
+/** Gates every purchase button on this page — see PurchaseConsent.vue. */
 const acknowledged = ref(false)
 /** An emptied number input yields null, which the server rejects. Snap it back rather
  *  than posting a request that can only be refused. */
@@ -132,6 +125,8 @@ async function buyCredits() {
       end of the current billing period, and you won't be charged again.
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
+
+    <PurchaseConsent v-model="acknowledged" class="consent glass" />
 
     <!-- Credits first: you do not need a subscription to start, and saying so up front
          is more honest than leading with the most expensive option. -->
@@ -246,16 +241,6 @@ async function buyCredits() {
 
     <!-- The acknowledgement Stripe's checkout cannot carry. Sits above the buttons it
          gates, so it is read before anything is bought rather than after. -->
-    <label class="consent glass">
-      <input v-model="acknowledged" type="checkbox" />
-      <span>
-        I request immediate access to my credits and agree to the
-        <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and
-        <a href="/refunds" target="_blank" rel="noopener">Billing &amp; Refund Policy</a>.
-        I acknowledge that delivery begins immediately, that I therefore lose my right to
-        withdraw from this purchase, and that credits are non-refundable once delivered.
-      </span>
-    </label>
 
     <!-- AUTO-RENEWAL DISCLOSURE. This has to be clear and conspicuous BEFORE billing
          details are taken — ROSCA and a number of US state statutes require it, and
@@ -446,24 +431,9 @@ async function buyCredits() {
 }
 
 .consent {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  cursor: pointer;
 }
-.consent input {
-  flex: none;
-  margin-top: 0.1875rem;
-  width: 1.0625rem;
-  height: 1.0625rem;
-  accent-color: var(--primary);
-  cursor: pointer;
-}
-.consent a { color: var(--primary); }
 
 .renewal { padding: 1.5rem; }
 .renewal h2 { margin: 0 0 0.875rem; font-size: 1rem; font-weight: 800; }

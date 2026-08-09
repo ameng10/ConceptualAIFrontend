@@ -30,6 +30,14 @@ export interface BillingRefusal {
 }
 
 const props = defineProps<{ refusal: BillingRefusal; busy?: boolean; failed?: string | null }>()
+import PurchaseConsent from './PurchaseConsent.vue'
+
+/** The Art. 16(m) acknowledgement. Both money buttons in this dialog are purchase entry
+ *  points in their own right, so they need it exactly as /pricing does — a refused user
+ *  buying from here must not reach Stripe on a weaker consent than one who came the long
+ *  way round. See PurchaseConsent.vue for why it cannot live on Stripe's checkbox. */
+const acknowledged = ref(false)
+
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'buy', credits: number): void
@@ -158,7 +166,12 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="actions">
-          <button class="btn btn-primary money" :disabled="busy" @click="emit('buy', shortfall)">
+          <PurchaseConsent v-model="acknowledged" compact class="consent-gate" />
+          <button
+            class="btn btn-primary money"
+            :disabled="busy || !acknowledged"
+            @click="emit('buy', shortfall)"
+          >
             <Loader2 v-if="busy" :size="17" class="spin" />
             <Coins v-else :size="17" />
             <span>Buy {{ shortfall }} {{ creditWord }}</span>
@@ -232,10 +245,16 @@ onBeforeUnmount(() => {
               <li><strong>{{ suggested.includedCredits }}</strong> credits included each month</li>
               <li><strong>{{ suggested.plansPerWeek ?? 'Unlimited' }}</strong> planning turns per week</li>
             </ul>
+            <PurchaseConsent
+              v-if="suggested.selfServe"
+              v-model="acknowledged"
+              compact
+              class="consent-gate"
+            />
             <button
               v-if="suggested.selfServe"
               class="btn btn-primary money"
-              :disabled="busy"
+              :disabled="busy || !acknowledged"
               @click="emit('upgrade', suggested.tier)"
             >
               <Loader2 v-if="busy" :size="17" class="spin" />
@@ -568,5 +587,16 @@ onBeforeUnmount(() => {
 @media (max-width: 400px) {
   .modal { padding: 1.5rem; }
   .size-row { grid-template-columns: 4.25rem 1fr 2.25rem; }
+}
+</style>
+
+<style scoped>
+/* Sits directly above the button it gates, so it is read before the spend, not after. */
+.consent-gate {
+  margin-bottom: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
 }
 </style>
