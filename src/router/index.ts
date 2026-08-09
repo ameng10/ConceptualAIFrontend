@@ -5,6 +5,8 @@ import ProjectStatus from '@/views/ProjectStatus.vue'
 import Assembling from '@/views/Assembling.vue'
 import MyProjects from '@/views/MyProjects.vue'
 import Library from '@/views/Library.vue'
+import Pricing from '../views/Pricing.vue'
+import Billing from '../views/Billing.vue'
 import Settings from '@/views/Settings.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
@@ -96,6 +98,22 @@ const router = createRouter({
             path: '/settings',
             name: 'settings',
             component: Settings,
+            meta: { requiresAuth: true }
+        },
+        {
+            // Referenced by the Billing & Refund Policy for the four material terms —
+            // price, included credits, per-app size limit and weekly planning turns.
+            // Deliberately NOT auth-gated: a prospective customer must be able to read
+            // the prices, and the auto-renewal disclosure has to be reachable before
+            // anyone hands over billing details.
+            path: '/pricing',
+            name: 'pricing',
+            component: Pricing,
+        },
+        {
+            path: '/billing',
+            name: 'billing',
+            component: Billing,
             meta: { requiresAuth: true }
         },
         {

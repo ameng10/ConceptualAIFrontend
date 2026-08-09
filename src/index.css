@@ -28,6 +28,16 @@
   --await-bg: rgba(245, 158, 11, 0.16);
   --await-glow: 0 0 15px rgba(245, 158, 11, 0.35);
 
+  /* Accent tones shared by billing surfaces (tier badges, size comparisons).
+     Tokens, not literals: hardcoded violet/gold washed out in light theme and drifted
+     between components that each picked their own hex. */
+  --tone-violet: #a78bfa;
+  --tone-violet-bg: rgba(167, 139, 250, 0.14);
+  --tone-violet-border: rgba(167, 139, 250, 0.32);
+  --tone-gold: #fcd34d;
+  --tone-gold-bg: rgba(252, 211, 77, 0.14);
+  --tone-gold-border: rgba(252, 211, 77, 0.34);
+
   /* Ambient background (aurora layers + film-grain opacity) */
   --aurora-1: rgba(6, 182, 212, 0.16);
   --aurora-2: rgba(45, 212, 191, 0.12);
@@ -76,6 +86,12 @@
   --await: #d97706;
   --await-bg: rgba(217, 119, 6, 0.12);
   --await-glow: none;
+  --tone-violet: #7c3aed;
+  --tone-violet-bg: rgba(124, 58, 237, 0.1);
+  --tone-violet-border: rgba(124, 58, 237, 0.28);
+  --tone-gold: #b45309;
+  --tone-gold-bg: rgba(180, 83, 9, 0.1);
+  --tone-gold-border: rgba(180, 83, 9, 0.28);
   --aurora-1: rgba(16, 185, 129, 0.1);
   --aurora-2: rgba(59, 130, 246, 0.08);
   --aurora-3: rgba(45, 212, 191, 0.09);

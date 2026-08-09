@@ -10,7 +10,7 @@ Related: [Terms of Service](./terms-of-service.md) · [Privacy Policy](./privacy
 
 ConceptualAI charges in **credits**. Every build is quoted in credits before it runs, and that quote is what you pay.
 
-You can buy credits outright, or take a monthly plan that includes a credit allowance and raises the size of app you are allowed to build. There is a **Free plan** that needs no payment method: it can build small apps, and it can buy credits without subscribing. The plans, their allowances and their limits are on the pricing page.
+You can buy credits outright, or take a monthly plan that includes a credit allowance and raises the size of app you are allowed to build. You do not need a subscription to start — buy credits and build. Credits are sold outright at a flat price, and a build costs a minimum of 3 credits. The plans, their allowances and their limits are on the pricing page.
 
 ## 2. You see the price before anything runs
 
@@ -20,7 +20,7 @@ You are never charged for work you did not approve at a price you did not see. A
 
 ## 3. What a credit buys
 
-A credit buys a **delivered output**: a complete generated application — backend, frontend, test suite, OpenAPI specification, and documentation — that you can download or export to GitHub.
+Credits buy a **delivered output**: a complete generated application — backend, frontend, test suite, OpenAPI specification, and documentation — that you can download or export to GitHub.
 
 A build is priced from the size of the approved design, measured in the actions and queries of the concepts it contains. Bigger apps cost more because they take more work to generate, test, and assemble.
 
@@ -36,7 +36,7 @@ Credits are deducted when you approve the plan — that is the moment you accept
 
 This is the part worth reading closely.
 
-**We guarantee that an approved build delivers an output.** If it does not, we re-run it at no charge: re-approving the same design does not deduct credits again. That free re-run is the guarantee, and it is the sole remedy for non-delivery. Re-running is automatic — you will not be charged twice for the same approved design, whether the retry is ours or yours.
+**We guarantee that an approved build delivers an output.** If it does not, we re-run it at no charge: re-approving the same design does not deduct credits again. That free re-run is the guarantee, and it is the sole remedy for non-delivery. Re-running is free — you are not charged twice for the same approved design, whether the retry is ours or yours.
 
 If you change the design and approve it again, that is a different build at a new quote, and it is charged.
 
@@ -57,7 +57,7 @@ Purchases are final. We do not refund credits or subscription charges, including
 
 The single exception is section 5: a build that fails to deliver is re-run at no charge.
 
-If a payment is reversed — a refund we issue, or a chargeback your bank raises — we remove the corresponding credits from your balance, and we may place the account on hold until the matter is resolved.
+If a payment is actually reversed — a refund, or a dispute resolved against us — we remove the corresponding credits from your balance. While a dispute is open we may place the account on hold; if it is resolved in your favour the hold is lifted and your credits are untouched.
 
 ## 7. How long credits last
 
@@ -79,7 +79,9 @@ Each plan sets two limits, both shown on the pricing page:
 
 Iterating on an app your plan can already hold is not limited by size — only the planning turns are counted.
 
-## 9. Subscriptions
+## 9. Subscriptions renew automatically
+
+**A plan renews automatically.** Your card is charged the same amount on the same day each month until you cancel, and we email you before each renewal. The price and the renewal date are shown on the [pricing page](https://conceptual-ai.app/pricing) before you subscribe.
 
 - You can cancel a subscription at any time from your billing page or by emailing us.
 - Cancellation takes effect at the end of the current billing period. You keep access until then.
@@ -103,9 +105,11 @@ Because Stripe is the merchant of record, Stripe may issue a refund on a purchas
 
 To delete your account, email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address. We delete your account, your projects and their generated artifacts, your credit balance, and your plan.
 
+If we cannot reach Stripe at that moment we will complete the cancellation as soon as we can — tell us if you see a further charge and we will refund it.
+
 **Records of payments are retained.** We keep the record of what was paid, when, and for what, because we are required to and because it is what a refund or chargeback is reconciled against. Deleting your account does not delete that record and does not refund anything.
 
-Cancel any active subscription before requesting deletion, or tell us to cancel it — we cancel at Stripe as the first step of deletion so that a deleted account is never billed again.
+Cancel any active subscription before requesting deletion, or tell us to cancel it. We cancel at Stripe as the first step of deletion, so a deleted account stops being billed — but note this cancellation is **immediate**, not end-of-period, so you give up the remainder of a period you have already paid for. Cancel normally first if you want to use it.
 
 ## 13. Statutory rights
 
@@ -113,6 +117,6 @@ Nothing in this policy limits any refund or cancellation rights you have under t
 
 ## 14. Questions
 
-Email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address. We respond within 5 business days.
+Email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address. We respond within 2 business days.
 
 © 2026 ConceptualAI, Inc.

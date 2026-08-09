@@ -44,13 +44,13 @@ Once you deploy a generated app, its database, its users' data, and any outside 
 
 Builds run in isolated sandboxes. Your app's code is generated and tested there, and the sandbox is destroyed when the build finishes.
 
-Sandboxes and previews never receive live third-party credentials. Outside integrations run against built-in mocks during generation and preview, so a build cannot send email, charge a card, or post to a channel on your behalf. See [Integrations](./integrations.md).
+Sandboxes and previews do not receive your live third-party credentials. Outside integrations run against built-in mocks during generation and preview, so a build cannot send email, charge a card, or post to a channel on your behalf. See [Integrations](./integrations.md).
 
 ## 6. Retention and deletion
 
 Account data is kept while your account is active. Projects and generated applications are kept until you delete them or your account. Server logs are kept for a limited period for security and debugging. To delete your account and associated data, email [admin@conceptual-ai.app](mailto:admin@conceptual-ai.app) from your account's email address.
 
-**Payment records are an exception.** Records of what was paid, when and for what are retained after account deletion, because we are required to keep them and because they are what a refund or chargeback is reconciled against. They are kept separately from your account and are not used to re-identify you for any other purpose.
+**Payment records are an exception.** Records of what was paid, when and for what are retained after account deletion, because we are required to keep them and because they are what a refund or chargeback is reconciled against. They are retained only for accounting and payment-dispute purposes and are not used to contact you or to build a profile.
 
 ## 7. Security
 

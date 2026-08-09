@@ -41,7 +41,7 @@ const style = computed(() => TIER_STYLE[props.tier] ?? TIER_STYLE.free)
 
 .size-sm {
   padding: 0.1875rem 0.4375rem;
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
 }
 
 .size-md {
@@ -75,17 +75,17 @@ const style = computed(() => TIER_STYLE[props.tier] ?? TIER_STYLE.free)
 }
 
 .tier-studio {
-  --tier-fg: #a78bfa;
-  --tier-bg: rgba(167, 139, 250, 0.14);
-  --tier-border: rgba(167, 139, 250, 0.34);
-  --tier-glow: 0 0 6px rgba(167, 139, 250, 0.75);
+  --tier-fg: var(--tone-violet);
+  --tier-bg: var(--tone-violet-bg);
+  --tier-border: var(--tone-violet-border);
+  --tier-glow: 0 0 6px color-mix(in srgb, var(--tone-violet) 70%, transparent);
 }
 
 .tier-pro {
-  --tier-fg: #fbbf24;
-  --tier-bg: rgba(251, 191, 36, 0.14);
-  --tier-border: rgba(251, 191, 36, 0.36);
-  --tier-glow: 0 0 7px rgba(251, 191, 36, 0.8);
+  --tier-fg: var(--tone-gold);
+  --tier-bg: var(--tone-gold-bg);
+  --tier-border: var(--tone-gold-border);
+  --tier-glow: 0 0 7px color-mix(in srgb, var(--tone-gold) 65%, transparent);
 }
 
 /* Unlimited is the only prismatic one. It is the negotiated tier, so it should look
@@ -101,28 +101,20 @@ const style = computed(() => TIER_STYLE[props.tier] ?? TIER_STYLE.free)
   );
   --tier-border: rgba(248, 250, 252, 0.28);
   --tier-glow: 0 0 8px rgba(248, 250, 252, 0.55);
-  background-size: 200% 100%;
-  animation: tier-shift 7s linear infinite;
 }
 
 .tier-unlimited .tier-dot {
   background: linear-gradient(110deg, #2dd4bf, #a78bfa, #fbbf24);
 }
 
-@keyframes tier-shift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+[data-theme='light'] .tier-badge { --tier-glow: none; }
+[data-theme='light'] .tier-starter {
+  --tier-fg: #0d9488;
+  --tier-bg: rgba(13, 148, 136, 0.1);
+  --tier-border: rgba(13, 148, 136, 0.28);
 }
-
-/* Respect reduced-motion: the badge still reads, it just stops moving. */
-@media (prefers-reduced-motion: reduce) {
-  .tier-unlimited {
-    animation: none;
-  }
+[data-theme='light'] .tier-unlimited {
+  --tier-fg: #0f172a;
+  --tier-border: rgba(15, 23, 42, 0.22);
 }
-
-[data-theme='light'] .tier-starter { --tier-fg: #0d9488; }
-[data-theme='light'] .tier-studio { --tier-fg: #7c3aed; }
-[data-theme='light'] .tier-pro { --tier-fg: #b45309; }
-[data-theme='light'] .tier-unlimited { --tier-fg: #0f172a; }
 </style>

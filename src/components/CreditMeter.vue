@@ -17,7 +17,12 @@ const detail = computed(() => {
   if (b.subscriptionCredits > 0) parts.push(`${b.subscriptionCredits} from your plan`)
   if (b.purchasedCredits > 0) parts.push(`${b.purchasedCredits} purchased`)
   if (parts.length === 0) return 'No credits — buy some to start building'
-  return parts.join(' · ')
+  const split = parts.join(' · ')
+  // Say WHY it turned amber. The threshold is the minimum build charge, which the user
+  // has no way to know from a colour alone.
+  return b.credits < 3
+    ? `${split} — below the 3-credit minimum for a build`
+    : split
 })
 
 const tone = computed(() => {

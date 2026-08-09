@@ -16,6 +16,7 @@ The service generates complete web applications from descriptions you write. A r
 
 - The AI used to **generate** apps is provided by us. You do not supply an AI key to build an app.
 - The service is sold in credits, through monthly plans and outright credit purchases. See the [Billing & Refund Policy](./billing-and-credits.md).
+- **Subscriptions renew automatically** at the same price on the same day each month until cancelled. You may cancel at any time from your billing page or by emailing us; cancellation takes effect at the end of the current billing period.
 - Third-party providers may separately apply their own terms, pricing, usage limits, and acceptable-use rules to any keys or services you use in your own generated app.
 
 ## 3. What we guarantee
@@ -50,6 +51,8 @@ Purchases are final. We do not provide refunds, whether for credits, subscriptio
 - Output that does not match what you expected or intended
 - A change of mind, or a decision not to use a delivered application
 - Dissatisfaction with the quality, structure, or design of generated code
+- Unused credits, once purchased
+- A build you cancelled, deleted, or abandoned after approving it
 
 The only exception is section 3: if we fail to deliver an output for an approved build, we re-run it at no charge.
 
@@ -156,6 +159,10 @@ You agree to defend, indemnify, and hold harmless ConceptualAI, Inc. from claims
 ## 18. Governing law
 
 These terms are governed by the laws of the State of Delaware, United States, without regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts located in Delaware, and you consent to their jurisdiction.
+
+## 18a. Changes to prices
+
+We may change plan prices or the price of credits. Any change takes effect on your next renewal, and we will give you at least 30 days' notice by email before it does. You may cancel before the new price applies. Credits you have already bought are unaffected.
 
 ## 19. Changes to these terms
 

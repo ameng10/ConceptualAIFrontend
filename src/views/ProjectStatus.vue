@@ -9,16 +9,31 @@ import { startCreditCheckout, startPlanCheckout } from '@/services/billing-api'
 import type { Tier } from '@/services/billing-api'
 
 const billingRefusal = ref<BillingRefusal | null>(null)
+const checkoutBusy = ref(false)
+const checkoutFailed = ref<string | null>(null)
 
-async function handleBuyCredits(credits: number) {
-  const { url } = await startCreditCheckout(credits)
-  window.location.assign(url)
+/** Creating a Checkout Session is a server round-trip BEFORE the redirect. Without a
+ *  pending state the button stays live and a double-click mints two sessions; without
+ *  error handling a rejected call is an unhandled promise and the button silently does
+ *  nothing on a broken payment path. */
+async function startCheckout(run: () => Promise<{ url: string }>) {
+  if (checkoutBusy.value) return
+  checkoutBusy.value = true
+  checkoutFailed.value = null
+  try {
+    const { url } = await run()
+    window.location.assign(url)
+  } catch (e) {
+    checkoutFailed.value =
+      "We couldn't open checkout just now. Nothing was charged — please try again."
+    console.error('[billing] checkout failed', e)
+  } finally {
+    checkoutBusy.value = false
+  }
 }
 
-async function handleUpgrade(tier: Tier) {
-  const { url } = await startPlanCheckout(tier)
-  window.location.assign(url)
-}
+const handleBuyCredits = (credits: number) => startCheckout(() => startCreditCheckout(credits))
+const handleUpgrade = (tier: Tier) => startCheckout(() => startPlanCheckout(tier))
 
 import { isHttp524 } from '@/services/http-errors'
 import { navigateOnCompletion } from '@/services/project-stage-routing'
@@ -564,7 +579,9 @@ const handleModifyDesign = async () => {
   <BillingRefusalDialog
     v-if="billingRefusal"
     :refusal="billingRefusal"
-    @close="billingRefusal = null"
+    :busy="checkoutBusy"
+    :failed="checkoutFailed"
+    @close="billingRefusal = null; checkoutFailed = null"
     @buy="handleBuyCredits"
     @upgrade="handleUpgrade"
   />
