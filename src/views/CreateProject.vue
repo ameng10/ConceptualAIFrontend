@@ -18,10 +18,25 @@ async function runCheckout(run: () => Promise<{ url: string | null; changed?: bo
   checkoutFailed.value = null
   try {
     const { url, changed, error } = await run()
-    // An existing subscriber's plan change is applied in place — no url, and that is
-    // success, not failure. Refuse to call it a failure or every upgrade from this
-    // dialog reports "nothing was charged" after charging them.
-    if (changed) return
+    // An existing subscriber's plan change is applied IN PLACE — no url, and that is
+    // success. But returning silently was almost as bad as calling it a failure: the
+    // dialog stayed open, nothing on screen moved, the balance was never re-read, and the
+    // obvious second click answered 409 "Already on that plan" — rendering "Nothing was
+    // charged" immediately after a real prorated charge. Say what happened, refresh, and
+    // get out of the way.
+    if (changed) {
+      useToasts().push({
+        title: 'Plan updated',
+        message:
+          'Your app-size limit changed straight away. The price difference is prorated ' +
+          'onto your next invoice, and your new monthly credits arrive when it is paid.',
+        kind: 'success',
+        ttlMs: 9000,
+      })
+      await useBilling().refresh()
+      billingRefusal.value = null
+      return
+    }
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
@@ -37,6 +52,7 @@ const onUpgrade = (tier: Tier) => runCheckout(() => startPlanCheckout(tier))
 
 import { isHttp524 } from '@/services/http-errors'
 import { useToasts } from '@/services/toast'
+import { useBilling } from '@/composables/useBilling'
 import { getProjectPathForStatus } from '@/services/project-stage-routing'
 import { Sparkles, Zap, User as UserIcon } from 'lucide-vue-next'
 

@@ -242,7 +242,10 @@ onBeforeUnmount(() => {
                 <strong>{{ suggested.maxCreditsPerApp ?? 'any size' }}</strong>
                 <template v-if="suggested.maxCreditsPerApp"> credits</template>
               </li>
-              <li><strong>{{ suggested.includedCredits }}</strong> credits included each month</li>
+              <li>
+                <strong>{{ suggested.includedCredits }}</strong> credits included each month
+                <span class="qualifier">— from your next invoice</span>
+              </li>
               <li><strong>{{ suggested.plansPerWeek ?? 'Unlimited' }}</strong> planning turns per week</li>
             </ul>
             <PurchaseConsent
@@ -591,6 +594,11 @@ onBeforeUnmount(() => {
 </style>
 
 <style scoped>
+.qualifier {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
 /* Sits directly above the button it gates, so it is read before the spend, not after. */
 .consent-gate {
   margin-bottom: 0.875rem;
