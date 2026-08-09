@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { ArrowUpRight, CreditCard, ExternalLink, Loader2 } from 'lucide-vue-next'
 import TierBadge from '../components/TierBadge.vue'
 import { useBilling } from '../composables/useBilling'
-import { openBillingPortal } from '../services/billing-api'
+import { cancelSubscription, openBillingPortal } from '../services/billing-api'
 
 /** Balance, plan, and the one link that manages the subscription. Card management is
  *  deliberately Stripe's hosted portal: card details must never touch our origin, and
@@ -35,6 +35,27 @@ const expiry = computed(() => {
     day: 'numeric',
   })
 })
+
+const cancelBusy = ref(false)
+const cancelConfirm = ref(false)
+const cancelled = ref(false)
+
+async function doCancel() {
+  if (cancelBusy.value) return
+  cancelBusy.value = true
+  failed.value = null
+  try {
+    await cancelSubscription()
+    cancelled.value = true
+    cancelConfirm.value = false
+    await refresh()
+  } catch (e) {
+    failed.value = "We couldn't cancel just now. Please try again, or email admin@conceptual-ai.app."
+    console.error('[billing] cancel failed', e)
+  } finally {
+    cancelBusy.value = false
+  }
+}
 
 async function manage() {
   if (portalBusy.value) return
@@ -134,9 +155,31 @@ async function manage() {
               <ExternalLink :size="14" />
             </button>
             <p class="note">
-              Renews automatically each month until cancelled. Update your card, see
-              invoices or cancel in the portal.
+              Renews automatically each month until cancelled. Update your card or see
+              invoices in the portal.
             </p>
+
+            <p v-if="cancelled" class="cancel-done">
+              Cancelled. You keep access and your remaining plan credits until the end of
+              this billing period, and you won't be charged again.
+            </p>
+            <template v-else-if="!cancelConfirm">
+              <button class="link-danger" @click="cancelConfirm = true">Cancel plan</button>
+            </template>
+            <div v-else class="confirm">
+              <p class="note">
+                Cancel at the end of this billing period? You keep access and your
+                remaining plan credits until then. Credits you bought outright are not
+                affected.
+              </p>
+              <div class="confirm-actions">
+                <button class="btn btn-ghost" @click="cancelConfirm = false">Keep plan</button>
+                <button class="btn btn-danger" :disabled="cancelBusy" @click="doCancel">
+                  <Loader2 v-if="cancelBusy" :size="16" class="spin" />
+                  <span>Cancel plan</span>
+                </button>
+              </div>
+            </div>
           </template>
           <template v-else>
             <router-link class="btn btn-primary" to="/pricing">
@@ -196,6 +239,41 @@ async function manage() {
 .split strong { color: var(--text); font-variant-numeric: tabular-nums; }
 
 .note { margin: 0; font-size: 0.78125rem; line-height: 1.5; color: var(--text-dim); }
+
+.link-danger {
+  justify-self: start;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-danger:hover { color: var(--error); }
+
+.confirm { display: grid; gap: 0.75rem; }
+.confirm-actions { display: flex; gap: 0.5rem; }
+.confirm-actions .btn { flex: 1; }
+.btn-danger {
+  background: var(--error);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cancel-done {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
 
 .links { margin: 1.5rem 0 0; display: flex; gap: 0.625rem; justify-content: center; font-size: 0.8125rem; color: var(--text-dim); }
 .links a { color: var(--text-dim); }

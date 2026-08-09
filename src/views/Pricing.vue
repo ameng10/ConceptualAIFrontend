@@ -6,6 +6,7 @@ import { useBilling } from '../composables/useBilling'
 import {
   fetchPublicPricing,
   type PublicPricing,
+  cancelSubscription,
   startCreditCheckout,
   startPlanCheckout,
   type Tier,
@@ -22,7 +23,7 @@ import {
  * The ladder is fetched from the server rather than hardcoded, so this page cannot
  * drift from what the gates actually enforce.
  */
-const { billing, load, tier: currentTier } = useBilling()
+const { billing, load, refresh, tier: currentTier } = useBilling()
 /** The ladder comes from the PUBLIC endpoint so the page works logged out. The
  *  authenticated read is layered on top only to highlight the visitor's current plan. */
 const publicPricing = ref<PublicPricing | null>(null)
@@ -57,16 +58,28 @@ const creditTotal = computed(() =>
     : `$${(creditQty.value * creditPrice.value).toFixed(2).replace(/\.00$/, '')}`,
 )
 
+const cancelled = ref(false)
+
 async function choose(t: Tier) {
   if (busyTier.value) return
   busyTier.value = t
   failed.value = null
+  cancelled.value = false
   try {
+    if (t === 'free') {
+      // Choosing Free IS cancelling — there is nothing to buy and no redirect.
+      await cancelSubscription()
+      cancelled.value = true
+      await refresh()
+      return
+    }
     const { url } = await startPlanCheckout(t)
     window.location.assign(url)
   } catch (e) {
-    failed.value = "We couldn't open checkout just now. Nothing was charged — please try again."
-    console.error('[pricing] plan checkout failed', e)
+    failed.value = t === 'free'
+      ? "We couldn't cancel just now. Please try again, or email admin@conceptual-ai.app."
+      : "We couldn't open checkout just now. Nothing was charged — please try again."
+    console.error('[pricing] plan change failed', e)
   } finally {
     busyTier.value = null
   }
@@ -99,6 +112,10 @@ async function buyCredits() {
     </header>
 
     <p v-if="loadError" class="failed">{{ loadError }}</p>
+    <p v-if="cancelled" class="cancelled">
+      Your plan is cancelled. You keep access and your remaining plan credits until the
+      end of the current billing period, and you won't be charged again.
+    </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
 
     <!-- Credits first: you do not need a subscription to start, and saying so up front
@@ -177,6 +194,16 @@ async function buyCredits() {
           <Loader2 v-if="busyTier === t.tier" :size="17" class="spin" />
           <span>Choose {{ t.label }}</span>
         </button>
+        <!-- On a paid plan, the Free card is how you leave. -->
+        <button
+          v-else-if="t.tier === 'free' && billing?.subscriptionStatus"
+          class="btn btn-ghost"
+          :disabled="busyTier !== null"
+          @click="choose('free')"
+        >
+          <Loader2 v-if="busyTier === 'free'" :size="17" class="spin" />
+          <span>Cancel my plan</span>
+        </button>
         <a
           v-else-if="!t.selfServe"
           class="btn btn-ghost"
@@ -239,6 +266,17 @@ async function buyCredits() {
   margin: 0.75rem auto 0;
   color: var(--text-dim);
   line-height: 1.6;
+}
+
+.cancelled {
+  max-width: 34rem;
+  margin: 0 auto 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  text-align: center;
+  font-size: 0.875rem;
 }
 
 .failed {

@@ -85,3 +85,12 @@ export async function fetchPublicPricing(): Promise<PublicPricing> {
   const res = await api.get<{ pricing: PublicPricing }>('/api/pricing')
   return res.data.pricing
 }
+
+/** POST /billing/cancel — cancel at the end of the current period. */
+export async function cancelSubscription(): Promise<{ cancelAtPeriodEnd: boolean }> {
+  const res = await api.post<{ result: { cancelAtPeriodEnd: boolean } }>(
+    '/api/billing/cancel',
+    {},
+  )
+  return res.data.result
+}
