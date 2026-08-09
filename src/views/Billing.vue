@@ -130,7 +130,7 @@ async function manage() {
       {{ settling ? 'Payment received — confirming your balance…' : 'Payment received — thank you.' }}
     </p>
     <p v-else-if="settleFailed" class="warn-note">
-      Your payment went through, but the balance hasn't updated yet. This usually clears
+      We couldn't confirm this payment yet. If you completed checkout, your balance usually updates within a minute. This usually clears
       within a minute or two and nothing is lost.
       <button class="inline-btn" @click="settleReturn">Check again</button>
       — or email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.

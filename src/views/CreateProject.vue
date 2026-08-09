@@ -40,7 +40,11 @@ async function runCheckout(run: () => Promise<{ url: string | null; changed?: bo
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
-    checkoutFailed.value =
+    // Prefer the server's own message. "Please try again" is actively misleading for a
+    // condition retrying cannot fix — a past_due subscriber is told to update their card,
+    // not to click harder.
+    const fromServer = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    checkoutFailed.value = fromServer ||
       "We couldn't open checkout just now. Nothing was charged — please try again."
     console.error('[billing] checkout failed', e)
   } finally {

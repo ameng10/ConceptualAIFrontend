@@ -103,9 +103,10 @@ async function choose(t: Tier) {
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
-    failed.value = t === 'free'
+    const fromServer = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    failed.value = fromServer || (t === 'free'
       ? "We couldn't cancel just now. Please try again, or email admin@conceptual-ai.app."
-      : "We couldn't open checkout just now. Nothing was charged — please try again."
+      : "We couldn't open checkout just now. Nothing was charged — please try again.")
     console.error('[pricing] plan change failed', e)
   } finally {
     busyTier.value = null

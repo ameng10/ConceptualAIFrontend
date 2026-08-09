@@ -38,6 +38,11 @@ import PurchaseConsent from './PurchaseConsent.vue'
  *  way round. See PurchaseConsent.vue for why it cannot live on Stripe's checkbox. */
 const acknowledged = ref(false)
 
+/** Forfeiture only applies to someone who HAS a paid term. Telling a free user that their
+ *  current plan is ending, and that they keep credits they never had, is simply false —
+ *  and a ceiling refusal is the most common way a free user reaches this dialog. */
+const onPaidPlan = computed(() => (billing.value?.tier ?? 'free') !== 'free')
+
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'buy', credits: number): void
@@ -269,9 +274,12 @@ onBeforeUnmount(() => {
               <ArrowUpRight :size="17" />
             </a>
             <p class="renewal-note">
-              Renews monthly until you cancel. Cancel any time. Upgrading starts a new
-              term today and ends your current plan — the rest of the term you already
-              paid for is not refunded, and you keep its unused credits instead.
+              Renews monthly until you cancel. Cancel any time.
+              <template v-if="onPaidPlan">
+                Upgrading starts a new term today and ends your current plan — the rest of
+                the term you already paid for is not refunded, and you keep its unused
+                credits instead.
+              </template>
             </p>
           </div>
 
