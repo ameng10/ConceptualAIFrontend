@@ -230,7 +230,7 @@ async function buyCredits() {
 </template>
 
 <style scoped>
-.pricing { max-width: 68rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.pricing { max-width: 78rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 
 .page-head { text-align: center; margin-bottom: 2rem; }
 .page-head h1 { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
@@ -296,11 +296,18 @@ async function buyCredits() {
 
 .tiers {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  /* All five must sit on ONE row on desktop — Unlimited wrapping alone read as a
+     different kind of thing rather than the top of the same ladder. */
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
-.tier-card { display: grid; gap: 1rem; align-content: start; padding: 1.5rem; }
+.tier-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 1rem;
+  padding: 1.5rem;
+}
 .tier-card.current { border-color: var(--primary); }
 .tier-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .current-pill {
@@ -313,7 +320,7 @@ async function buyCredits() {
 .from { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 .per { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 
-.features { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
+.features { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; align-content: start; }
 .features li {
   display: flex;
   gap: 0.5rem;
@@ -324,7 +331,16 @@ async function buyCredits() {
 }
 .features svg { flex: none; margin-top: 0.125rem; color: var(--primary); }
 .features strong { color: var(--text); }
-.no-cta { margin: 0; font-size: 0.8125rem; color: var(--text-dim); text-align: center; }
+.no-cta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  text-align: center;
+}
 
 .renewal { padding: 1.5rem; }
 .renewal h2 { margin: 0 0 0.875rem; font-size: 1rem; font-weight: 800; }
