@@ -140,8 +140,9 @@ async function buyCredits() {
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
     <p v-if="planChanged" class="cancelled">
-      Your plan is now <strong>{{ tierLabel(planChanged) }}</strong>. The change took
-      effect immediately and the difference is prorated onto your next invoice.
+      Your plan is now <strong>{{ tierLabel(planChanged) }}</strong>. Your app-size limit
+      changed straight away. The difference in price is prorated onto your next invoice,
+      and your new monthly credits arrive when that invoice is paid.
     </p>
 
     <PurchaseConsent v-model="acknowledged" class="consent glass" />
