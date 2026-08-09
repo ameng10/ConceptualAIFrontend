@@ -237,6 +237,10 @@ onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilli
   gap: 0.75rem;
 }
 
+.sidebar-header .logo { min-width: 0; flex: 1 1 auto; }
+.sidebar-header .collapse-toggle { flex: 0 0 auto; }
+.logo-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .sidebar.collapsed .sidebar-header {
   padding: 0.75rem;
   flex-direction: column;
@@ -332,8 +336,9 @@ onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilli
 
 .logo-wrap {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
   min-width: 0;
 }
 
