@@ -122,7 +122,13 @@ async function buyCredits() {
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
-    failed.value = "We couldn't open checkout just now. Nothing was charged — please try again."
+    // The primary credit-purchase surface, and the one place still discarding the server's
+    // message. `BillingCheckoutRejected` sends text that is actionable and that retrying
+    // can never satisfy — "this account is on hold pending review of a refund or dispute",
+    // "choose a whole number of credits between 1 and 1000".
+    const fromServer = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    failed.value = fromServer ||
+      "We couldn't open checkout just now. Nothing was charged — please try again."
     console.error('[pricing] credit checkout failed', e)
   } finally {
     buyingCredits.value = false

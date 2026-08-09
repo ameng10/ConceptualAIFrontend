@@ -372,7 +372,10 @@ onBeforeUnmount(() => {
         </div>
       </template>
 
-      <button class="dismiss" @click="emit('close')">
+      <!-- Disabled mid-request: the redirect to Stripe is uncancellable once it starts, so
+           a clickable "Not now" would dismiss the dialog and then yank the browser away
+           seconds later. -->
+      <button class="dismiss" :disabled="busy" @click="emit('close')">
         {{ refusal.reason === 'account_frozen' ? 'Close' : 'Not now' }}
       </button>
     </div>

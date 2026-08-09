@@ -302,7 +302,20 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
     projectPoll.start()
     await tickProject()
   } catch (error) {
+    // The dialog never resets its own `submitting` flag and has no close affordance, so
+    // swallowing this left a spinner-locked modal recoverable only by reloading the page.
+    // A 524 on a long planning call makes that the ordinary outcome, not an edge case.
     console.error('Failed to submit clarifications:', error)
+    if (isHttp524(error)) {
+      // The work is running server-side; the gateway just gave up on the response.
+      showClarification.value = false
+      planDoc.value = { status: 'processing' }
+      planningStatus.value = 'planning'
+      projectPoll.start()
+      return
+    }
+    planningError.value = toErrorMessage(error)
+    showClarification.value = false
   }
 }
 
