@@ -16,12 +16,13 @@ const checkoutFailed = ref<string | null>(null)
  *  pending state the button stays live and a double-click mints two sessions; without
  *  error handling a rejected call is an unhandled promise and the button silently does
  *  nothing on a broken payment path. */
-async function startCheckout(run: () => Promise<{ url: string }>) {
+async function startCheckout(run: () => Promise<{ url: string | null; error?: string }>) {
   if (checkoutBusy.value) return
   checkoutBusy.value = true
   checkoutFailed.value = null
   try {
-    const { url } = await run()
+    const { url, error } = await run()
+    if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
     checkoutFailed.value =

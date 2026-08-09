@@ -32,12 +32,24 @@ async function settleReturn() {
   const sessionId = String(route.query.session_id ?? '')
   settling.value = true
   settleFailed.value = false
-  const before = billing.value?.credits ?? 0
   try {
-    if (sessionId) await verifyCheckoutSession(sessionId)
+    if (sessionId) {
+      // Key off whether the PAYMENT settled, not off a credit delta. `load()` has
+      // already run, so if the webhook won the race the balance was correct before the
+      // first poll and a delta never fires — showing "hasn't updated yet" beside the
+      // correct number. `paid` answers the question the user is actually asking.
+      const res = await verifyCheckoutSession(sessionId)
+      if (res.paid || res.active || res.applied) {
+        await refresh()
+        settling.value = false
+        return
+      }
+    }
   } catch (e) {
     console.error('[billing] verify failed', e)
   }
+  // Either no session id, or Stripe says it has not settled yet — poll a little.
+  const before = billing.value?.credits ?? 0
   for (const wait of [800, 1600, 3000, 5000]) {
     await new Promise((r) => setTimeout(r, wait))
     await refresh()

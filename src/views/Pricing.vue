@@ -73,7 +73,8 @@ async function choose(t: Tier) {
       await refresh()
       return
     }
-    const { url } = await startPlanCheckout(t)
+    const { url, error } = await startPlanCheckout(t)
+    if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
     failed.value = t === 'free'
@@ -90,7 +91,8 @@ async function buyCredits() {
   buyingCredits.value = true
   failed.value = null
   try {
-    const { url } = await startCreditCheckout(creditQty.value)
+    const { url, error } = await startCreditCheckout(creditQty.value)
+    if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
     failed.value = "We couldn't open checkout just now. Nothing was charged — please try again."

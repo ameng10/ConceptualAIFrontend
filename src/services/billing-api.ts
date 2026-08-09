@@ -59,14 +59,24 @@ export async function fetchBilling(): Promise<BillingState> {
  * tampered client cannot buy 100 credits for a dollar. Returns a Stripe-hosted URL to
  * redirect to; the consent checkbox is rendered by Stripe on that page.
  */
-export async function startCreditCheckout(credits: number): Promise<{ url: string }> {
-  const res = await api.post<{ url: string }>('/api/billing/checkout/credits', { credits })
+export async function startCreditCheckout(
+  credits: number,
+): Promise<{ url: string | null; error?: string }> {
+  const res = await api.post<{ url: string | null; error?: string }>(
+    '/api/billing/checkout/credits',
+    { credits },
+  )
   return res.data
 }
 
 /** POST /billing/checkout/plan — subscribe to or change plan. */
-export async function startPlanCheckout(tier: Tier): Promise<{ url: string }> {
-  const res = await api.post<{ url: string }>('/api/billing/checkout/plan', { tier })
+export async function startPlanCheckout(
+  tier: Tier,
+): Promise<{ url: string | null; error?: string }> {
+  const res = await api.post<{ url: string | null; error?: string }>(
+    '/api/billing/checkout/plan',
+    { tier },
+  )
   return res.data
 }
 
@@ -110,9 +120,9 @@ export async function cancelSubscription(): Promise<{ cancelAtPeriodEnd: boolean
  */
 export async function verifyCheckoutSession(
   sessionId: string,
-): Promise<{ applied: boolean }> {
-  const res = await api.post<{ result: { applied: boolean } }>('/api/billing/verify', {
-    sessionId,
-  })
+): Promise<{ applied: boolean; paid?: boolean; active?: boolean }> {
+  const res = await api.post<{
+    result: { applied: boolean; paid?: boolean; active?: boolean }
+  }>('/api/billing/verify', { sessionId })
   return res.data.result
 }

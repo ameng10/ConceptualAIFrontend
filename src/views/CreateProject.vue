@@ -12,12 +12,13 @@ const billingRefusal = ref<BillingRefusal | null>(null)
 const checkoutBusy = ref(false)
 const checkoutFailed = ref<string | null>(null)
 
-async function runCheckout(run: () => Promise<{ url: string }>) {
+async function runCheckout(run: () => Promise<{ url: string | null; error?: string }>) {
   if (checkoutBusy.value) return
   checkoutBusy.value = true
   checkoutFailed.value = null
   try {
-    const { url } = await run()
+    const { url, error } = await run()
+    if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
     checkoutFailed.value =
