@@ -39,7 +39,7 @@ export interface BillingState {
 
 /** GET /me/billing — the single source for every billing surface in the UI. */
 export async function fetchBilling(): Promise<BillingState> {
-  const res = await api.get<{ billing: BillingState }>('/me/billing')
+  const res = await api.get<{ billing: BillingState }>('/api/me/billing')
   return res.data.billing
 }
 
@@ -51,19 +51,19 @@ export async function fetchBilling(): Promise<BillingState> {
  * redirect to; the consent checkbox is rendered by Stripe on that page.
  */
 export async function startCreditCheckout(credits: number): Promise<{ url: string }> {
-  const res = await api.post<{ url: string }>('/billing/checkout/credits', { credits })
+  const res = await api.post<{ url: string }>('/api/billing/checkout/credits', { credits })
   return res.data
 }
 
 /** POST /billing/checkout/plan — subscribe to or change plan. */
 export async function startPlanCheckout(tier: Tier): Promise<{ url: string }> {
-  const res = await api.post<{ url: string }>('/billing/checkout/plan', { tier })
+  const res = await api.post<{ url: string }>('/api/billing/checkout/plan', { tier })
   return res.data
 }
 
 /** POST /billing/portal — Stripe-hosted billing management (card, cancel, invoices). */
 export async function openBillingPortal(): Promise<{ url: string }> {
-  const res = await api.post<{ url: string }>('/billing/portal', {})
+  const res = await api.post<{ url: string }>('/api/billing/portal', {})
   return res.data
 }
 
@@ -82,6 +82,6 @@ export interface PublicPricing {
  * was the original mistake.
  */
 export async function fetchPublicPricing(): Promise<PublicPricing> {
-  const res = await api.get<{ pricing: PublicPricing }>('/pricing')
+  const res = await api.get<{ pricing: PublicPricing }>('/api/pricing')
   return res.data.pricing
 }
