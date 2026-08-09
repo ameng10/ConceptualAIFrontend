@@ -34,6 +34,15 @@ export interface BillingState {
   plansResetsAt: string | null
   creditPriceUsd: number
   subscriptionStatus: string | null
+  /** Dunning: inside the post-failure ceiling grace. */
+  inGrace: boolean
+  tierSource: 'manual' | 'subscription' | 'grace' | 'none'
+  paidThroughAt: string | null
+  graceEndsAt: string | null
+  /** A cancellation is scheduled; access runs to currentPeriodEnd. */
+  cancelAtPeriodEnd: boolean
+  currentPeriodEnd: string | null
+  purchasedExpiresAt: string | null
   tiers: TierSpec[]
 }
 
@@ -92,5 +101,18 @@ export async function cancelSubscription(): Promise<{ cancelAtPeriodEnd: boolean
     '/api/billing/cancel',
     {},
   )
+  return res.data.result
+}
+
+/**
+ * POST /billing/verify — ask Stripe directly whether a returning buyer's session
+ * settled, instead of trusting the webhook to have arrived first. Idempotent.
+ */
+export async function verifyCheckoutSession(
+  sessionId: string,
+): Promise<{ applied: boolean }> {
+  const res = await api.post<{ result: { applied: boolean } }>('/api/billing/verify', {
+    sessionId,
+  })
   return res.data.result
 }

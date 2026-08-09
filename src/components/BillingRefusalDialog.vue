@@ -290,7 +290,10 @@ onBeforeUnmount(() => {
       </template>
 
       <!-- ── Account on hold ────────────────────────────────────────────── -->
-      <template v-else>
+      <!-- Matched by NAME. A bare v-else labelled every unrecognised reason "your
+           account is on hold", which would be a frightening and false thing to tell
+           someone whose account is fine. -->
+      <template v-else-if="refusal.reason === 'account_frozen'">
         <header class="head">
           <span class="icon-wrap red"><ShieldAlert :size="20" /></span>
           <div class="head-text">
@@ -310,6 +313,26 @@ onBeforeUnmount(() => {
 
         <div class="actions">
           <a class="btn btn-ghost" href="mailto:admin@conceptual-ai.app?subject=Account on hold">
+            Email admin@conceptual-ai.app
+          </a>
+        </div>
+      </template>
+
+      <!-- Genuine fallback: honest about not knowing, and still actionable. -->
+      <template v-else>
+        <header class="head">
+          <span class="icon-wrap amber"><ShieldAlert :size="20" /></span>
+          <div class="head-text">
+            <h3 :id="headingId" ref="headingEl" tabindex="-1">We couldn't start this build</h3>
+            <p class="reassure">Nothing has been charged. Your design is saved.</p>
+          </div>
+        </header>
+        <p class="body">
+          Something about your account blocked this build and we can't say more from
+          here. Email us and we'll tell you exactly what happened.
+        </p>
+        <div class="actions">
+          <a class="btn btn-ghost" href="mailto:admin@conceptual-ai.app?subject=Build blocked">
             Email admin@conceptual-ai.app
           </a>
         </div>

@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { ArrowUpRight, CreditCard, ExternalLink, Loader2 } from 'lucide-vue-next'
 import TierBadge from '../components/TierBadge.vue'
 import { useBilling } from '../composables/useBilling'
-import { cancelSubscription, openBillingPortal } from '../services/billing-api'
+import { cancelSubscription, openBillingPortal, verifyCheckoutSession } from '../services/billing-api'
 
 /** Balance, plan, and the one link that manages the subscription. Card management is
  *  deliberately Stripe's hosted portal: card details must never touch our origin, and
@@ -19,11 +19,40 @@ const failed = ref<string | null>(null)
  *  number next to "payment successful". */
 const justPaid = computed(() => route.query.checkout === 'success')
 
+const settling = ref(false)
+const settleFailed = ref(false)
+
+/**
+ * Returning from Checkout. A single delayed refresh assumed the webhook always wins the
+ * race; when it does not, the page said "payment received" beside a stale balance with
+ * no way forward. Now we ASK Stripe directly (idempotent), then poll a few times with
+ * backoff, and admit it if the balance still has not moved.
+ */
+async function settleReturn() {
+  const sessionId = String(route.query.session_id ?? '')
+  settling.value = true
+  settleFailed.value = false
+  const before = billing.value?.credits ?? 0
+  try {
+    if (sessionId) await verifyCheckoutSession(sessionId)
+  } catch (e) {
+    console.error('[billing] verify failed', e)
+  }
+  for (const wait of [800, 1600, 3000, 5000]) {
+    await new Promise((r) => setTimeout(r, wait))
+    await refresh()
+    if ((billing.value?.credits ?? 0) !== before) {
+      settling.value = false
+      return
+    }
+  }
+  settling.value = false
+  settleFailed.value = true
+}
+
 onMounted(async () => {
   await load()
-  if (justPaid.value) {
-    setTimeout(() => refresh(), 1500)
-  }
+  if (justPaid.value) await settleReturn()
 })
 
 const expiry = computed(() => {
@@ -80,8 +109,33 @@ async function manage() {
       <h1>Billing</h1>
     </header>
 
-    <p v-if="justPaid" class="paid">
-      Payment received — thank you. Your balance updates within a few seconds.
+    <p v-if="justPaid && !settleFailed" class="paid">
+      <Loader2 v-if="settling" :size="15" class="spin" />
+      {{ settling ? 'Payment received — confirming your balance…' : 'Payment received — thank you.' }}
+    </p>
+    <p v-else-if="settleFailed" class="warn-note">
+      Your payment went through, but the balance hasn't updated yet. This usually clears
+      within a minute or two and nothing is lost.
+      <button class="inline-btn" @click="settleReturn">Check again</button>
+      — or email <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+    </p>
+    <p v-if="route.query.checkout === 'cancelled'" class="note-banner">
+      Checkout cancelled — you haven't been charged.
+    </p>
+
+    <p v-if="billing?.inGrace" class="warn-note">
+      <strong>Your last payment failed.</strong> We're retrying your card. You keep your
+      plan's limits for a few days
+      <template v-if="billing.graceEndsAt">
+        (until {{ new Date(billing.graceEndsAt).toLocaleDateString() }})</template>,
+      then the account drops to Free until payment succeeds.
+      <button class="inline-btn" :disabled="portalBusy" @click="manage">Update card</button>
+    </p>
+    <p v-else-if="billing?.cancelAtPeriodEnd" class="note-banner">
+      Your plan is cancelled and ends
+      <template v-if="billing.currentPeriodEnd">
+        on {{ new Date(billing.currentPeriodEnd).toLocaleDateString() }}</template>.
+      You keep access and your remaining plan credits until then.
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
 
@@ -221,6 +275,36 @@ async function manage() {
   background: color-mix(in srgb, var(--error) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
   color: var(--error);
+}
+
+.warn-note, .note-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.warn-note {
+  background: var(--await-bg);
+  border: 1px solid color-mix(in srgb, var(--await) 40%, transparent);
+}
+.note-banner {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.inline-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .hold { padding: 1.25rem; margin-bottom: 1.25rem; border-color: color-mix(in srgb, var(--error) 40%, transparent); }

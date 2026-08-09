@@ -127,6 +127,13 @@ async function buyCredits() {
           No subscription needed. Credits last 12 months from your most recent payment
           and are spent when you approve a build.
         </p>
+        <!-- Said BEFORE the purchase. On Free the only buildable size is the minimum, so
+             buying 100 credits without knowing that is money that cannot be spent. -->
+        <p v-if="billing && billing.tier === 'free'" class="ceiling-warn">
+          On Free you can build apps up to
+          <strong>{{ billing.maxCreditsPerApp }} credits</strong>. Credits alone don't
+          raise that — a plan does.
+        </p>
       </div>
       <div class="credits-buy">
         <label class="qty">
@@ -309,6 +316,17 @@ async function buyCredits() {
   font-weight: 800;
 }
 .credits-copy p { margin: 0.5rem 0 0; color: var(--text-dim); font-size: 0.875rem; line-height: 1.55; }
+
+.ceiling-warn {
+  margin: 0.625rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--await-bg);
+  border: 1px solid color-mix(in srgb, var(--await) 35%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text);
+}
 
 .credits-buy { display: grid; gap: 0.5rem; justify-items: stretch; min-width: 15rem; }
 .qty { display: flex; align-items: center; gap: 0.625rem; }
