@@ -69,11 +69,20 @@ export async function startCreditCheckout(
   return res.data
 }
 
-/** POST /billing/checkout/plan — subscribe to or change plan. */
+/**
+ * POST /billing/checkout/plan — subscribe to, or change, a plan.
+ *
+ * TWO OUTCOMES, ONLY ONE OF WHICH IS A REDIRECT. A first subscription opens a Checkout
+ * Session and returns `url`. An EXISTING subscriber's change is applied in place on the
+ * subscription they already have — there is nothing to redirect to, so `url` is null and
+ * `changed` is true. Treating a missing url as failure reported every successful upgrade
+ * and downgrade as "we couldn't open checkout, nothing was charged", both halves of which
+ * were false, and the natural retry then answered 409 "Already on that plan".
+ */
 export async function startPlanCheckout(
   tier: Tier,
-): Promise<{ url: string | null; error?: string }> {
-  const res = await api.post<{ url: string | null; error?: string }>(
+): Promise<{ url: string | null; changed?: boolean; error?: string }> {
+  const res = await api.post<{ url: string | null; changed?: boolean; error?: string }>(
     '/api/billing/checkout/plan',
     { tier },
   )

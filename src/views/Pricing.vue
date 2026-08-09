@@ -37,6 +37,14 @@ const creditQty = ref(10)
 
 /** Gates every purchase button on this page — see PurchaseConsent.vue. */
 const acknowledged = ref(false)
+
+/** The published label for a tier, from the ladder the server sent. */
+function tierLabel(t: Tier): string {
+  return tiers.value.find((x) => x.tier === t)?.label ?? t
+}
+
+/** Set when a plan change was applied in place, so the page can say so. */
+const planChanged = ref<Tier | null>(null)
 /** An emptied number input yields null, which the server rejects. Snap it back rather
  *  than posting a request that can only be refused. */
 function normalizeQty() {
@@ -79,7 +87,13 @@ async function choose(t: Tier) {
       await refresh()
       return
     }
-    const { url, error } = await startPlanCheckout(t)
+    const { url, changed, error } = await startPlanCheckout(t)
+    if (changed) {
+      // Applied in place on the existing subscription — no Stripe page to visit.
+      planChanged.value = t
+      await refresh()
+      return
+    }
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
@@ -125,6 +139,10 @@ async function buyCredits() {
       end of the current billing period, and you won't be charged again.
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
+    <p v-if="planChanged" class="cancelled">
+      Your plan is now <strong>{{ tierLabel(planChanged) }}</strong>. The change took
+      effect immediately and the difference is prorated onto your next invoice.
+    </p>
 
     <PurchaseConsent v-model="acknowledged" class="consent glass" />
 

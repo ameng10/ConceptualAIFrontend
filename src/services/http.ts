@@ -115,11 +115,52 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
+/**
+ * Anything that spends money or quota invalidates the billing numbers.
+ *
+ * The balance chip and the weekly planning-turn count are loaded once into module-level
+ * shared state and were never re-read, so a user who bought a credit and then built with
+ * it watched their balance sit at 1 and their turns sit at 0 while both had in fact moved
+ * — the ledger was right and the screen was wrong, which is indistinguishable from
+ * "you were not charged" and much worse than being charged visibly.
+ *
+ * Hooked HERE rather than at each call site because the spend happens server-side on a
+ * handful of endpoints and any new one would silently miss a refresh added by hand. A
+ * mutation on a project is the only thing that moves either number.
+ *
+ * Fire-and-forget and deliberately unawaited: a failed refresh must never fail the
+ * mutation the user actually asked for. The dynamic import avoids an import cycle, since
+ * the billing composable is itself built on this client.
+ */
+function spendsBillingQuota(config?: { method?: string; url?: string }): boolean {
+  const method = (config?.method ?? '').toLowerCase()
+  if (!['post', 'put', 'patch'].includes(method)) return false
+  const url = config?.url ?? ''
+  return url.startsWith('/api/projects')
+}
+
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (spendsBillingQuota(response.config)) {
+      import('../composables/useBilling')
+        .then(({ useBilling }) => useBilling().refresh())
+        .catch(() => {/* the chip keeps its last value; never break the mutation */})
+    }
+    return response
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
     const originalUrl = originalRequest?.url || ''
+
+    // A FAILED mutation may still have spent. Long build kickoffs routinely return 524
+    // from the gateway after the server has already charged and started work, so
+    // refreshing only on success leaves exactly the case that matters — the one where
+    // money moved — showing a stale balance.
+    if (spendsBillingQuota(originalRequest)) {
+      import('../composables/useBilling')
+        .then(({ useBilling }) => useBilling().refresh())
+        .catch(() => {/* never mask the original error */})
+    }
 
     if (isGithubInstallationRequired(error, originalUrl)) {
       return Promise.reject(error)

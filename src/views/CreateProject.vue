@@ -12,12 +12,16 @@ const billingRefusal = ref<BillingRefusal | null>(null)
 const checkoutBusy = ref(false)
 const checkoutFailed = ref<string | null>(null)
 
-async function runCheckout(run: () => Promise<{ url: string | null; error?: string }>) {
+async function runCheckout(run: () => Promise<{ url: string | null; changed?: boolean; error?: string }>) {
   if (checkoutBusy.value) return
   checkoutBusy.value = true
   checkoutFailed.value = null
   try {
-    const { url, error } = await run()
+    const { url, changed, error } = await run()
+    // An existing subscriber's plan change is applied in place — no url, and that is
+    // success, not failure. Refuse to call it a failure or every upgrade from this
+    // dialog reports "nothing was charged" after charging them.
+    if (changed) return
     if (!url) throw new Error(error || 'checkout unavailable')
     window.location.assign(url)
   } catch (e) {
