@@ -20,6 +20,7 @@ import PublicProfile from '@/views/PublicProfile.vue'
 import Onboarding from '@/views/Onboarding.vue'
 import AdminLogin from '@/views/AdminLogin.vue'
 import AdminBuilds from '@/views/AdminBuilds.vue'
+import AdminAccounts from '@/views/AdminAccounts.vue'
 import { authState, validateSession } from '@/services/api'
 import { getAdminToken } from '@/services/admin-api'
 
@@ -182,6 +183,12 @@ const router = createRouter({
             path: '/admin/builds',
             name: 'admin-builds',
             component: AdminBuilds,
+            meta: { public: true, hideSidebar: true, requiresAdminToken: true }
+        },
+        {
+            path: '/admin/accounts',
+            name: 'admin-accounts',
+            component: AdminAccounts,
             meta: { public: true, hideSidebar: true, requiresAdminToken: true }
         }
     ]

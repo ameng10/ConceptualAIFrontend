@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, RefreshCw } from 'lucide-vue-next'
+import { ArrowLeft, RefreshCw, Users } from 'lucide-vue-next'
 import {
   adminApi,
   clearAdminToken,
@@ -96,6 +96,9 @@ onMounted(load)
         <input v-model="failuresOnly" type="checkbox" @change="load" />
         failures only
       </label>
+      <router-link class="btn-icon" title="Accounts (comp / delete)" to="/admin/accounts">
+        <Users :size="16" />
+      </router-link>
       <button class="btn-icon" title="Refresh" @click="load"><RefreshCw :size="16" /></button>
       <button class="btn-icon" title="Back to app" @click="backToApp"><ArrowLeft :size="16" /></button>
     </div>

@@ -2,6 +2,8 @@
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  CreditCard,
+  Tag,
   Sparkles,
   LayoutGrid,
   Settings,
@@ -37,6 +39,10 @@ const navItems = [
   { label: 'My Projects', icon: History, path: '/projects' },
   { label: 'Community', icon: MessageCircle, path: '/posts' },
   { label: 'Docs', icon: LayoutGrid, path: '/library' },
+  // Both were reachable only by typing the URL or by hitting a refusal dialog, which
+  // meant a user could not find their own balance or the prices at all.
+  { label: 'Billing', icon: CreditCard, path: '/billing' },
+  { label: 'Pricing', icon: Tag, path: '/pricing' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]
 

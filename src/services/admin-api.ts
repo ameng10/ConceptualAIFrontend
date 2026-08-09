@@ -78,6 +78,34 @@ export const adminApi = {
     }
   },
 
+  /**
+   * Comp an account: credits plus a tier override.
+   *
+   * The idempotency key is OPERATOR-SUPPLIED and minted when the form OPENS, never per
+   * click. A server-minted key makes every retry a fresh comp; a key derived from the
+   * target and the date silently no-ops a legitimate second comp on the same day — and
+   * because an idempotent grant is a no-op rather than an error, that reads as success
+   * while the customer gets nothing.
+   */
+  async comp(args: {
+    email: string
+    credits: number
+    tier: string
+    idempotencyKey: string
+  }): Promise<void> {
+    const res = await api.post('/api/admin/comp', args, { headers: adminHeaders() })
+    if (res.data?.error) throw new Error(res.data.error)
+  },
+
+  /** Delete an account by email. Cancels at Stripe first, then cascades. */
+  async deleteUser(email: string): Promise<void> {
+    const res = await api.delete('/api/admin/users', {
+      data: { email },
+      headers: adminHeaders(),
+    })
+    if (res.data?.error) throw new Error(res.data.error)
+  },
+
   async login(email: string, password: string): Promise<void> {
     const res = await api.post('/api/admin/login', { email, password })
     const token = res.data?.accessToken

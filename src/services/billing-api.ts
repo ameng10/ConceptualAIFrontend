@@ -66,3 +66,22 @@ export async function openBillingPortal(): Promise<{ url: string }> {
   const res = await api.post<{ url: string }>('/billing/portal', {})
   return res.data
 }
+
+export interface PublicPricing {
+  tiers: TierSpec[]
+  creditPriceUsd: number
+  minCreditsPerBuild: number
+}
+
+/**
+ * GET /pricing — the ladder, without a session.
+ *
+ * The pricing page must render for a logged-out visitor: the Billing policy points at
+ * it for price, allowance, size limit and weekly turns, and gating those behind a login
+ * makes the policy reference dangle. Reading them from `/me/billing` (authenticated)
+ * was the original mistake.
+ */
+export async function fetchPublicPricing(): Promise<PublicPricing> {
+  const res = await api.get<{ pricing: PublicPricing }>('/pricing')
+  return res.data.pricing
+}

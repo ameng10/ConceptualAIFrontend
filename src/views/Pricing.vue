@@ -3,7 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { ArrowUpRight, Check, Coins, Loader2 } from 'lucide-vue-next'
 import TierBadge from '../components/TierBadge.vue'
 import { useBilling } from '../composables/useBilling'
-import { startCreditCheckout, startPlanCheckout, type Tier } from '../services/billing-api'
+import {
+  fetchPublicPricing,
+  type PublicPricing,
+  startCreditCheckout,
+  startPlanCheckout,
+  type Tier,
+} from '../services/billing-api'
 
 /**
  * The pricing page.
@@ -17,15 +23,28 @@ import { startCreditCheckout, startPlanCheckout, type Tier } from '../services/b
  * drift from what the gates actually enforce.
  */
 const { billing, load, tier: currentTier } = useBilling()
+/** The ladder comes from the PUBLIC endpoint so the page works logged out. The
+ *  authenticated read is layered on top only to highlight the visitor's current plan. */
+const publicPricing = ref<PublicPricing | null>(null)
+const loadError = ref<string | null>(null)
 const busyTier = ref<Tier | null>(null)
 const buyingCredits = ref(false)
 const failed = ref<string | null>(null)
 const creditQty = ref(10)
 
-onMounted(() => load())
+onMounted(async () => {
+  try {
+    publicPricing.value = await fetchPublicPricing()
+  } catch (e) {
+    loadError.value = "We couldn't load prices just now. Please refresh."
+    console.error('[pricing] failed to load ladder', e)
+  }
+  // Best-effort: only decides which card is marked "Your plan".
+  load()
+})
 
-const tiers = computed(() => billing.value?.tiers ?? [])
-const creditPrice = computed(() => billing.value?.creditPriceUsd ?? null)
+const tiers = computed(() => publicPricing.value?.tiers ?? [])
+const creditPrice = computed(() => publicPricing.value?.creditPriceUsd ?? null)
 const creditTotal = computed(() =>
   creditPrice.value === null
     ? null
@@ -73,6 +92,7 @@ async function buyCredits() {
       </p>
     </header>
 
+    <p v-if="loadError" class="failed">{{ loadError }}</p>
     <p v-if="failed" class="failed">{{ failed }}</p>
 
     <!-- Credits first: you do not need a subscription to start, and saying so up front
