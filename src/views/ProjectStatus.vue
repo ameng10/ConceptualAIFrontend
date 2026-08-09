@@ -314,7 +314,7 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       projectPoll.start()
       return
     }
-    planningError.value = toErrorMessage(error)
+    planningError.value = toErrorMessage(error, 'Failed to submit clarifications.')
     showClarification.value = false
   }
 }
