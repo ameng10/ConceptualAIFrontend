@@ -4,6 +4,32 @@ import { useRoute, useRouter } from 'vue-router'
 import AppDescriptionInput from '@/components/AppDescriptionInput.vue'
 import ClarificationDialog from '@/components/ClarificationDialog.vue'
 import { projectApi, authState } from '@/services/api'
+import BillingRefusalDialog, { type BillingRefusal } from '@/components/BillingRefusalDialog.vue'
+import { extractBillingRefusal } from '@/services/http-errors'
+import { startCreditCheckout, startPlanCheckout, type Tier } from '@/services/billing-api'
+
+const billingRefusal = ref<BillingRefusal | null>(null)
+const checkoutBusy = ref(false)
+const checkoutFailed = ref<string | null>(null)
+
+async function runCheckout(run: () => Promise<{ url: string }>) {
+  if (checkoutBusy.value) return
+  checkoutBusy.value = true
+  checkoutFailed.value = null
+  try {
+    const { url } = await run()
+    window.location.assign(url)
+  } catch (e) {
+    checkoutFailed.value =
+      "We couldn't open checkout just now. Nothing was charged — please try again."
+    console.error('[billing] checkout failed', e)
+  } finally {
+    checkoutBusy.value = false
+  }
+}
+const onBuyCredits = (credits: number) => runCheckout(() => startCreditCheckout(credits))
+const onUpgrade = (tier: Tier) => runCheckout(() => startPlanCheckout(tier))
+
 import { isHttp524 } from '@/services/http-errors'
 import { useToasts } from '@/services/toast'
 import { getProjectPathForStatus } from '@/services/project-stage-routing'
@@ -183,6 +209,16 @@ const handleProjectSubmit = async (
       done(false)
       return
     }
+    // A billing refusal is a decision with a price and a fix, not an error string.
+    // POST /projects spends a planning turn and is the surface where the weekly-quota
+    // refusal actually fires — without this the user saw "Request failed (429)".
+    const refusal = extractBillingRefusal(error)
+    if (refusal) {
+      billingRefusal.value = refusal
+      done(false)
+      return
+    }
+
     console.error('Failed to create project:', error)
     const anyErr = error as any
     const status = anyErr?.response?.status as number | undefined
@@ -257,6 +293,16 @@ const handleClarificationSubmit = async (answers: Record<string, string>) => {
       @submit="handleClarificationSubmit"
     />
   </div>
+
+  <BillingRefusalDialog
+    v-if="billingRefusal"
+    :refusal="billingRefusal"
+    :busy="checkoutBusy"
+    :failed="checkoutFailed"
+    @close="billingRefusal = null; checkoutFailed = null"
+    @buy="onBuyCredits"
+    @upgrade="onUpgrade"
+  />
 </template>
 
 <style scoped>

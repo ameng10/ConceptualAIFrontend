@@ -31,6 +31,12 @@ const busyTier = ref<Tier | null>(null)
 const buyingCredits = ref(false)
 const failed = ref<string | null>(null)
 const creditQty = ref(10)
+/** An emptied number input yields null, which the server rejects. Snap it back rather
+ *  than posting a request that can only be refused. */
+function normalizeQty() {
+  const n = Number(creditQty.value)
+  creditQty.value = Number.isInteger(n) && n >= 1 && n <= 1000 ? n : 1
+}
 
 onMounted(async () => {
   try {
@@ -108,7 +114,7 @@ async function buyCredits() {
       <div class="credits-buy">
         <label class="qty">
           <span class="qty-label">Credits</span>
-          <input v-model.number="creditQty" type="number" min="1" max="1000" />
+          <input v-model.number="creditQty" type="number" min="1" max="1000" @blur="normalizeQty" />
         </label>
         <button class="btn btn-primary" :disabled="buyingCredits" @click="buyCredits">
           <Loader2 v-if="buyingCredits" :size="17" class="spin" />
@@ -124,11 +130,11 @@ async function buyCredits() {
         v-for="t in tiers"
         :key="t.tier"
         class="tier-card glass"
-        :class="{ current: t.tier === currentTier }"
+        :class="{ current: billing !== null && t.tier === currentTier }"
       >
         <div class="tier-top">
           <TierBadge :tier="t.tier" size="md" />
-          <span v-if="t.tier === currentTier" class="current-pill">Your plan</span>
+          <span v-if="billing !== null && t.tier === currentTier" class="current-pill">Your plan</span>
         </div>
 
         <p class="price">
