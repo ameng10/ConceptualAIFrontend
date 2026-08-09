@@ -243,8 +243,8 @@ onBeforeUnmount(() => {
                 <template v-if="suggested.maxCreditsPerApp"> credits</template>
               </li>
               <li>
-                <strong>{{ suggested.includedCredits }}</strong> credits included each month
-                <span class="qualifier">— from your next invoice</span>
+                <strong>{{ suggested.includedCredits }}</strong> credits included each month,
+                <span class="qualifier">plus any you have left over</span>
               </li>
               <li><strong>{{ suggested.plansPerWeek ?? 'Unlimited' }}</strong> planning turns per week</li>
             </ul>
@@ -268,7 +268,11 @@ onBeforeUnmount(() => {
               <span>Contact us about {{ suggested.label }}</span>
               <ArrowUpRight :size="17" />
             </a>
-            <p class="renewal-note">Renews monthly until you cancel. Cancel any time.</p>
+            <p class="renewal-note">
+              Renews monthly until you cancel. Cancel any time. Upgrading starts a new
+              term today and ends your current plan — the rest of the term you already
+              paid for is not refunded, and you keep its unused credits instead.
+            </p>
           </div>
 
           <!-- Ladder unavailable: still give a way forward rather than a dead end. -->
