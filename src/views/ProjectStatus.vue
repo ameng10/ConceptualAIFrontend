@@ -3,6 +3,23 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectApi, type Project } from '@/services/api'
 import { usePolling } from '@/composables/usePolling'
+import BillingRefusalDialog, { type BillingRefusal } from '@/components/BillingRefusalDialog.vue'
+import { extractBillingRefusal } from '@/services/http-errors'
+import { startCreditCheckout, startPlanCheckout } from '@/services/billing-api'
+import type { Tier } from '@/services/billing-api'
+
+const billingRefusal = ref<BillingRefusal | null>(null)
+
+async function handleBuyCredits(credits: number) {
+  const { url } = await startCreditCheckout(credits)
+  window.location.assign(url)
+}
+
+async function handleUpgrade(tier: Tier) {
+  const { url } = await startPlanCheckout(tier)
+  window.location.assign(url)
+}
+
 import { isHttp524 } from '@/services/http-errors'
 import { navigateOnCompletion } from '@/services/project-stage-routing'
 import ProjectStatusDisplay from '@/components/ProjectStatusDisplay.vue'
@@ -318,6 +335,15 @@ const handleAcceptPlan = () => {
       // so the user can reconnect and immediately try again.
       accepted.value = previousAccepted
       planningStatus.value = previousPlanningStatus
+
+      // A billing refusal is NOT an error to dump as red text — it is a decision with
+      // a price and a fix. Nothing was charged and the design is intact, so the
+      // interstitial says exactly that and offers the one action that unblocks them.
+      const refusal = extractBillingRefusal(err)
+      if (refusal) {
+        billingRefusal.value = refusal
+        return
+      }
       designError.value = err instanceof Error ? err.message : String(err)
     })
 }
@@ -534,6 +560,14 @@ const handleModifyDesign = async () => {
       @submit="handleClarificationSubmit"
     />
   </div>
+
+  <BillingRefusalDialog
+    v-if="billingRefusal"
+    :refusal="billingRefusal"
+    @close="billingRefusal = null"
+    @buy="handleBuyCredits"
+    @upgrade="handleUpgrade"
+  />
 </template>
 
 <style scoped>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Sparkles,
@@ -18,6 +18,11 @@ import {
 } from 'lucide-vue-next'
 import { authApi, authState } from '@/services/api'
 import { adminApi } from '@/services/admin-api'
+import TierBadge from './TierBadge.vue'
+import CreditMeter from './CreditMeter.vue'
+import { useBilling } from '../composables/useBilling'
+
+const { billing, load: loadBilling, refresh: refreshBilling } = useBilling()
 
 const props = defineProps<{
   collapsed?: boolean
@@ -100,7 +105,13 @@ onMounted(() => {
 
   refreshAuth()
   window.addEventListener('storage', refreshAuth)
+  loadBilling()
+  // A build, a purchase or an upgrade all move the balance. Each dispatches this, so
+  // the chip is never stale right after the thing that changed it.
+  window.addEventListener('billing:changed', refreshBilling)
 })
+
+onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilling))
 </script>
 
 <template>
@@ -109,7 +120,10 @@ onMounted(() => {
       <!-- Plain anchor: the landing page is static HTML outside the SPA router. -->
       <a href="/" class="logo logo-link" aria-label="Go to landing page" title="Go to landing page">
         <Sparkles class="logo-icon" />
-        <span v-if="!collapsed" class="logo-text">ConceptualAI</span>
+        <span v-if="!collapsed" class="logo-wrap">
+          <span class="logo-text">ConceptualAI</span>
+          <TierBadge v-if="billing" :tier="billing.tier" />
+        </span>
       </a>
 
       <button
@@ -123,6 +137,10 @@ onMounted(() => {
         <PanelLeftOpen v-if="collapsed" :size="18" />
         <PanelLeftClose v-else :size="18" />
       </button>
+    </div>
+
+    <div v-if="billing" class="billing-strip" :class="{ collapsed }">
+      <CreditMeter :collapsed="collapsed" />
     </div>
 
     <nav class="sidebar-nav">
@@ -304,6 +322,23 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.billing-strip {
+  padding: 0.75rem 1rem 0;
+  display: flex;
+}
+
+.billing-strip.collapsed {
+  padding: 0.75rem 0 0;
+  justify-content: center;
 }
 
 .logo-link {
