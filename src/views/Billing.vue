@@ -4,7 +4,12 @@ import { useRoute } from 'vue-router'
 import { ArrowUpRight, CreditCard, ExternalLink, Loader2 } from 'lucide-vue-next'
 import TierBadge from '../components/TierBadge.vue'
 import { useBilling } from '../composables/useBilling'
-import { cancelSubscription, openBillingPortal, verifyCheckoutSession } from '../services/billing-api'
+import {
+  cancelSubscription,
+  openBillingPortal,
+  type Tier,
+  verifyCheckoutSession,
+} from '../services/billing-api'
 
 /** Balance, plan, and the one link that manages the subscription. Card management is
  *  deliberately Stripe's hosted portal: card details must never touch our origin, and
@@ -76,6 +81,11 @@ const expiry = computed(() => {
     day: 'numeric',
   })
 })
+
+/** The published label for a tier, from the ladder the server sends. */
+function tierLabel(t: Tier): string {
+  return billing.value?.tiers.find((x) => x.tier === t)?.label ?? t
+}
 
 const cancelBusy = ref(false)
 const cancelConfirm = ref(false)
@@ -152,6 +162,14 @@ async function manage() {
       <template v-if="billing.currentPeriodEnd">
         on {{ new Date(billing.currentPeriodEnd).toLocaleDateString() }}</template>.
       You keep access and your remaining plan credits until then.
+    </p>
+    <p v-else-if="billing?.downgradesToTier" class="note-banner">
+      You're scheduled to move to <strong>{{ tierLabel(billing.downgradesToTier) }}</strong>
+      <template v-if="billing.downgradesAt">
+        on {{ new Date(billing.downgradesAt).toLocaleDateString() }}</template>.
+      Until then you keep your current plan and its credits — nothing more will be charged
+      before that date. To stay on your current plan, contact us at
+      <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
 

@@ -42,6 +42,9 @@ export interface BillingState {
   /** A cancellation is scheduled; access runs to currentPeriodEnd. */
   cancelAtPeriodEnd: boolean
   currentPeriodEnd: string | null
+  /** A scheduled downgrade: the tier you move to, and when. Null when none is pending. */
+  downgradesToTier: Tier | null
+  downgradesAt: string | null
   purchasedExpiresAt: string | null
   tiers: TierSpec[]
 }
