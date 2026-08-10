@@ -83,8 +83,9 @@
               front of five people, and if it gets thrown away that is a success, not a loss.</li>
             <li><strong>The app is mostly interface.</strong> A landing page, a marketing site, a dashboard over data
               that already lives somewhere, an internal tool with a handful of records.</li>
-            <li><strong>You do not need to own the backend.</strong> A managed database that lives in the vendor's
-              account is completely fine when the app is not going to outlive the experiment.</li>
+            <li><strong>You do not need to own the backend.</strong> Where the database lives varies by platform and
+              is worth checking — but renting it is completely fine when the app is not going to outlive the
+              experiment.</li>
             <li><strong>You want to iterate by talking.</strong> The conversational build loop is the product, and it
               is genuinely pleasant.</li>
           </ul>
@@ -122,10 +123,11 @@
           <ul class="checklist">
             <li><strong>The app needs to do real business.</strong> Payments that settle, email that sends and
               receives, authentication, background jobs, AI that is part of the product — not a mock.</li>
-            <li><strong>It needs a database you control</strong>, with a choice of engine (MongoDB, Postgres, or
-              Turso) rather than whatever the platform attached.</li>
-            <li><strong>You want the source code</strong> — both repositories, with the generated tests, the OpenAPI
-              spec, and a Dockerfile inside — and you want it to run without us.</li>
+            <li><strong>It needs a database you control.</strong> Your exported backend runs on MongoDB, Postgres or
+              Turso — one environment variable, no code changes, because the data layer is written against all
+              three.</li>
+            <li><strong>You want the source code</strong> — both repositories, the backend carrying the generated
+              tests, the OpenAPI spec and a Dockerfile — and you want it to run without us.</li>
             <li><strong>You can describe what you want.</strong> This is the real requirement. We are a bad fit if the
               specification does not exist yet and discovering it is the project.</li>
           </ul>
@@ -197,11 +199,14 @@
               abandoned generation costs you anything.</li>
           </ul>
           <p>
-            For what it is worth, our answers: your database, your account, your choice of engine. Both repositories
-            export, backend included. The backend is not finished until its generated test suite passes against a real
-            database, and that suite ships inside the repository so you can run it forever. The app has no dependency
-            on us once exported — no proprietary runtime, no SDK in between. And a build only consumes credits when it
-            succeeds.
+            For what it is worth, our answers: your database, your account, and a choice of engine you set with one
+            environment variable. Both repositories export, backend included. The backend's concepts — data, auth, the
+            state everything else depends on — are not accepted until their generated tests pass against a real
+            database; endpoints get their own generated suite run against that database too, and both suites ship
+            inside the repository so you can re-run them forever. Where an endpoint does not converge, it is reported
+            rather than quietly dropped. The app has no dependency on us once exported — no proprietary runtime, no
+            SDK in between. Credits are charged once when you approve a plan, and approving the same plan again does
+            not charge twice.
           </p>
 
           <h2>If you are still not sure</h2>

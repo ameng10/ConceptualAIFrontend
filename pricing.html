@@ -152,32 +152,35 @@
           </p>
           <ul>
             <li><strong>Credits included with a plan</strong> reset each billing period. They do not roll over — the
-              allowance for a period expires with that period.</li>
-            <li><strong>Credits you buy outright</strong> at $3.00 each keep their own <strong>12-month</strong>
-              window and are unaffected by starting, changing, or cancelling a plan.</li>
+              allowance for a period expires with that period. Builds spend the plan allowance first.</li>
+            <li><strong>Credits you buy outright</strong> at $3.00 each last <strong>12 months from your most
+              recent payment</strong>. Any payment — another credit purchase or a subscription renewal — pushes that
+              window out again, so an active customer does not lose them. They are separate from a plan allowance and
+              survive changing or cancelling a plan.</li>
           </ul>
 
           <h2>Does a plan renew automatically?</h2>
           <p>
             Yes. A plan renews automatically: your card is charged the same amount on the same day each month until you
-            cancel, and we email you before each renewal. You can cancel at any time from your billing page or by
+            cancel. You can cancel at any time from your billing page or by
             emailing us. Cancellation takes effect at the end of the current billing period and you keep access until
             then; we do not charge again after that. Partial-period refunds are not provided. The full terms are in the
             <a href="/refunds">Billing &amp; Refund Policy</a>.
           </p>
 
-          <h2>What happens if a build fails?</h2>
+          <h2>When am I charged?</h2>
           <p>
-            A build only consumes credits when it succeeds. "Succeeds" is not a judgement call here — the backend is
-            not finished until its generated test suite passes against a real database, so a build that never reaches
-            that point is not something you pay for.
+            Credits are charged once, when you approve the plan and its quote — before the build starts. Approving
+            the same plan again does not charge a second time. Credits are not returned, and a build you cancel or
+            abandon after approving it is charged; the <a href="/refunds">Billing &amp; Refund Policy</a> is the full
+            and binding version of this.
           </p>
 
           <h2>Do I own what gets built?</h2>
           <p>
-            Yes, on every plan including Free. Each build produces two repositories — a Deno backend and a React
-            frontend — with the generated tests, the OpenAPI spec, and a Dockerfile inside. You can export both to
-            GitHub and run them anywhere a container runs. There is no proprietary runtime to keep paying for and no
+            Yes, on every plan. Each build produces two repositories: a Deno backend carrying the generated test
+            suite, the OpenAPI spec and a Dockerfile, and a React frontend built against that same spec. You can
+            export both to GitHub, and the backend runs anywhere a container runs. There is no proprietary runtime to keep paying for and no
             SDK sitting between you and your own backend.
           </p>
 

@@ -87,8 +87,8 @@
 
           <h2>What was asked for</h2>
           <p>
-            This is the entire specification. One prompt, pasted below exactly as it was written — no follow-up
-            corrections, no hand-editing afterwards, nothing removed for the sake of this page.
+            This is the specification the app was generated from — one prompt, published in full and unedited, rather
+            than a summary of it.
           </p>
           <pre class="cs-prompt">Build an online store app for a single business.
 
@@ -122,9 +122,9 @@ The owner has an orders page listing orders newest-first with their items, quant
 
           <h2>The code</h2>
           <p>
-            Both repositories are public — a Deno backend and a React frontend, with the generated test suite, the
-            OpenAPI spec, and a Dockerfile inside. This is the same export any build hands you; nothing was tidied up
-            for publication.
+            The repositories are public: a Deno backend carrying the generated test suite, the OpenAPI spec and a
+            Dockerfile, and a React frontend built against that same spec. This is the export a build hands you —
+            clone it and read it.
           </p>
           <div class="cs-links">
             <a href="https://github.com/rdavislee/Shopfront-backend" target="_blank" rel="noopener noreferrer">Shopfront-backend</a>
@@ -139,19 +139,20 @@ The owner has an orders page listing orders newest-first with their items, quant
                 database — not mocked, and not a frontend pretending.</p>
             </div>
             <div class="cs-card">
-              <h3>Nobody fixed it by hand</h3>
-              <p>The backend is not finished until its generated test suite passes against a real database. What you
-                are using is what came out.</p>
+              <h3>Its tests are in the repository</h3>
+              <p>The concepts underneath — data, auth, the state everything else depends on — are accepted only once
+                their generated tests pass against a real database. Those tests shipped with the code, so you can run
+                them yourself.</p>
             </div>
             <div class="cs-card">
               <h3>It runs without us</h3>
-              <p>No proprietary runtime and no SDK in between. Clone the repositories and it runs anywhere a
-                container runs.</p>
+              <p>No proprietary runtime and no SDK in between. Clone the backend and it runs anywhere a container
+                runs.</p>
             </div>
             <div class="cs-card">
               <h3>You would own this one</h3>
-              <p>An equivalent build hands you both repositories on any plan, including Free.
-                <a href="/pricing">See pricing</a>.</p>
+              <p>An equivalent build hands you both repositories on any plan — Free included, once you have the three
+                credits a minimum build costs. <a href="/pricing">See pricing</a>.</p>
             </div>
           </div>
 

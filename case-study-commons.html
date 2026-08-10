@@ -88,8 +88,8 @@
 
           <h2>What was asked for</h2>
           <p>
-            This is the entire specification. One prompt, pasted below exactly as it was written — no follow-up
-            corrections, no hand-editing afterwards, nothing removed for the sake of this page.
+            This is the specification the app was generated from — one prompt, published in full and unedited, rather
+            than a summary of it.
           </p>
           <pre class="cs-prompt">Build an image-sharing community app with a paid supporter tier.
 
@@ -118,18 +118,20 @@ A user gets a notification when someone likes their post, comments on their post
             <li>Subscribe with the Stripe test card — a locked supporters-only post unlocks</li>
             <li>On v2, try posting abusive text — it’s blocked with a written reason</li>
             <li>Open the admin moderation queue: every flagged item with the AI’s rationale</li>
-            <li>Compare v1 and v2 — the billing machinery is byte-for-byte identical</li>
+            <li>Compare v1 and v2 yourself — the Subscribing concept and the Stripe utility are byte-for-byte identical between the two repositories</li>
           </ul>
 
           <h2>The code</h2>
           <p>
-            Both repositories are public — a Deno backend and a React frontend, with the generated test suite, the
-            OpenAPI spec, and a Dockerfile inside. This is the same export any build hands you; nothing was tidied up
-            for publication.
+            The repositories are public: a Deno backend carrying the generated test suite, the OpenAPI spec and a
+            Dockerfile, and a React frontend built against that same spec. This is the export a build hands you —
+            clone it and read it.
           </p>
           <div class="cs-links">
             <a href="https://github.com/rdavislee/CommonsV1_backend" target="_blank" rel="noopener noreferrer">CommonsV1_backend</a>
             <a href="https://github.com/rdavislee/commonsV2-backend" target="_blank" rel="noopener noreferrer">commonsV2-backend</a>
+            <a href="https://github.com/rdavislee/CommonsV1_frontend" target="_blank" rel="noopener noreferrer">CommonsV1_frontend</a>
+            <a href="https://github.com/rdavislee/commonsv2-frontend" target="_blank" rel="noopener noreferrer">commonsv2-frontend</a>
           </div>
 
           <h2>Why this one is here</h2>
@@ -140,19 +142,20 @@ A user gets a notification when someone likes their post, comments on their post
                 database — not mocked, and not a frontend pretending.</p>
             </div>
             <div class="cs-card">
-              <h3>Nobody fixed it by hand</h3>
-              <p>The backend is not finished until its generated test suite passes against a real database. What you
-                are using is what came out.</p>
+              <h3>Its tests are in the repository</h3>
+              <p>The concepts underneath — data, auth, the state everything else depends on — are accepted only once
+                their generated tests pass against a real database. Those tests shipped with the code, so you can run
+                them yourself.</p>
             </div>
             <div class="cs-card">
               <h3>It runs without us</h3>
-              <p>No proprietary runtime and no SDK in between. Clone the repositories and it runs anywhere a
-                container runs.</p>
+              <p>No proprietary runtime and no SDK in between. Clone the backend and it runs anywhere a container
+                runs.</p>
             </div>
             <div class="cs-card">
               <h3>You would own this one</h3>
-              <p>An equivalent build hands you both repositories on any plan, including Free.
-                <a href="/pricing">See pricing</a>.</p>
+              <p>An equivalent build hands you both repositories on any plan — Free included, once you have the three
+                credits a minimum build costs. <a href="/pricing">See pricing</a>.</p>
             </div>
           </div>
 
