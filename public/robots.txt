@@ -1,0 +1,19 @@
+# conceptual-ai.app
+#
+# Everything public is crawlable. The app itself is behind a login and returns the same
+# SPA shell for every path, so there is nothing there for a crawler to index — and a
+# crawler spending its budget on /build or /projects is budget not spent on the pages that
+# can actually rank.
+
+User-agent: *
+Allow: /
+Disallow: /build
+Disallow: /projects
+Disallow: /project/
+Disallow: /settings
+Disallow: /login
+Disallow: /register
+Disallow: /auth/
+Disallow: /admin
+
+Sitemap: https://conceptual-ai.app/sitemap.xml

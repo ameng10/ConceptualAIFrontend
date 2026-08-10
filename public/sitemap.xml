@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The public, indexable surface. Deliberately excludes the application itself: every
+  extension-less path there returns the same SPA shell, so listing them would submit a set
+  of identical documents.
+
+  /pricing is missing on purpose: it is a client-side route served from app.html, which
+  sends `robots: noindex`. Submitting it here would ask Google to index a page that refuses
+  to be indexed. Making the pricing page findable means giving it its own static HTML.
+
+  This is short because the site is short — which is the finding, not the fix. Ranking for
+  anything competitive needs pages that answer specific questions, and those do not exist
+  yet.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://conceptual-ai.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://conceptual-ai.app/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://conceptual-ai.app/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://conceptual-ai.app/refunds</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>

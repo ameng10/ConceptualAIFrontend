@@ -18,6 +18,61 @@
       content="ConceptualAI turns a plain-language description into a working web app with a tested Deno backend, a React frontend, and API docs. You own the code."
     />
     <meta property="og:url" content="https://conceptual-ai.app/" />
+    <meta property="og:image" content="https://conceptual-ai.app/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ConceptualAI — Describe your app. Get the codebase." />
+    <meta
+      name="twitter:description"
+      content="ConceptualAI turns a plain-language description into a working web app with a tested Deno backend, a React frontend, and API docs. You own the code."
+    />
+    <meta name="twitter:image" content="https://conceptual-ai.app/og-card.png" />
+    <!--
+      Structured data. This states who we are and what the product is in the form a search
+      engine can read without inferring it from prose — the entity signal that lets a name
+      resolve to a company rather than a string. Deliberately no FAQPage: Google stopped
+      showing FAQ rich results in May 2026, so marking questions up buys nothing.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://conceptual-ai.app/#organization",
+            "name": "ConceptualAI",
+            "legalName": "ConceptualAI, Inc.",
+            "url": "https://conceptual-ai.app/",
+            "logo": "https://conceptual-ai.app/favicon.svg",
+            "email": "admin@conceptual-ai.app",
+            "description": "ConceptualAI builds working web applications from a plain-language description, delivering a tested backend, a frontend, and API documentation as source code the customer owns."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://conceptual-ai.app/#website",
+            "url": "https://conceptual-ai.app/",
+            "name": "ConceptualAI",
+            "publisher": { "@id": "https://conceptual-ai.app/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "ConceptualAI",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Web",
+            "url": "https://conceptual-ai.app/",
+            "publisher": { "@id": "https://conceptual-ai.app/#organization" },
+            "description": "Describe an application in plain language and receive a working codebase: a Deno backend with generated tests, a React frontend, and API documentation.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "Free to start; paid plans and credit packs available."
+            }
+          }
+        ]
+      }
+    </script>
     <script>
       // Apply the persisted theme before first paint (shared with the builder app).
       try {
