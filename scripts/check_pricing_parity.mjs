@@ -90,8 +90,9 @@ expected.forEach((want, i) => {
 if (!html.includes(`$${creditPrice.toFixed(2)} each`)) {
   problems.push(`page does not state the credit price as "$${creditPrice.toFixed(2)} each"`)
 }
-if (!html.includes(`minimum of ${minCredits} credits`)) {
-  problems.push(`page does not state the build minimum as "minimum of ${minCredits} credits"`)
+const minPhrase = `minimum of ${minCredits} credit${minCredits === 1 ? '' : 's'}`
+if (!html.includes(minPhrase)) {
+  problems.push(`page does not state the build minimum as "${minPhrase}"`)
 }
 
 // Guard the one figure billing.ts says must never be published: the effective per-credit
