@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ArrowUpRight, Check, Coins, Loader2 } from 'lucide-vue-next'
 import TierBadge from '../components/TierBadge.vue'
 import { useBilling } from '../composables/useBilling'
@@ -36,6 +37,11 @@ import PurchaseConsent from '@/components/PurchaseConsent.vue'
 const creditQty = ref(10)
 
 /** Gates every purchase button on this page — see PurchaseConsent.vue. */
+const route = useRoute()
+
+/** Rendered inside the Settings shell, as opposed to standing alone at /pricing. */
+const inSettings = computed(() => route.path.startsWith('/settings'))
+
 const acknowledged = ref(false)
 
 /**
@@ -166,7 +172,11 @@ async function buyCredits() {
 <template>
   <div class="pricing">
     <header class="page-head">
-      <h1>Plans and credits</h1>
+      <!-- Only when this is the whole page. Inside Settings the shell already says
+           "Settings / Plans", and a second headline announces it twice — but the public
+           /pricing route has no shell, so removing it outright would leave that page
+           untitled for the prospective customers the policy sends here. -->
+      <h1 v-if="!inSettings">Plans and credits</h1>
       <p class="lede">
         Every build is quoted in credits before it runs, and that quote is what you pay.
         A plan adds a monthly credit allowance and raises the size of app you can build.
@@ -360,13 +370,15 @@ async function buyCredits() {
 </template>
 
 <style scoped>
-.pricing { max-width: 78rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.pricing { max-width: 78rem; margin: 0 auto; padding: 0 0 1.5rem; }
 
-.page-head { text-align: center; margin-bottom: 2rem; }
-.page-head h1 { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
+/* Left-aligned and smaller: the Settings shell already says "Settings / Plans" above
+   this, so a second centred 2rem headline was announcing the page twice. */
+.page-head { text-align: left; margin-bottom: 1rem; }
+.page-head h1 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; }
 .lede {
-  max-width: 40rem;
-  margin: 0.75rem auto 0;
+  max-width: 46rem;
+  margin: 0.375rem 0 0;
   color: var(--text-dim);
   line-height: 1.6;
 }
@@ -396,11 +408,11 @@ async function buyCredits() {
 .credits-card {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 1rem;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
 }
 .credits-copy { flex: 1 1 20rem; }
 .credits-copy h2 {
@@ -454,8 +466,8 @@ async function buyCredits() {
      `minmax(0, 1fr)` lets the columns shrink instead of wrapping, which is what keeps
      Unlimited on the same row as the ladder it belongs to. */
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 2rem;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
 }
 
 /* Below desktop, wrap deliberately rather than squeezing five unreadable columns. */
@@ -471,8 +483,8 @@ async function buyCredits() {
 .tier-card {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 0.875rem;
-  padding: 1.25rem;
+  gap: 0.5rem;
+  padding: 0.875rem;
   min-width: 0;
 }
 .tier-card.current { border-color: var(--primary); }
@@ -483,11 +495,11 @@ async function buyCredits() {
   text-transform: uppercase;
   color: var(--primary);
 }
-.price { margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; }
+.price { margin: 0; font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; }
 .from { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 .per { font-size: 0.875rem; font-weight: 600; color: var(--text-dim); }
 
-.features { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; align-content: start; }
+.features { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3125rem; align-content: start; }
 .features li {
   display: flex;
   gap: 0.5rem;
@@ -557,15 +569,15 @@ async function buyCredits() {
 
 .consent {
   position: relative;
-  padding: 0.875rem 1.125rem;
-  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
   border: 1px solid var(--border);
   border-left: 3px solid var(--primary);
   border-radius: 0.5rem;
   background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
 
-.renewal { padding: 1.5rem; }
+.renewal { padding: 1.25rem; }
 .renewal h2 { margin: 0 0 0.875rem; font-size: 1rem; font-weight: 800; }
 .renewal ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
 .renewal li { font-size: 0.875rem; line-height: 1.55; color: var(--text-dim); }

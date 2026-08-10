@@ -36,7 +36,7 @@ const tone = computed(() => {
 <template>
   <router-link
     v-if="billing"
-    to="/billing"
+    to="/settings/billing"
     class="credit-meter"
     :class="[tone, { collapsed }]"
     :title="detail"

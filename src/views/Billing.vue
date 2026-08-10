@@ -131,10 +131,6 @@ async function manage() {
 
 <template>
   <div class="billing">
-    <header class="page-head">
-      <h1>Billing</h1>
-    </header>
-
     <p v-if="justPaid && !settleFailed" class="paid">
       <Loader2 v-if="settling" :size="15" class="spin" />
       {{ settling ? 'Payment received — confirming your balance…' : 'Payment received — thank you.' }}
@@ -205,7 +201,7 @@ async function manage() {
             Plan credits reset each period and don't roll over. Purchased credits last
             12 months from your most recent payment.
           </p>
-          <router-link class="btn btn-primary" to="/pricing">
+          <router-link class="btn btn-primary" to="/settings/plans">
             <span>Buy credits</span>
             <ArrowUpRight :size="16" />
           </router-link>
@@ -270,7 +266,7 @@ async function manage() {
             </div>
           </template>
           <template v-else>
-            <router-link class="btn btn-primary" to="/pricing">
+            <router-link class="btn btn-primary" to="/settings/plans">
               <span>See plans</span>
               <ArrowUpRight :size="16" />
             </router-link>
@@ -289,7 +285,7 @@ async function manage() {
 </template>
 
 <style scoped>
-.billing { max-width: 56rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.billing { max-width: 56rem; margin: 0; padding: 0 0 1.5rem; }
 .page-head h1 { margin: 0 0 1.5rem; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
 
 .loading { display: flex; align-items: center; gap: 0.5rem; color: var(--text-dim); }

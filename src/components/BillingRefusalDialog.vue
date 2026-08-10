@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
           <p class="footnote">
             <template v-if="priceUsd !== null">Credits are ${{ priceUsd }} each and last 12 months. </template>
             A monthly plan includes credits and lifts your app-size limit —
-            <router-link to="/pricing" @click="emit('close')">see plans</router-link>.
+            <router-link to="/settings/plans" @click="emit('close')">see plans</router-link>.
           </p>
         </div>
       </template>
@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Ladder unavailable: still give a way forward rather than a dead end. -->
-          <router-link v-else class="btn btn-primary money" to="/pricing" @click="emit('close')">
+          <router-link v-else class="btn btn-primary money" to="/settings/plans" @click="emit('close')">
             <span>See plans that fit this app</span>
             <ArrowUpRight :size="17" />
           </router-link>
@@ -316,7 +316,7 @@ onBeforeUnmount(() => {
         </p>
 
         <div class="actions">
-          <router-link class="btn btn-primary money" to="/pricing" @click="emit('close')">
+          <router-link class="btn btn-primary money" to="/settings/plans" @click="emit('close')">
             <span>See plans with more turns</span>
             <ArrowUpRight :size="17" />
           </router-link>

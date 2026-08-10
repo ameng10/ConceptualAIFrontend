@@ -2,8 +2,6 @@
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  CreditCard,
-  Tag,
   Sparkles,
   LayoutGrid,
   Settings,
@@ -39,10 +37,9 @@ const navItems = [
   { label: 'Create App', icon: PlusCircle, path: '/build' },
   { label: 'My Projects', icon: History, path: '/projects' },
   { label: 'Docs', icon: LayoutGrid, path: '/library' },
-  // Both were reachable only by typing the URL or by hitting a refusal dialog, which
-  // meant a user could not find their own balance or the prices at all.
-  { label: 'Billing', icon: CreditCard, path: '/billing' },
-  { label: 'Pricing', icon: Tag, path: '/pricing' },
+  // Billing and Plans are sections of Settings now, so one entry covers all three rather
+  // than three competing for the same space. Settings opens on Billing, which is what
+  // people come here for most.
   { label: 'Settings', icon: Settings, path: '/settings' },
 ]
 

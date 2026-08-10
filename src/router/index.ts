@@ -8,6 +8,9 @@ import Library from '@/views/Library.vue'
 import Pricing from '../views/Pricing.vue'
 import Billing from '../views/Billing.vue'
 import Settings from '@/views/Settings.vue'
+import SettingsAccount from '@/views/settings/SettingsAccount.vue'
+import SettingsProfile from '@/views/settings/SettingsProfile.vue'
+import SettingsIntegrations from '@/views/settings/SettingsIntegrations.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
@@ -93,26 +96,39 @@ const router = createRouter({
             meta: { public: true }
         },
         {
+            // Everything about the account under one shell, each section with its own URL
+            // so a link to billing stays a link to billing.
             path: '/settings',
-            name: 'settings',
             component: Settings,
-            meta: { requiresAuth: true }
+            meta: { requiresAuth: true },
+            children: [
+                { path: '', redirect: '/settings/billing' },
+                { path: 'billing', name: 'settings-billing', component: Billing },
+                { path: 'plans', name: 'settings-plans', component: Pricing },
+                { path: 'account', name: 'settings-account', component: SettingsAccount },
+                { path: 'profile', name: 'settings-profile', component: SettingsProfile },
+                {
+                    path: 'integrations',
+                    name: 'settings-integrations',
+                    component: SettingsIntegrations,
+                },
+            ],
         },
         {
-            // Referenced by the Billing & Refund Policy for the four material terms —
-            // price, included credits, per-app size limit and weekly planning turns.
-            // Deliberately NOT auth-gated: a prospective customer must be able to read
-            // the prices, and the auto-renewal disclosure has to be reachable before
-            // anyone hands over billing details.
+            // STAYS PUBLIC AND TOP-LEVEL. The Billing & Refund Policy links here for the
+            // four material terms — price, included credits, per-app size limit and weekly
+            // planning turns — and the auto-renewal disclosure has to be readable before
+            // anyone hands over billing details. Signed-in users reach the same page at
+            // /settings/plans; moving it wholesale under an auth-gated shell would have
+            // made a policy reference dangle for exactly the people it is written for.
             path: '/pricing',
             name: 'pricing',
             component: Pricing,
         },
         {
+            // Kept so existing links, bookmarks and the refusal dialog keep working.
             path: '/billing',
-            name: 'billing',
-            component: Billing,
-            meta: { requiresAuth: true }
+            redirect: '/settings/billing',
         },
         {
             path: '/project/:id',
