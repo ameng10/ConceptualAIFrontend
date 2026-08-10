@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authState } from '@/services/api'
+import api, { authState } from '@/services/api'
+import { setUsername } from '@/services/auth-storage'
 import { getUserFromToken } from '@/services/auth'
 
 /**
@@ -33,6 +34,17 @@ onMounted(async () => {
   try {
     const user = await getUserFromToken(access)
     authState.set({ user, accessToken: access, refreshToken: refresh })
+    // Back-fill the username the way the password flow already does. A federated sign-in
+    // carries no username, so without this the app has nothing to call the user by — and
+    // the sidebar fell through to a placeholder for everyone who signed in with Google.
+    // Deliberately not awaited: signing in must not wait on a profile lookup.
+    void api
+      .get<{ profile?: { username?: string } }>('/api/me/profile', { timeout: 3000 })
+      .then((res) => {
+        const candidate = res.data?.profile?.username
+        if (candidate?.trim()) setUsername(candidate.trim())
+      })
+      .catch(() => {/* no profile yet — onboarding will create one */})
     router.replace('/build')
   } catch {
     error.value = 'Signed in, but the session could not be verified. Please try again.'

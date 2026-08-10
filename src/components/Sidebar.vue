@@ -18,7 +18,8 @@ import {
   PanelLeftOpen,
   ShieldCheck,
 } from 'lucide-vue-next'
-import { authApi, authState } from '@/services/api'
+import api, { authApi, authState } from '@/services/api'
+import { setUsername } from '@/services/auth-storage'
 import { adminApi } from '@/services/admin-api'
 import TierBadge from './TierBadge.vue'
 import CreditMeter from './CreditMeter.vue'
@@ -72,6 +73,34 @@ const refreshAuth = () => {
   void refreshAdmin()
 }
 
+/**
+ * The display name from the user's profile, resolved once.
+ *
+ * `authState` only stores a username, and only when the sign-in path happened to know it:
+ * the password flow back-fills it from /me/profile, the FEDERATED flow never did. So anyone
+ * who signed in with Google had nothing to show and fell through to a placeholder. Read it
+ * here too, so an existing session is fixed without making the user sign out and back in.
+ */
+const profileName = ref<string>('')
+
+async function resolveProfileName() {
+  if (!isSignedIn.value) return
+  const stored: any = authSnapshot.value
+  if (stored?.username) return
+  try {
+    const res = await api.get<{ profile?: { username?: string; displayName?: string } }>(
+      '/api/me/profile',
+      { timeout: 4000 },
+    )
+    const p = res.data?.profile
+    // Prefer the human name; the username is the fallback the login path already stores.
+    profileName.value = (p?.displayName || p?.username || '').trim()
+    if (p?.username) setUsername(p.username)
+  } catch {
+    // No profile yet, or the endpoint is unavailable — keep the neutral fallback.
+  }
+}
+
 const userDisplayName = computed(() => {
   // We only reliably store user id on this frontend today.
   // Prefer username if present in the stored object (future), else fallback.
@@ -80,7 +109,7 @@ const userDisplayName = computed(() => {
   // NEVER fall back to a status string. "Signed in" was being used as a NAME, so a user
   // without a stored username saw it as their display name, had it initialised to "SI" for
   // the avatar, and then saw it a second time on the line below.
-  return u.username || u.name || u.user_metadata?.name || 'Your account'
+  return u.username || u.name || u.user_metadata?.name || profileName.value || 'Your account'
 })
 
 /** Their plan, once billing has loaded. Blank rather than a guess while it is unknown —
@@ -120,6 +149,7 @@ onMounted(() => {
   document.documentElement.setAttribute('data-theme', savedTheme)
 
   refreshAuth()
+  void resolveProfileName()
   window.addEventListener('storage', refreshAuth)
   loadBilling()
   // A build, a purchase or an upgrade all move the balance. Each dispatches this, so
