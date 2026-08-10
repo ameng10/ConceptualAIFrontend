@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pricing — ConceptualAI</title>
+    <meta
+      name="description"
+      content="ConceptualAI pricing: plans from $29/month, credits at $3.00 each, and a free tier. A build costs a minimum of 3 credits. You own the source code on every plan."
+    />
+    <link rel="canonical" href="https://conceptual-ai.app/pricing" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="Pricing — ConceptualAI" />
+    <meta
+      property="og:description"
+      content="Plans from $29/month, credits at $3.00 each, and a free tier. You own the source code on every plan."
+    />
+    <meta property="og:url" content="https://conceptual-ai.app/pricing" />
+    <meta property="og:image" content="https://conceptual-ai.app/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pricing — ConceptualAI" />
+    <meta
+      name="twitter:description"
+      content="Plans from $29/month, credits at $3.00 each, and a free tier. You own the source code on every plan."
+    />
+    <meta name="twitter:image" content="https://conceptual-ai.app/og-card.png" />
+    <!--
+      Offers are marked up per plan so the ladder is machine-readable rather than something
+      a reader has to infer from a table. Unlimited is deliberately absent: it is a
+      negotiated floor, not a self-serve price, and publishing it as an Offer would state a
+      purchasable price that does not exist.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ConceptualAI",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "url": "https://conceptual-ai.app/",
+        "description": "Generates custom web applications with a real backend, a database, integrations, and a generated test suite. The customer owns the source code.",
+        "offers": [
+          { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
+          { "@type": "Offer", "name": "Starter", "price": "29", "priceCurrency": "USD", "category": "monthly subscription" },
+          { "@type": "Offer", "name": "Studio", "price": "99", "priceCurrency": "USD", "category": "monthly subscription" },
+          { "@type": "Offer", "name": "Pro", "price": "299", "priceCurrency": "USD", "category": "monthly subscription" },
+          { "@type": "Offer", "name": "Credit", "price": "3.00", "priceCurrency": "USD", "category": "one-time credit" }
+        ]
+      }
+    </script>
+    <style>
+      .price-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0 0.5rem; font-size: 0.95rem; }
+      .price-table th, .price-table td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .price-table th { font-weight: 700; white-space: nowrap; }
+      .price-table td:first-child { font-weight: 700; }
+      .table-scroll { overflow-x: auto; }
+      .price-note { font-size: 0.9rem; opacity: 0.8; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Pricing</h1>
+          <p class="legal-updated">Prices in US dollars. Last updated: August 9, 2026.</p>
+
+          <p>
+            You pay for builds in <strong>credits</strong>, and for a bigger ceiling with a <strong>plan</strong>. A
+            plan sets the largest app you can build and how much planning you can do; credits are what a build spends.
+            Every plan, including Free, hands you the source code.
+          </p>
+
+          <h2>How much does it cost to build an app?</h2>
+          <p>
+            A build costs a <strong>minimum of 3 credits</strong>, and more as the app gets larger. Credits bought
+            outright are <strong>$3.00 each</strong>. So the smallest possible build is $9 if you are buying credits
+            for it, and nothing beyond your monthly fee if your plan's allowance covers it.
+          </p>
+
+          <h2>Plans</h2>
+          <div class="table-scroll">
+            <table class="price-table">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Price</th>
+                  <th>Credits included each month</th>
+                  <th>Largest app</th>
+                  <th>Planning turns per week</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Free</td><td>$0</td><td>None</td><td>3 credits</td><td>3</td>
+                </tr>
+                <tr>
+                  <td>Starter</td><td>$29/month</td><td>10 credits</td><td>8 credits</td><td>10</td>
+                </tr>
+                <tr>
+                  <td>Studio</td><td>$99/month</td><td>30 credits</td><td>30 credits</td><td>30</td>
+                </tr>
+                <tr>
+                  <td>Pro</td><td>$299/month</td><td>80 credits</td><td>100 credits</td><td>100</td>
+                </tr>
+                <tr>
+                  <td>Unlimited</td><td>From $799/month</td><td>200 credits</td><td>No limit</td><td>No limit</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="price-note">
+            Free, Starter, Studio and Pro are self-serve — you can start or change them yourself.
+            Unlimited starts at $799 and is arranged by email: <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          </p>
+
+          <h2>What is a credit?</h2>
+          <p>
+            A credit is the unit a build spends, scaled to how much app you asked for. The "largest app" column is a
+            ceiling, not an allowance: if a build would cost more credits than your plan's ceiling, it is refused and
+            you are told which plan would fit it. Buying extra credits does not lift that ceiling — raising it is what
+            a plan is for.
+          </p>
+
+          <h2>Do credits expire?</h2>
+          <p>
+            The two kinds behave differently, and they are tracked separately:
+          </p>
+          <ul>
+            <li><strong>Credits included with a plan</strong> reset each billing period. They do not roll over — the
+              allowance for a period expires with that period.</li>
+            <li><strong>Credits you buy outright</strong> at $3.00 each keep their own <strong>12-month</strong>
+              window and are unaffected by starting, changing, or cancelling a plan.</li>
+          </ul>
+
+          <h2>Does a plan renew automatically?</h2>
+          <p>
+            Yes. A plan renews automatically: your card is charged the same amount on the same day each month until you
+            cancel, and we email you before each renewal. You can cancel at any time from your billing page or by
+            emailing us. Cancellation takes effect at the end of the current billing period and you keep access until
+            then; we do not charge again after that. Partial-period refunds are not provided. The full terms are in the
+            <a href="/refunds">Billing &amp; Refund Policy</a>.
+          </p>
+
+          <h2>What happens if a build fails?</h2>
+          <p>
+            A build only consumes credits when it succeeds. "Succeeds" is not a judgement call here — the backend is
+            not finished until its generated test suite passes against a real database, so a build that never reaches
+            that point is not something you pay for.
+          </p>
+
+          <h2>Do I own what gets built?</h2>
+          <p>
+            Yes, on every plan including Free. Each build produces two repositories — a Deno backend and a React
+            frontend — with the generated tests, the OpenAPI spec, and a Dockerfile inside. You can export both to
+            GitHub and run them anywhere a container runs. There is no proprietary runtime to keep paying for and no
+            SDK sitting between you and your own backend.
+          </p>
+
+          <div class="legal-footer">
+            © 2026 ConceptualAI, Inc. ·
+            <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
+            <a href="/refunds">Billing &amp; Refund Policy</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

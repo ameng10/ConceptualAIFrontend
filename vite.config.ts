@@ -10,6 +10,7 @@ const STATIC_PAGES: Record<string, string> = {
     '/terms': '/terms.html',
     '/privacy': '/privacy.html',
     '/refunds': '/refunds.html',
+    '/pricing': '/pricing.html',
 }
 
 const mpaFallback = (): Plugin => ({
@@ -48,6 +49,7 @@ export default defineConfig({
                 terms: path.resolve(__dirname, 'terms.html'),
                 privacy: path.resolve(__dirname, 'privacy.html'),
                 refunds: path.resolve(__dirname, 'refunds.html'),
+                pricing: path.resolve(__dirname, 'pricing.html'),
             },
         },
     },
