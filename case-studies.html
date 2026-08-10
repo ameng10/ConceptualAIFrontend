@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Case studies — five apps, one prompt each | ConceptualAI</title>
+    <meta name="description" content="Five working applications generated from a single prompt each. Every prompt is published in full, every app is live, and both repositories are public." />
+    <link rel="canonical" href="https://conceptual-ai.app/case-studies" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="Case studies — five apps, one prompt each | ConceptualAI" />
+    <meta property="og:description" content="Five working applications generated from a single prompt each. Every prompt is published in full, every app is live, and both repositories are public." />
+    <meta property="og:url" content="https://conceptual-ai.app/case-studies" />
+    <meta property="og:image" content="https://conceptual-ai.app/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Case studies — five apps, one prompt each | ConceptualAI" />
+    <meta name="twitter:description" content="Five working applications generated from a single prompt each. Every prompt is published in full, every app is live, and both repositories are public." />
+    <meta name="twitter:image" content="https://conceptual-ai.app/og-card.png" />
+    <style>
+      .cs-shot { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); margin: 1rem 0 1.5rem; }
+      .cs-prompt { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.55; padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); background: rgba(127,127,127,0.08); overflow-x: auto; }
+      .cs-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+      .cs-chips li { font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+      .cs-grid { display: grid; gap: 1rem; margin: 1.25rem 0; }
+      @media (min-width: 720px) { .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .cs-card { padding: 1rem; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+      .cs-card p { margin: 0; font-size: 0.92rem; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Case studies</h1>
+          <p>
+            Five applications, each generated from one prompt. For every one of them the full prompt is published, the
+            app is live and usable, and both repositories are public. They are listed here so you can check the claim
+            rather than take it.
+          </p>
+          <ul>
+            <li style="margin-bottom:1.1rem">
+              <a href="/case-studies/deskmind"><strong>Deskmind</strong></a> — Also our real support desk
+              <br />An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email — on a backend you own.
+            </li>
+            <li style="margin-bottom:1.1rem">
+              <a href="/case-studies/atelier"><strong>Atelier</strong></a>
+              <br />A visual booking marketplace: photo listings, schedules that can’t double-book, and a natural-language booking assistant.
+            </li>
+            <li style="margin-bottom:1.1rem">
+              <a href="/case-studies/commons"><strong>Commons</strong></a> — v1 ⇄ v2 — one iteration apart
+              <br />A paid community with Stripe supporter subscriptions — then one iteration adds AI moderation without touching the billing.
+            </li>
+            <li style="margin-bottom:1.1rem">
+              <a href="/case-studies/stride"><strong>Stride</strong></a>
+              <br />An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback.
+            </li>
+            <li style="margin-bottom:1.1rem">
+              <a href="/case-studies/shopfront"><strong>Shopfront</strong></a>
+              <br />A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once.
+            </li>
+          </ul>
+          <h2>What these are meant to show</h2>
+          <p>
+            Not that the apps are beautiful — that they are <em>real</em>. Each has a backend doing actual work:
+            authentication, a database, payments or email or AI where the prompt asked for it. That is the part an
+            interface-first generator does not give you, and the part a development shop would charge you for.
+          </p>
+          <p>
+            If you are weighing options, the <a href="/alternatives">comparison of app builders, dev shops, and us</a>
+            is more useful than any single case study, and it is honest about when we are the wrong choice.
+          </p>
+
+          <div class="legal-footer">
+            <a href="/case-studies">All case studies</a> · <a href="/alternatives">App builders vs dev shops</a> ·
+            <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App builders, dev shops, and ConceptualAI — which one you actually need</title>
+    <meta
+      name="description"
+      content="An honest comparison of AI app builders, hiring a development shop, and ConceptualAI — including when an app builder or a dev shop is the better choice, and the questions worth asking whichever you pick."
+    />
+    <link rel="canonical" href="https://conceptual-ai.app/alternatives" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="App builders, dev shops, and ConceptualAI — which one you actually need" />
+    <meta
+      property="og:description"
+      content="When an AI app builder is the right call, when to hire a dev shop, and where ConceptualAI fits."
+    />
+    <meta property="og:url" content="https://conceptual-ai.app/alternatives" />
+    <meta property="og:image" content="https://conceptual-ai.app/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="App builders, dev shops, and ConceptualAI — which one you actually need" />
+    <meta
+      name="twitter:description"
+      content="When an AI app builder is the right call, when to hire a dev shop, and where ConceptualAI fits."
+    />
+    <meta name="twitter:image" content="https://conceptual-ai.app/og-card.png" />
+    <style>
+      .cmp-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.95rem; }
+      .cmp-table th, .cmp-table td { padding: 0.6rem 0.75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cmp-table th { font-weight: 700; }
+      .cmp-table td:first-child, .cmp-table th:first-child { font-weight: 700; white-space: nowrap; }
+      .table-scroll { overflow-x: auto; }
+      .checklist li { margin-bottom: 0.6rem; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>App builders, dev shops, and ConceptualAI</h1>
+          <p class="legal-updated">Last updated: August 9, 2026</p>
+
+          <p>
+            These are three genuinely different products, and a lot of comparisons pretend otherwise. This page is our
+            honest read on which one you actually need — including the cases where the answer is not us. We sell
+            something specific; if your problem is a different shape, we would rather you knew that on this page than
+            found out after paying.
+          </p>
+
+          <h2>When an AI app builder is the right choice</h2>
+          <p>
+            Tools like Lovable, Bolt.new, v0, and Replit are very good at what they are for: getting something on a
+            screen fast. If any of the following describes you, that is the category you want, and you will get there
+            quicker and cheaper than with us or with an agency.
+          </p>
+          <ul class="checklist">
+            <li><strong>You are validating an idea.</strong> You need something clickable this afternoon to put in
+              front of five people, and if it gets thrown away that is a success, not a loss.</li>
+            <li><strong>The app is mostly interface.</strong> A landing page, a marketing site, a dashboard over data
+              that already lives somewhere, an internal tool with a handful of records.</li>
+            <li><strong>You do not need to own the backend.</strong> A managed database that lives in the vendor's
+              account is completely fine when the app is not going to outlive the experiment.</li>
+            <li><strong>You want to iterate by talking.</strong> The conversational build loop is the product, and it
+              is genuinely pleasant.</li>
+          </ul>
+          <p>
+            Building a prototype with one of these and then rebuilding properly once it works is a legitimate
+            strategy, not a mistake. Plenty of good software started that way.
+          </p>
+
+          <h2>When to hire a development shop</h2>
+          <p>
+            A development agency does something no generator does, and it is worth being blunt about it: they think
+            about your business with you. Hire one when:
+          </p>
+          <ul class="checklist">
+            <li><strong>The hard part is the problem, not the code.</strong> If the requirements are genuinely unclear
+              and figuring them out is most of the work, you want people, not a generator.</li>
+            <li><strong>You are integrating with something gnarly and specific.</strong> A legacy system, a private
+              partner API, an on-premise database, something with a spec nobody has written down.</li>
+            <li><strong>You have compliance or audit obligations</strong> that require named humans accountable for
+              decisions — regulated industries, security review, procurement that needs a supplier to sign things.</li>
+            <li><strong>You need a roadmap, not a build.</strong> Ongoing product work, a team that holds context
+              across quarters, someone to argue with about priorities.</li>
+          </ul>
+          <p>
+            We think dev shops are our closest comparison, because they are the ones actually delivering what we
+            deliver: a real application with a real backend that you own afterwards. The trade is the usual one —
+            people cost more and take longer than a machine, and in exchange they can handle ambiguity a machine
+            cannot.
+          </p>
+
+          <h2>Where ConceptualAI fits</h2>
+          <p>
+            We are for the case in between: you know what you want, it needs a real backend, and you want to own it.
+          </p>
+          <ul class="checklist">
+            <li><strong>The app needs to do real business.</strong> Payments that settle, email that sends and
+              receives, authentication, background jobs, AI that is part of the product — not a mock.</li>
+            <li><strong>It needs a database you control</strong>, with a choice of engine (MongoDB, Postgres, or
+              Turso) rather than whatever the platform attached.</li>
+            <li><strong>You want the source code</strong> — both repositories, with the generated tests, the OpenAPI
+              spec, and a Dockerfile inside — and you want it to run without us.</li>
+            <li><strong>You can describe what you want.</strong> This is the real requirement. We are a bad fit if the
+              specification does not exist yet and discovering it is the project.</li>
+          </ul>
+
+          <h2>The short version</h2>
+          <div class="table-scroll">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>AI app builders</th>
+                  <th>Development shop</th>
+                  <th>ConceptualAI</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Best for</td>
+                  <td>Prototypes, interfaces, validating an idea</td>
+                  <td>Ambiguous requirements, ongoing product work</td>
+                  <td>A defined app that needs a real backend</td>
+                </tr>
+                <tr>
+                  <td>Backend</td>
+                  <td>Varies — often a vendor-managed database</td>
+                  <td>Built for you, to your spec</td>
+                  <td>Generated, with your choice of database engine</td>
+                </tr>
+                <tr>
+                  <td>Handles ambiguity</td>
+                  <td>Somewhat — you iterate by chatting</td>
+                  <td>Yes, that is the value</td>
+                  <td>No — you need to know what you want</td>
+                </tr>
+                <tr>
+                  <td>You own the code</td>
+                  <td>Varies by platform — check before you commit</td>
+                  <td>Usually, if the contract says so</td>
+                  <td>Yes, both repositories, on every plan</td>
+                </tr>
+                <tr>
+                  <td>Ongoing relationship</td>
+                  <td>Subscription while you build</td>
+                  <td>Yes — that is often the point</td>
+                  <td>None required; the app runs without us</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Questions worth asking whichever you pick</h2>
+          <p>
+            These are the questions we wish more buyers asked, including of us. The answers vary a lot between
+            platforms and between agencies, they change over time, and they are the ones that hurt later if you skip
+            them. Ask them directly and get the answer in writing.
+          </p>
+          <ul class="checklist">
+            <li><strong>Whose account is the database in?</strong> If the app succeeds, does the data live somewhere
+              you control, or somewhere you rent?</li>
+            <li><strong>Can you export the backend, or only the frontend?</strong> These are very different offers and
+              both get described as "you own your code."</li>
+            <li><strong>Does anything verify the app works, or does "done" mean the agent stopped typing?</strong>
+              If something does test it, does the test survive after the build, or was it a one-off?</li>
+            <li><strong>When you change one thing, what protects everything else?</strong> Ask what happens to work
+              you did by hand, and whether restoring an old version also moves your data back.</li>
+            <li><strong>What happens if the vendor shuts down or pivots?</strong> This category has seen real
+              closures and rebrands. Does your app keep running?</li>
+            <li><strong>What are you charged for when it fails?</strong> Ask specifically whether a failed or
+              abandoned generation costs you anything.</li>
+          </ul>
+          <p>
+            For what it is worth, our answers: your database, your account, your choice of engine. Both repositories
+            export, backend included. The backend is not finished until its generated test suite passes against a real
+            database, and that suite ships inside the repository so you can run it forever. The app has no dependency
+            on us once exported — no proprietary runtime, no SDK in between. And a build only consumes credits when it
+            succeeds.
+          </p>
+
+          <h2>If you are still not sure</h2>
+          <p>
+            Look at the <a href="/#demos">five demo apps</a> on our landing page. Each one was generated from a single
+            prompt, the prompt is shown on the card, and every one is live and usable. If the apps look like the thing
+            you are trying to build, we are probably a fit. If they look like less than what you need, hire a dev
+            shop — that is a real answer and not a sales tactic. Our <a href="/pricing">pricing</a> is public, and you
+            can email us at <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          </p>
+
+          <div class="legal-footer">
+            © 2026 ConceptualAI, Inc. ·
+            <a href="/terms">Terms of Service</a> · <a href="/privacy">Privacy Policy</a> ·
+            <a href="/refunds">Billing &amp; Refund Policy</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

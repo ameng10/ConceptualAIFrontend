@@ -11,6 +11,13 @@ const STATIC_PAGES: Record<string, string> = {
     '/privacy': '/privacy.html',
     '/refunds': '/refunds.html',
     '/pricing': '/pricing.html',
+    '/alternatives': '/alternatives.html',
+    '/case-studies': '/case-studies.html',
+    '/case-studies/deskmind': '/case-study-deskmind.html',
+    '/case-studies/atelier': '/case-study-atelier.html',
+    '/case-studies/commons': '/case-study-commons.html',
+    '/case-studies/stride': '/case-study-stride.html',
+    '/case-studies/shopfront': '/case-study-shopfront.html',
 }
 
 const mpaFallback = (): Plugin => ({
@@ -50,6 +57,13 @@ export default defineConfig({
                 privacy: path.resolve(__dirname, 'privacy.html'),
                 refunds: path.resolve(__dirname, 'refunds.html'),
                 pricing: path.resolve(__dirname, 'pricing.html'),
+                alternatives: path.resolve(__dirname, 'alternatives.html'),
+                caseStudies: path.resolve(__dirname, 'case-studies.html'),
+                csdeskmind: path.resolve(__dirname, 'case-study-deskmind.html'),
+                csatelier: path.resolve(__dirname, 'case-study-atelier.html'),
+                cscommons: path.resolve(__dirname, 'case-study-commons.html'),
+                csstride: path.resolve(__dirname, 'case-study-stride.html'),
+                csshopfront: path.resolve(__dirname, 'case-study-shopfront.html'),
             },
         },
     },

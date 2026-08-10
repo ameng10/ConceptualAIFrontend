@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stride — An AI training coach that shows its sources | ConceptualAI case study</title>
+    <meta name="description" content="Stride: An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <link rel="canonical" href="https://conceptual-ai.app/case-studies/stride" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="Stride — An AI training coach that shows its sources | ConceptualAI case study" />
+    <meta property="og:description" content="Stride: An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta property="og:url" content="https://conceptual-ai.app/case-studies/stride" />
+    <meta property="og:image" content="https://conceptual-ai.app/demos/stride.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Stride — An AI training coach that shows its sources | ConceptualAI case study" />
+    <meta name="twitter:description" content="Stride: An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta name="twitter:image" content="https://conceptual-ai.app/demos/stride.png" />
+    <script type="application/ld+json">
+{
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "Stride \u2014 built from one prompt",
+      "description": "Stride: An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live.",
+      "url": "https://conceptual-ai.app/case-studies/stride",
+      "publisher": {
+            "@id": "https://conceptual-ai.app/#organization"
+      },
+      "about": {
+            "@type": "SoftwareApplication",
+            "name": "Stride",
+            "applicationCategory": "WebApplication",
+            "operatingSystem": "Web",
+            "url": "https://stride.conceptual-ai.app"
+      }
+}
+    </script>
+    <style>
+      .cs-shot { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); margin: 1rem 0 1.5rem; }
+      .cs-prompt { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.55; padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); background: rgba(127,127,127,0.08); overflow-x: auto; }
+      .cs-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+      .cs-chips li { font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+      .cs-grid { display: grid; gap: 1rem; margin: 1.25rem 0; }
+      @media (min-width: 720px) { .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .cs-card { padding: 1rem; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+      .cs-card p { margin: 0; font-size: 0.92rem; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Stride</h1>
+          <p>An AI training coach that shows its sources: web-research-grounded plans that adapt to your daily feedback.</p>
+
+          <img class="cs-shot" src="/demos/stride.png" alt="Stride screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+
+          <div class="cs-links">
+            <a class="btn btn-primary no-underline" href="https://stride.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open the live app ↗</a>
+          </div>
+
+          <h2>What was asked for</h2>
+          <p>
+            This is the entire specification. One prompt, pasted below exactly as it was written — no follow-up
+            corrections, no hand-editing afterwards, nothing removed for the sake of this page.
+          </p>
+          <pre class="cs-prompt">Build an AI training coach app.
+
+Users register with email and password, log in, and have a profile with a display name and an avatar image they can upload.
+
+A user sets a training goal by telling the coach, in their own words, what they want to achieve, the date they want to achieve it by (for example "run a sub-20-minute 5K by October 1st"), and their athletic stats (for example age, weight, experience level, and recent performance numbers). A user can have only one active goal at a time; they can abandon their active goal, and only then set a new one.
+
+When a goal is set, the AI builds a day-by-day workout plan running from today through the goal date, optimized toward the goal given the user's stats. The plan must be grounded in real research: the AI runs web research on the training approach for this kind of goal and attaches the cited sources it relied on, so the user can see the evidence behind the plan's structure and exercise choices.
+
+The main view is a calendar showing each day's workout. Opening a day shows that workout's details — the exercises with sets and reps, or duration and intensity — plus the research-backed rationale and its cited sources.
+
+After doing (or skipping) a day's workout, the user gives feedback on that day: a quick rating of how it went and an optional written note (for example "this was too easy" or "my knee hurt on the lunges"). The AI then adjusts the remaining future days of the plan based on the feedback — past days are never changed.
+
+The user gets a notification when their plan is generated and whenever the plan is adjusted after feedback.</pre>
+
+          <h2>What got built</h2>
+          <ul class="cs-chips">
+            <li>Live web research + citations</li>
+            <li>AI plan adjustments</li>
+            <li>Daily check-ins</li>
+            <li>Notifications</li>
+          </ul>
+
+          <h2>Things you can actually do in it</h2>
+          <p>The app is live and public. Without taking our word for anything, you can:</p>
+          <ul>
+            <li>Set a goal like "run a sub-20-minute 5K by October 1st" with your stats</li>
+            <li>The calendar fills with a day-by-day plan — open a day to see the cited sources behind it</li>
+            <li>Rate today’s workout "too easy" — future days adjust, past days never change</li>
+          </ul>
+
+          <h2>The code</h2>
+          <p>
+            Both repositories are public — a Deno backend and a React frontend, with the generated test suite, the
+            OpenAPI spec, and a Dockerfile inside. This is the same export any build hands you; nothing was tidied up
+            for publication.
+          </p>
+          <div class="cs-links">
+            <a href="https://github.com/rdavislee/Stride-backend" target="_blank" rel="noopener noreferrer">Stride-backend</a>
+            <a href="https://github.com/rdavislee/Stride-frontend" target="_blank" rel="noopener noreferrer">Stride-frontend</a>
+          </div>
+
+          <h2>Why this one is here</h2>
+          <div class="cs-grid">
+            <div class="cs-card">
+              <h3>It has a real backend</h3>
+              <p>Authentication, persisted data, and the integrations above are running server-side against a real
+                database — not mocked, and not a frontend pretending.</p>
+            </div>
+            <div class="cs-card">
+              <h3>Nobody fixed it by hand</h3>
+              <p>The backend is not finished until its generated test suite passes against a real database. What you
+                are using is what came out.</p>
+            </div>
+            <div class="cs-card">
+              <h3>It runs without us</h3>
+              <p>No proprietary runtime and no SDK in between. Clone the repositories and it runs anywhere a
+                container runs.</p>
+            </div>
+            <div class="cs-card">
+              <h3>You would own this one</h3>
+              <p>An equivalent build hands you both repositories on any plan, including Free.
+                <a href="/pricing">See pricing</a>.</p>
+            </div>
+          </div>
+
+          <h2>Build something like this</h2>
+          <p>
+            If this looks like the thing you are trying to build, describe yours in the
+            <a href="/build">builder</a>. If it looks like less than what you need, our
+            <a href="/alternatives">honest comparison</a> covers when an app builder or a development shop is the
+            better call.
+          </p>
+
+          <div class="legal-footer">
+            <a href="/case-studies">All case studies</a> · <a href="/alternatives">App builders vs dev shops</a> ·
+            <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

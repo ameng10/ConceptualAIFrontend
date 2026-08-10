@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deskmind — An AI support inbox | ConceptualAI case study</title>
+    <meta name="description" content="Deskmind: An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email — on a backend you own. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <link rel="canonical" href="https://conceptual-ai.app/case-studies/deskmind" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="Deskmind — An AI support inbox | ConceptualAI case study" />
+    <meta property="og:description" content="Deskmind: An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email — on a backend you own. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta property="og:url" content="https://conceptual-ai.app/case-studies/deskmind" />
+    <meta property="og:image" content="https://conceptual-ai.app/demos/deskmind.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Deskmind — An AI support inbox | ConceptualAI case study" />
+    <meta name="twitter:description" content="Deskmind: An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email — on a backend you own. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta name="twitter:image" content="https://conceptual-ai.app/demos/deskmind.png" />
+    <script type="application/ld+json">
+{
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "Deskmind \u2014 built from one prompt",
+      "description": "Deskmind: An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email \u2014 on a backend you own. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live.",
+      "url": "https://conceptual-ai.app/case-studies/deskmind",
+      "publisher": {
+            "@id": "https://conceptual-ai.app/#organization"
+      },
+      "about": {
+            "@type": "SoftwareApplication",
+            "name": "Deskmind",
+            "applicationCategory": "WebApplication",
+            "operatingSystem": "Web",
+            "url": "https://deskmind.conceptual-ai.app"
+      }
+}
+    </script>
+    <style>
+      .cs-shot { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); margin: 1rem 0 1.5rem; }
+      .cs-prompt { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.55; padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); background: rgba(127,127,127,0.08); overflow-x: auto; }
+      .cs-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+      .cs-chips li { font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+      .cs-grid { display: grid; gap: 1rem; margin: 1.25rem 0; }
+      @media (min-width: 720px) { .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .cs-card { padding: 1rem; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+      .cs-card p { margin: 0; font-size: 0.92rem; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Deskmind</h1>
+          <p class="legal-updated">Also our real support desk</p>
+          <p>An AI support inbox: automatic triage, draft replies grounded in your own help docs, and real two-way email — on a backend you own.</p>
+
+          <img class="cs-shot" src="/demos/deskmind.png" alt="Deskmind screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+
+          <div class="cs-links">
+            <a class="btn btn-primary no-underline" href="https://deskmind.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open the live app ↗</a>
+          </div>
+
+          <h2>What was asked for</h2>
+          <p>
+            This is the entire specification. One prompt, pasted below exactly as it was written — no follow-up
+            corrections, no hand-editing afterwards, nothing removed for the sake of this page.
+          </p>
+          <pre class="cs-prompt">Build an AI-powered customer support inbox for a small support team.
+
+There are two kinds of people using the app. The support team's operator signs in with operator credentials configured in the environment — there is no operator signup page. Support agents register with email and password and have a profile with a name and an avatar image they can upload, but registering alone gives no access to the inbox: the operator must approve (promote) a registered account to agent before it can see or work on support requests, and the operator can revoke an agent's access later. There is also a public page where customers can submit a support request without logging in — they enter their email, a subject, a message, and can optionally attach a file or screenshot. After submitting, a customer can return to the public page and look up their own request(s) by entering the email address they used — no account needed — to see the current status and the full conversation, and to post a follow-up reply on their request (the follow-up is identified by that email).
+
+When a new support request arrives, the system automatically uses AI to process it: it classifies the request into a category (Billing, Bug, Feature Request, or Other), assigns a priority (Low, Medium, High, or Urgent), extracts structured fields from the message into a side panel (order number, product name, customer sentiment, and the specific action the customer is requesting), and screens the message for abusive or threatening language, flagging it with a short written reason when it violates policy.
+
+Logged-in agents see an inbox list of all requests sorted by priority, with the category and a flag indicator shown on each row. Clicking a request opens it to show the full message, any attachment, the AI-extracted fields, and the AI moderation verdict. Agents can write internal notes on a request that only other agents can see, and they can post a reply to the customer — and that reply is sent to the customer as a real email from the team's support email address. The customer's own replies (whether posted via the public lookup page or received by email) are threaded back into the same request so agents and the customer see one continuous conversation. There is an "AI draft reply" button that generates a suggested reply; the suggested reply must be grounded in help-center documents that agents upload (policy and FAQ documents), so answers are based on the team's real policies rather than guesses. Agents can edit a draft before sending and can mark a request as resolved.
+
+Agents get a notification when a new High or Urgent request arrives.</pre>
+
+          <h2>What got built</h2>
+          <ul class="cs-chips">
+            <li>AI triage &amp; drafts</li>
+            <li>RAG over your docs</li>
+            <li>Two-way email</li>
+            <li>Operator admin</li>
+            <li>File uploads</li>
+          </ul>
+
+          <h2>Things you can actually do in it</h2>
+          <p>The app is live and public. Without taking our word for anything, you can:</p>
+          <ul>
+            <li>Submit a real support request — this is ConceptualAI's actual support desk, so it reaches us</li>
+            <li>Ask anything about ConceptualAI — answers are grounded in our help docs and arrive as a real email</li>
+            <li>Come back later, look up your request by email (no account needed), and post a follow-up — it threads into the same conversation</li>
+            <li>Behind the curtain, staff-side: AI classifies, prioritizes, extracts details, and drafts doc-grounded replies for our team</li>
+          </ul>
+
+          <h2>The code</h2>
+          <p>
+            Both repositories are public — a Deno backend and a React frontend, with the generated test suite, the
+            OpenAPI spec, and a Dockerfile inside. This is the same export any build hands you; nothing was tidied up
+            for publication.
+          </p>
+          <div class="cs-links">
+            <a href="https://github.com/rdavislee/Deskmind-backend" target="_blank" rel="noopener noreferrer">Deskmind-backend</a>
+            <a href="https://github.com/rdavislee/Deskmind-frontend" target="_blank" rel="noopener noreferrer">Deskmind-frontend</a>
+          </div>
+
+          <h2>Why this one is here</h2>
+          <div class="cs-grid">
+            <div class="cs-card">
+              <h3>It has a real backend</h3>
+              <p>Authentication, persisted data, and the integrations above are running server-side against a real
+                database — not mocked, and not a frontend pretending.</p>
+            </div>
+            <div class="cs-card">
+              <h3>Nobody fixed it by hand</h3>
+              <p>The backend is not finished until its generated test suite passes against a real database. What you
+                are using is what came out.</p>
+            </div>
+            <div class="cs-card">
+              <h3>It runs without us</h3>
+              <p>No proprietary runtime and no SDK in between. Clone the repositories and it runs anywhere a
+                container runs.</p>
+            </div>
+            <div class="cs-card">
+              <h3>You would own this one</h3>
+              <p>An equivalent build hands you both repositories on any plan, including Free.
+                <a href="/pricing">See pricing</a>.</p>
+            </div>
+          </div>
+
+          <h2>Build something like this</h2>
+          <p>
+            If this looks like the thing you are trying to build, describe yours in the
+            <a href="/build">builder</a>. If it looks like less than what you need, our
+            <a href="/alternatives">honest comparison</a> covers when an app builder or a development shop is the
+            better call.
+          </p>
+
+          <div class="legal-footer">
+            <a href="/case-studies">All case studies</a> · <a href="/alternatives">App builders vs dev shops</a> ·
+            <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

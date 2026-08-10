@@ -7,7 +7,7 @@
 //
 // Routing (mirror of the dev middleware in vite.config.ts — keep in sync):
 //   /                          -> dist/index.html  (static marketing landing)
-//   /terms, /privacy, /refunds, /pricing -> their static HTML pages (pretty URLs)
+//   /terms, /privacy, /refunds, /pricing, /alternatives -> static HTML pages (pretty URLs)
 //   existing files             -> served from dist/ (assets, demos, favicon, *.html)
 //   any other extension-less path -> dist/app.html (SPA: /build, /login, /auth/callback, ...)
 import { serveDir, serveFile } from 'jsr:@std/http@^1.0.20/file-server'
@@ -20,6 +20,13 @@ const PRETTY_PAGES: Record<string, string> = {
   '/privacy': '/privacy.html',
   '/refunds': '/refunds.html',
   '/pricing': '/pricing.html',
+  '/alternatives': '/alternatives.html',
+  '/case-studies': '/case-studies.html',
+  '/case-studies/deskmind': '/case-study-deskmind.html',
+  '/case-studies/atelier': '/case-study-atelier.html',
+  '/case-studies/commons': '/case-study-commons.html',
+  '/case-studies/stride': '/case-study-stride.html',
+  '/case-studies/shopfront': '/case-study-shopfront.html',
 }
 
 // Deno Deploy manages the listen port itself; PORT is for local runs.

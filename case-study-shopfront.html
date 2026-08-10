@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shopfront — A real store | ConceptualAI case study</title>
+    <meta name="description" content="Shopfront: A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <link rel="canonical" href="https://conceptual-ai.app/case-studies/shopfront" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="ConceptualAI" />
+    <meta property="og:title" content="Shopfront — A real store | ConceptualAI case study" />
+    <meta property="og:description" content="Shopfront: A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta property="og:url" content="https://conceptual-ai.app/case-studies/shopfront" />
+    <meta property="og:image" content="https://conceptual-ai.app/demos/shopfront.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shopfront — A real store | ConceptualAI case study" />
+    <meta name="twitter:description" content="Shopfront: A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live." />
+    <meta name="twitter:image" content="https://conceptual-ai.app/demos/shopfront.png" />
+    <script type="application/ld+json">
+{
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "Shopfront \u2014 built from one prompt",
+      "description": "Shopfront: A real store: cart checkout with Stripe, inventory that can\u2019t double-decrement, and confirmation emails sent exactly once. Generated from a single prompt, shown in full on this page, with both repositories public and the app running live.",
+      "url": "https://conceptual-ai.app/case-studies/shopfront",
+      "publisher": {
+            "@id": "https://conceptual-ai.app/#organization"
+      },
+      "about": {
+            "@type": "SoftwareApplication",
+            "name": "Shopfront",
+            "applicationCategory": "WebApplication",
+            "operatingSystem": "Web",
+            "url": "https://shopfront.conceptual-ai.app"
+      }
+}
+    </script>
+    <style>
+      .cs-shot { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); margin: 1rem 0 1.5rem; }
+      .cs-prompt { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.55; padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); background: rgba(127,127,127,0.08); overflow-x: auto; }
+      .cs-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+      .cs-chips li { font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+      .cs-grid { display: grid; gap: 1rem; margin: 1.25rem 0; }
+      @media (min-width: 720px) { .cs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .cs-card { padding: 1rem; border-radius: 14px; border: 1px solid var(--glass-border, rgba(255,255,255,0.12)); }
+      .cs-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+      .cs-card p { margin: 0; font-size: 0.92rem; }
+    </style>
+    <script>
+      try {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
+    <script type="module" src="/src/landing/landing.ts"></script>
+  </head>
+  <body class="static-page">
+    <div class="landing min-h-screen text-text">
+      <header class="sticky top-0 z-50 border-b border-glass-border bg-glass-bg/80 backdrop-blur-xl">
+        <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-transparent px-3 py-2 text-sm font-black tracking-tight text-text no-underline transition hover:border-glass-border hover:bg-white/5">
+            <img src="/favicon.svg" alt="ConceptualAI" class="h-6 w-6" />
+            <span>ConceptualAI</span>
+          </a>
+          <div class="flex items-center gap-2">
+            <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-glass-border bg-white/5 px-4 py-2 text-sm font-semibold text-text transition hover:bg-white/10" aria-label="Toggle color theme">
+              <span data-theme-label>Light Mode</span>
+            </button>
+            <a href="/build" class="btn btn-primary start-building-btn no-underline">Open Builder</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="legal-wrap">
+        <div class="legal-card glass">
+          <h1>Shopfront</h1>
+          <p>A real store: cart checkout with Stripe, inventory that can’t double-decrement, and confirmation emails sent exactly once.</p>
+
+          <img class="cs-shot" src="/demos/shopfront.png" alt="Shopfront screenshot" width="1440" height="900" loading="lazy" decoding="async" />
+
+          <div class="cs-links">
+            <a class="btn btn-primary no-underline" href="https://shopfront.conceptual-ai.app" target="_blank" rel="noopener noreferrer">Open the live app ↗</a>
+          </div>
+
+          <h2>What was asked for</h2>
+          <p>
+            This is the entire specification. One prompt, pasted below exactly as it was written — no follow-up
+            corrections, no hand-editing afterwards, nothing removed for the sake of this page.
+          </p>
+          <pre class="cs-prompt">Build an online store app for a single business.
+
+The business owner signs in with operator credentials configured in the environment — there is no owner signup page. The owner manages the store's catalog: each item has a name, a description, a price, one or more photos the owner uploads, and a stock count. The owner can add stock to any item at any time.
+
+Customers do not need an account. They browse a visual grid of the items with photos and prices. An item whose stock is zero is shown grayed out as sold out and cannot be purchased.
+
+Customers add items to a cart, choosing a quantity for each, and check out the whole cart in one payment through a secure hosted checkout page. At checkout the customer provides their email address and their shipping address. Checkout must not go through for a quantity larger than an item's available stock, and sold-out items can't be checked out at all — the stock rules are enforced by the server, not just the page.
+
+When an order's payment completes, exactly once: each purchased item's stock goes down by the quantity bought (an item that reaches zero becomes sold out), the order is recorded with its items, quantities, the customer's email, and the shipping address, and a confirmation email listing the order's contents and shipping address is sent from the store's own email address to both the customer and the business owner. A duplicate or replayed payment notification must not decrement stock twice or send the emails twice.
+
+The owner has an orders page listing orders newest-first with their items, quantities, shipping details, and payment status, and gets a notification when a new order arrives.</pre>
+
+          <h2>What got built</h2>
+          <ul class="cs-chips">
+            <li>Stripe checkout</li>
+            <li>Order emails</li>
+            <li>Inventory integrity</li>
+            <li>Owner admin</li>
+            <li>Media</li>
+          </ul>
+
+          <h2>Things you can actually do in it</h2>
+          <p>The app is live and public. Without taking our word for anything, you can:</p>
+          <ul>
+            <li>Add 2 of an item with stock 3 to your cart and check out with the Stripe test card</li>
+            <li>Stock drops to 1 and two confirmation emails go out — customer and owner</li>
+            <li>Buy the last unit — the card grays out "Sold out"; the server enforces stock, not the page</li>
+            <li>Replayed payment webhooks can’t decrement stock twice or double-send email</li>
+          </ul>
+
+          <h2>The code</h2>
+          <p>
+            Both repositories are public — a Deno backend and a React frontend, with the generated test suite, the
+            OpenAPI spec, and a Dockerfile inside. This is the same export any build hands you; nothing was tidied up
+            for publication.
+          </p>
+          <div class="cs-links">
+            <a href="https://github.com/rdavislee/Shopfront-backend" target="_blank" rel="noopener noreferrer">Shopfront-backend</a>
+            <a href="https://github.com/rdavislee/Shopfront-frontend" target="_blank" rel="noopener noreferrer">Shopfront-frontend</a>
+          </div>
+
+          <h2>Why this one is here</h2>
+          <div class="cs-grid">
+            <div class="cs-card">
+              <h3>It has a real backend</h3>
+              <p>Authentication, persisted data, and the integrations above are running server-side against a real
+                database — not mocked, and not a frontend pretending.</p>
+            </div>
+            <div class="cs-card">
+              <h3>Nobody fixed it by hand</h3>
+              <p>The backend is not finished until its generated test suite passes against a real database. What you
+                are using is what came out.</p>
+            </div>
+            <div class="cs-card">
+              <h3>It runs without us</h3>
+              <p>No proprietary runtime and no SDK in between. Clone the repositories and it runs anywhere a
+                container runs.</p>
+            </div>
+            <div class="cs-card">
+              <h3>You would own this one</h3>
+              <p>An equivalent build hands you both repositories on any plan, including Free.
+                <a href="/pricing">See pricing</a>.</p>
+            </div>
+          </div>
+
+          <h2>Build something like this</h2>
+          <p>
+            If this looks like the thing you are trying to build, describe yours in the
+            <a href="/build">builder</a>. If it looks like less than what you need, our
+            <a href="/alternatives">honest comparison</a> covers when an app builder or a development shop is the
+            better call.
+          </p>
+
+          <div class="legal-footer">
+            <a href="/case-studies">All case studies</a> · <a href="/alternatives">App builders vs dev shops</a> ·
+            <a href="/pricing">Pricing</a> · <a href="/terms">Terms</a> ·
+            <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
