@@ -793,10 +793,10 @@ The owner has an orders page listing orders newest-first with their items, quant
           <h2 class="section-h2">Why not just use a coding agent?</h2>
           <p class="section-sub">
             If you're technical enough to want two repos and a Dockerfile, you could point Claude Code or Cursor at a
-            template. Three honest reasons this is different:
+            template. Four honest reasons this is different:
           </p>
         </div>
-        <div class="mt-8 grid gap-4 md:grid-cols-3">
+        <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div class="agent-card glass">
             <div class="agent-title">Assembled, not improvised</div>
             <div class="agent-body">
@@ -817,6 +817,15 @@ The owner has an orders page listing orders newest-first with their items, quant
             <div class="agent-body">
               Ask an agent for one more feature and hope nothing broke. Ask here and get a diff receipt: what changed,
               what is byte-for-byte identical, including the Subscribing concept.
+            </div>
+          </div>
+          <div class="agent-card glass">
+            <div class="agent-title">Many cheap calls, not one expensive loop</div>
+            <div class="agent-body">
+              A coding agent runs everything through one frontier model, and the bill grows with every retry. Here
+              the work is split across many small, specialised calls, most of them on cheap models, with the
+              expensive ones saved for the parts that need them. You see it in the price: builds start at $9, and
+              you are quoted before anything runs.
             </div>
           </div>
         </div>
