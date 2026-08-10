@@ -497,19 +497,19 @@ The owner has an orders page listing orders newest-first with their items, quant
           <div class="receipt md:col-span-3">
             <div class="receipt-head">
               <span class="receipt-title">Test receipt</span>
-              <span class="receipt-sub">every build, before it's called done</span>
+              <span class="receipt-sub">Deskmind — generated with the app, shipped in its repo</span>
             </div>
             <div class="terminal">
               <div class="term-cmd">$ deno test --allow-all</div>
-              <div class="term-muted">running 313 tests from ./tests/</div>
-              <div class="term-row"><span>Authenticating › register → login → session</span><span class="term-ok">… ok</span></div>
-              <div class="term-row"><span>Purchasing › checkout applied exactly once</span><span class="term-ok">… ok</span></div>
-              <div class="term-row"><span>Reservations › double-booking rejected</span><span class="term-ok">… ok</span></div>
-              <div class="term-row"><span>Posting › supporters-only gate holds</span><span class="term-ok">… ok</span></div>
-              <div class="term-row"><span>Emailing › confirmation sent exactly once</span><span class="term-ok">… ok</span></div>
+              <div class="term-muted">running 161 tests from Deskmind-backend</div>
+              <div class="term-row"><span>SupportRequests › triage sets category and priority</span><span class="term-ok">… 16 ok</span></div>
+              <div class="term-row"><span>Emailing › reply delivered exactly once</span><span class="term-ok">… 16 ok</span></div>
+              <div class="term-row"><span>HelpDocuments › draft grounded in uploaded docs</span><span class="term-ok">… 14 ok</span></div>
+              <div class="term-row"><span>MediaHosting › upload stored and retrievable</span><span class="term-ok">… 14 ok</span></div>
+              <div class="term-row"><span>Sessioning › revoked agent loses access</span><span class="term-ok">… 11 ok</span></div>
               <div class="term-muted">…</div>
-              <div class="term-summary">ok · <span class="term-ok">313 passed</span> · 0 failed</div>
-              <div class="term-muted">one data layer, conformance-tested against MongoDB, Postgres, and Turso.</div>
+              <div class="term-summary"><span class="term-ok">125 concept tests</span> passed against a real database at build time · 161 ship in the repo</div>
+              <div class="term-muted">865 generated tests across our six public demo backends — clone one and count.</div>
             </div>
           </div>
 
@@ -756,7 +756,7 @@ The owner has an orders page listing orders newest-first with their items, quant
               <span class="lib-chip">Following</span><span class="lib-chip">Subscribing</span><span class="lib-chip">Purchasing</span>
               <span class="lib-chip">Emailing</span><span class="lib-chip">Notifying</span><span class="lib-chip">MediaHosting</span>
               <span class="lib-chip">Researching</span><span class="lib-chip">WebSearching</span><span class="lib-chip">AdminAuthenticating</span>
-              <span class="lib-chip more">40 versioned blocks &amp; counting</span>
+              <span class="lib-chip more">56 versioned concepts — every one with its own tests</span>
             </div>
             <div class="lib-head mt-5">Provider utils — the integrations</div>
             <div class="chip-cloud">

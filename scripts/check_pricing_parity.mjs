@@ -65,8 +65,8 @@ const minCredits = Number(ts.match(/export const MIN_CREDITS_PER_BUILD\s*=\s*(\d
 const expected = tiers.map((t) => [
   t.label,
   t.price === 0 ? '$0' : `${t.priceFrom ? 'From ' : ''}$${t.price}/month`,
-  t.included === 0 ? 'None' : `${t.included} credits`,
   t.maxPerApp === null ? 'No limit' : `${t.maxPerApp} credits`,
+  t.included === 0 ? 'None' : `${t.included} credits`,
   t.plansPerWeek === null ? 'No limit' : String(t.plansPerWeek),
 ])
 
