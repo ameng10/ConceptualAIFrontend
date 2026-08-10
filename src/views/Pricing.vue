@@ -159,7 +159,7 @@ async function buyCredits() {
     </p>
 
     <section class="renewal glass">
-      <h2>Before you subscribe</h2>
+      <h2>Before you buy</h2>
       <ul>
         <li>
           <strong>Plans renew automatically.</strong> Your card is charged the same
@@ -179,6 +179,13 @@ async function buyCredits() {
           never lose credits by upgrading mid-term. Credits you buy outright are separate
           and last 12 months.
         </li>
+        <li v-if="upgradeWarning">
+          <strong>Changing plan.</strong> Upgrading starts a new monthly term today and
+          ends your current plan — your new credits arrive immediately and any unused
+          credits come with them, but the rest of the term you had already paid for is not
+          refunded. Downgrading charges nothing: your current plan and its credits run to
+          the end of the term you paid for.
+        </li>
         <li>
           <strong>Purchases are final.</strong> Approving a build charges it, and a run
           that has started is charged even if you cancel it. If a build fails to
@@ -192,16 +199,7 @@ async function buyCredits() {
       </p>
     </section>
 
-    <p v-if="upgradeWarning" class="renewal-inline">
-      <strong>Upgrading</strong> starts a new monthly term today and ends your current
-      plan. Your new credits arrive immediately, and any unused credits from your old plan
-      come with them. The rest of the term you had already paid for is not refunded — those
-      credits are what you keep instead.
-      <strong>Downgrading</strong> charges nothing: your current plan and its credits run
-      to the end of the term you paid for, and your credits change to the new amount then.
-    </p>
-
-    <PurchaseConsent v-model="acknowledged" class="consent glass" />
+    <PurchaseConsent v-model="acknowledged" class="consent" />
 
     <!-- Credits first: you do not need a subscription to start, and saying so up front
          is more honest than leading with the most expensive option. -->
@@ -474,22 +472,22 @@ async function buyCredits() {
   text-align: center;
 }
 
-.renewal-inline {
-  padding: 0.875rem 1.125rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-
+/* A CONTROL, not another content panel. Three stacked boxes of near-identical weight —
+   terms, note, consent — read as one undifferentiated wall; the middle one being the only
+   transparent card made it worse. The terms are now a single panel and this is visibly a
+   gate: tighter, tinted, and anchored to the buttons it unlocks by a left accent. */
 .consent {
-  padding: 1rem 1.25rem;
-  margin-bottom: 1rem;
+  padding: 0.875rem 1.125rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
 
-.renewal { padding: 1.5rem; }
+/* 2rem to match every other section; the consent below it keeps a tighter 1.25rem so it
+   reads as attached to the buttons it unlocks rather than as a peer of the terms. */
+.renewal { padding: 1.5rem; margin-bottom: 2rem; }
 .renewal h2 { margin: 0 0 0.875rem; font-size: 1rem; font-weight: 800; }
 .renewal ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
 .renewal li { font-size: 0.875rem; line-height: 1.55; color: var(--text-dim); }
