@@ -118,7 +118,7 @@ A user gets a notification when someone likes their post, comments on their post
             <li>Subscribe with the Stripe test card — a locked supporters-only post unlocks</li>
             <li>On v2, try posting abusive text — it’s blocked with a written reason</li>
             <li>Open the admin moderation queue: every flagged item with the AI’s rationale</li>
-            <li>Compare v1 and v2 yourself — the Subscribing concept and the Stripe utility are byte-for-byte identical between the two repositories</li>
+            <li>Compare v1 and v2 — the Subscribing concept and the Stripe utility are byte-for-byte identical</li>
           </ul>
 
           <h2>The code</h2>
@@ -126,6 +126,11 @@ A user gets a notification when someone likes their post, comments on their post
             The repositories are public: a Deno backend carrying the generated test suite, the OpenAPI spec and a
             Dockerfile, and a React frontend built against that same spec. This is the export a build hands you —
             clone it and read it.
+          </p>
+          <p>
+            <strong>Every one of them has exactly one commit: "Initial export from ConceptualAI".</strong> Nothing has
+            been hand-fixed after the fact, and you do not have to take our word for that — the commit history is
+            public, and a second commit would be sitting right there if we had.
           </p>
           <div class="cs-links">
             <a href="https://github.com/rdavislee/CommonsV1_backend" target="_blank" rel="noopener noreferrer">CommonsV1_backend</a>
