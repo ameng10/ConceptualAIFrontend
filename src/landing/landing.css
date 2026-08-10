@@ -370,6 +370,14 @@ body.static-page {
   letter-spacing: 0.08em;
 }
 
+.dcard-price {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.dcard-price strong { color: var(--text); font-weight: 800; }
+
 .dcard-tagline {
   color: var(--text-dim);
   font-size: 0.92rem;
