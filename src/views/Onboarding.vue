@@ -25,7 +25,7 @@ const handleSubmit = async () => {
   error.value = ''
   try {
     await socialApi.createProfile({ username: u, displayName: d, bio: bio.value.trim() || undefined })
-    router.replace('/posts')
+    router.replace('/build')
   } catch (e: any) {
     error.value = e.response?.data?.error || e.message || 'Failed to create profile'
   } finally {
@@ -48,7 +48,7 @@ onMounted(async () => {
   }
   try {
     await socialApi.getMyProfile()
-    router.replace('/posts')
+    router.replace('/build')
   } catch {
     // 404 = no profile, stay on onboarding
   }

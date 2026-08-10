@@ -12,10 +12,7 @@ import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
 import VerifyEmail from '@/views/VerifyEmail.vue'
-import BugReportFeed from '@/views/BugReportFeed.vue'
 import PostDetail from '@/views/PostDetail.vue'
-import CreateBugReport from '@/views/CreateBugReport.vue'
-import EditBugReport from '@/views/EditBugReport.vue'
 import PublicProfile from '@/views/PublicProfile.vue'
 import Onboarding from '@/views/Onboarding.vue'
 import AdminLogin from '@/views/AdminLogin.vue'
@@ -132,30 +129,11 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
-            path: '/posts',
-            name: 'bug-report-feed',
-            component: BugReportFeed,
-            meta: { public: true }
-        },
-        {
-            path: '/posts/new',
-            name: 'create-bug-report',
-            component: CreateBugReport,
-            meta: { requiresAuth: true }
-        },
-        {
             path: '/posts/:postId',
             name: 'post-detail',
             component: PostDetail,
             props: true,
             meta: { public: true }
-        },
-        {
-            path: '/posts/:postId/edit',
-            name: 'edit-bug-report',
-            component: EditBugReport,
-            props: true,
-            meta: { requiresAuth: true }
         },
         {
             path: '/profiles/:username',

@@ -61,7 +61,9 @@ const refresh = async () => {
   loading.value = false
 }
 
-const goToFeed = () => router.push('/posts')
+// The community feed is gone; a post is now only reached from its author's profile, so
+// "back" means back to wherever you came from rather than to a page that no longer exists.
+const goBack = () => router.back()
 const goToAuthor = () => {
   if (post.value?.author?.username) {
     router.push(`/profiles/${post.value.author.username}`)
@@ -90,7 +92,7 @@ const handleDeletePost = () => {
     action: async () => {
       try {
         await socialApi.deletePost(postId)
-        router.push('/posts')
+        router.back()
       } catch (e: any) {
         error.value = e.response?.data?.error || e.message || 'Failed to delete'
       }
@@ -258,7 +260,7 @@ onMounted(refresh)
 <template>
   <div class="post-detail-view">
     <div class="container fade-in">
-      <button class="back-btn" @click="goToFeed">
+      <button class="back-btn" @click="goBack">
         <ArrowLeft :size="18" /> Back to feed
       </button>
 

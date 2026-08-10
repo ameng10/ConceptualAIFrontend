@@ -37,7 +37,6 @@ const emit = defineEmits<{
 const navItems = [
   { label: 'Create App', icon: PlusCircle, path: '/build' },
   { label: 'My Projects', icon: History, path: '/projects' },
-  { label: 'Community', icon: MessageCircle, path: '/posts' },
   { label: 'Docs', icon: LayoutGrid, path: '/library' },
   // Both were reachable only by typing the URL or by hitting a refusal dialog, which
   // meant a user could not find their own balance or the prices at all.
@@ -77,7 +76,18 @@ const userDisplayName = computed(() => {
   // We only reliably store user id on this frontend today.
   // Prefer username if present in the stored object (future), else fallback.
   const u: any = authSnapshot.value
-  return u?.username || u?.name || u?.user_metadata?.name || (u ? 'Signed in' : 'Not signed in')
+  if (!u) return 'Not signed in'
+  // NEVER fall back to a status string. "Signed in" was being used as a NAME, so a user
+  // without a stored username saw it as their display name, had it initialised to "SI" for
+  // the avatar, and then saw it a second time on the line below.
+  return u.username || u.name || u.user_metadata?.name || 'Your account'
+})
+
+/** Their plan, once billing has loaded. Blank rather than a guess while it is unknown —
+ *  telling someone they are on Free when they are paying is worse than saying nothing. */
+const planLabel = computed(() => {
+  const tier = billing.value?.tierLabel
+  return tier ? `${tier} plan` : ''
 })
 
 const userInitials = computed(() => {
@@ -187,7 +197,9 @@ onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilli
         <div class="avatar" aria-label="User avatar">{{ userInitials }}</div>
         <div v-if="!collapsed" class="user-info">
           <span class="user-name">{{ userDisplayName }}</span>
-          <span class="user-plan" v-if="isSignedIn">Signed in</span>
+          <!-- The plan, which is what this line was always named for. Repeating "Signed
+               in" under a name that also said "Signed in" told the user nothing twice. -->
+          <span class="user-plan" v-if="isSignedIn">{{ planLabel }}</span>
           <span class="user-plan" v-else>Not signed in</span>
         </div>
 
