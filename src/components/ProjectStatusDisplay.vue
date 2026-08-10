@@ -65,6 +65,23 @@ const awaitingReview = computed(
   () => PLAN_PARKED_STATUSES.includes(props.status) && !props.planAccepted,
 )
 
+// How long each stage really takes, said before the wait rather than after it. Both notes
+// are scoped to the stage actually running: the planning note goes once the plan is parked
+// at the review gate (the waiting is over, and it is now on the user), and neither shows on
+// a finished or errored project.
+const isRunning = computed(() => props.status !== 'complete' && props.status !== 'error')
+// Not while we are asking the user something: at that point they are the ones being waited
+// on, and telling them how long WE take reads as an excuse.
+const AWAITING_USER_STATUSES = ['awaiting_clarification', 'awaiting_input']
+const showPlanningNote = computed(
+  () =>
+    isRunning.value &&
+    currentStepIndex.value === 0 &&
+    !awaitingReview.value &&
+    !AWAITING_USER_STATUSES.includes(props.status),
+)
+const showBuildingNote = computed(() => isRunning.value && currentStepIndex.value === 1)
+
 const getStepStatus = (index: number) => {
   const status = props.status
   if (status === 'error') return 'error'
@@ -110,6 +127,15 @@ const getStepStatus = (index: number) => {
         <div v-if="index < steps.length - 1" class="step-line"></div>
       </div>
     </div>
+
+    <p v-if="showPlanningNote" class="stage-note">
+      Planning usually takes 5 to 15 minutes, depending on how large the app is.
+    </p>
+
+    <p v-else-if="showBuildingNote" class="stage-note">
+      Builds can take hours for a large app. It is safe to close this page: the build keeps running on our
+      servers, and your project will be waiting for you when you come back.
+    </p>
 
     <div v-if="status === 'complete' && showDownloadButton !== false" class="actions">
       <button 
@@ -255,6 +281,15 @@ const getStepStatus = (index: number) => {
   text-align: center;
   color: var(--error);
   font-size: 0.875rem;
+}
+
+.stage-note {
+  margin: 1.25rem auto 0;
+  max-width: 34rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .spin {

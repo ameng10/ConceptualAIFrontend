@@ -947,46 +947,12 @@ onMounted(async () => {
           Deploy the app with your own keys to use them.
         </p>
 
-        <!-- Downloads (both repos, zipped) -->
-        <div v-if="hasAnyDownload" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
-          <div class="revert-info">
-            <span class="revert-label">Download the code</span>
-            <span class="revert-desc">Both repos, zipped — frontend and backend.</span>
-          </div>
-
-          <div class="download-actions" style="margin-top: 1rem;">
-            <button
-              v-if="frontendDownloadUrl"
-              class="download-btn frontend-btn"
-              type="button"
-              :disabled="downloadingFrontend"
-              @click="downloadFrontend"
-            >
-              <span class="download-icon-wrap">
-                <ArrowDownToLine :size="16" />
-              </span>
-              {{ downloadingFrontend ? 'Downloading Frontend…' : 'Download Frontend ZIP' }}
-            </button>
-            <button
-              v-if="backendDownloadUrl"
-              class="download-btn backend-btn"
-              type="button"
-              :disabled="downloadingBackend"
-              @click="downloadBackend"
-            >
-              <span class="download-icon-wrap">
-                <ArrowDownToLine :size="16" />
-              </span>
-              {{ downloadingBackend ? 'Downloading Backend…' : 'Download Backend ZIP' }}
-            </button>
-          </div>
-
-          <p v-if="!allDone" class="muted" style="margin-top: 0.75rem;">
-            Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
-          </p>
-        </div>
-
-        <!-- Diff receipt (W2): what the last iteration actually touched, by content hash -->
+        <!-- Diff receipt (W2): what the last iteration actually touched, by content hash.
+             Sits ABOVE the downloads deliberately: on an iterated build, what changed is
+             what you want to read before deciding whether to pull the code again. Only
+             renders for an iteration — the endpoint diffs latest-1 → latest and _getDiff
+             returns nothing when either snapshot is missing, so a first build has no
+             receipt and its downloads stay at the top of this group. -->
         <div v-if="receipt" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
             <div class="revert-info">
@@ -1037,6 +1003,45 @@ onMounted(async () => {
               </div>
             </div>
           </details>
+        </div>
+
+        <!-- Downloads (both repos, zipped) -->
+        <div v-if="hasAnyDownload" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--glass-border);">
+          <div class="revert-info">
+            <span class="revert-label">Download the code</span>
+            <span class="revert-desc">Both repos, zipped — frontend and backend.</span>
+          </div>
+
+          <div class="download-actions" style="margin-top: 1rem;">
+            <button
+              v-if="frontendDownloadUrl"
+              class="download-btn frontend-btn"
+              type="button"
+              :disabled="downloadingFrontend"
+              @click="downloadFrontend"
+            >
+              <span class="download-icon-wrap">
+                <ArrowDownToLine :size="16" />
+              </span>
+              {{ downloadingFrontend ? 'Downloading Frontend…' : 'Download Frontend ZIP' }}
+            </button>
+            <button
+              v-if="backendDownloadUrl"
+              class="download-btn backend-btn"
+              type="button"
+              :disabled="downloadingBackend"
+              @click="downloadBackend"
+            >
+              <span class="download-icon-wrap">
+                <ArrowDownToLine :size="16" />
+              </span>
+              {{ downloadingBackend ? 'Downloading Backend…' : 'Download Backend ZIP' }}
+            </button>
+          </div>
+
+          <p v-if="!allDone" class="muted" style="margin-top: 0.75rem;">
+            Waiting for {{ !frontendDownloadUrl ? 'frontend' : 'backend' }} to complete...
+          </p>
         </div>
 
         <div v-if="hasAnyDownload" class="github-export-section">
