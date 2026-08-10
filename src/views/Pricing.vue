@@ -39,6 +39,30 @@ const creditQty = ref(10)
 const acknowledged = ref(false)
 
 /**
+ * Point at the checkbox when someone clicks a button it is gating.
+ *
+ * The buttons look disabled but are NOT `disabled`, deliberately: a disabled button fires
+ * no click event at all, so it can never tell you why it will not work. Greyed-and-inert
+ * with an explanation beats greyed-and-silent — otherwise the only way to discover the
+ * requirement is to find the checkbox yourself.
+ */
+const consentEl = ref<{ $el: HTMLElement } | null>(null)
+const nudging = ref(false)
+let nudgeTimer: number | undefined
+
+function askForConsent() {
+  consentEl.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  nudging.value = false
+  // Restart the animation even if it is already running — a second click should feel like
+  // a second answer, not like nothing happened.
+  requestAnimationFrame(() => {
+    nudging.value = true
+    clearTimeout(nudgeTimer)
+    nudgeTimer = setTimeout(() => (nudging.value = false), 2000)
+  })
+}
+
+/**
  * Shown to anyone who ALREADY has a paid plan, because for them a plan click may forfeit
  * time they have paid for. A first-time buyer forfeits nothing and does not need warning.
  */
@@ -81,7 +105,9 @@ const cancelled = ref(false)
 
 async function choose(t: Tier) {
   // Cancelling is not a purchase, so it needs no acknowledgement.
-  if (busyTier.value || (t !== 'free' && !acknowledged.value)) return
+  if (busyTier.value) return
+  // Free is a cancellation, not a purchase, so it needs no acknowledgement.
+  if (t !== 'free' && !acknowledged.value) return askForConsent()
   busyTier.value = t
   failed.value = null
   cancelled.value = false
@@ -114,7 +140,8 @@ async function choose(t: Tier) {
 }
 
 async function buyCredits() {
-  if (buyingCredits.value || !acknowledged.value) return
+  if (buyingCredits.value) return
+  if (!acknowledged.value) return askForConsent()
   buyingCredits.value = true
   failed.value = null
   try {
@@ -158,8 +185,6 @@ async function buyCredits() {
       has been charged.
     </p>
 
-
-    <PurchaseConsent v-model="acknowledged" class="consent" />
 
     <section class="tiers">
       <article
@@ -207,7 +232,9 @@ async function buyCredits() {
         <button
           v-if="t.selfServe && t.monthlyPriceUsd > 0 && t.tier !== currentTier"
           class="btn btn-primary"
-          :disabled="busyTier !== null || !acknowledged"
+          :disabled="busyTier !== null"
+          :aria-disabled="!acknowledged"
+          :class="{ ungated: !acknowledged }"
           @click="choose(t.tier)"
         >
           <Loader2 v-if="busyTier === t.tier" :size="17" class="spin" />
@@ -259,7 +286,9 @@ async function buyCredits() {
         </label>
         <button
           class="btn btn-primary"
-          :disabled="buyingCredits || !acknowledged"
+          :disabled="buyingCredits"
+          :aria-disabled="!acknowledged"
+          :class="{ ungated: !acknowledged }"
           @click="buyCredits"
         >
           <Loader2 v-if="buyingCredits" :size="17" class="spin" />
@@ -269,6 +298,13 @@ async function buyCredits() {
         <p v-if="creditPrice !== null" class="unit">${{ creditPrice }} per credit</p>
       </div>
     </section>
+
+    <PurchaseConsent
+      ref="consentEl"
+      v-model="acknowledged"
+      class="consent"
+      :class="{ nudge: nudging }"
+    />
 
     <section class="renewal glass">
       <h2>Before you buy</h2>
@@ -473,11 +509,54 @@ async function buyCredits() {
   text-align: center;
 }
 
-/* A CONTROL, not another content panel. Three stacked boxes of near-identical weight —
-   terms, note, consent — read as one undifferentiated wall; the middle one being the only
-   transparent card made it worse. The terms are now a single panel and this is visibly a
-   gate: tighter, tinted, and anchored to the buttons it unlocks by a left accent. */
+/* A CONTROL, not a content panel: tighter and tinted, with a left accent, so it reads as
+   a gate rather than as a third thing to read. It now sits BELOW the buttons it unlocks,
+   which is why those buttons have to point at it when clicked. */
+/* Looks disabled without being disabled — see `askForConsent`. */
+.ungated {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+/* The attention itself: a ring that blooms and fades, plus a short nudge of movement.
+   Movement alone reads as an error shake; the ring reads as "look here", which is what
+   this is. Both are brief — an animation that outstays its welcome becomes noise. */
+@keyframes consent-attention {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+  12% { transform: translateX(-3px); }
+  24% { transform: translateX(3px); }
+  36% { transform: translateX(-2px); }
+  48% { transform: translateX(0); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+.consent.nudge {
+  animation: consent-attention 1.1s ease-out 2;
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+/* A caret aimed at the box from the side the buttons are on. */
+.consent.nudge::before {
+  content: '';
+  position: absolute;
+  left: -0.5rem;
+  top: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translateY(-50%) rotate(45deg);
+  background: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consent.nudge {
+    animation: none;
+  }
+}
+
 .consent {
+  position: relative;
   padding: 0.875rem 1.125rem;
   margin-bottom: 1.25rem;
   border: 1px solid var(--border);
