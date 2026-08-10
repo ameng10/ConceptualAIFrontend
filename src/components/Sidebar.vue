@@ -107,26 +107,22 @@ const userDisplayName = computed(() => {
   const u: any = authSnapshot.value
   if (!u) return 'Not signed in'
   // NEVER fall back to a status string. "Signed in" was being used as a NAME, so a user
-  // without a stored username saw it as their display name, had it initialised to "SI" for
-  // the avatar, and then saw it a second time on the line below.
+  // without a stored username saw it as their display name and then saw it again on the
+  // line below. Only reached now when the email is unavailable.
   return u.username || u.name || u.user_metadata?.name || profileName.value || 'Your account'
 })
 
 /** Their plan, once billing has loaded. Blank rather than a guess while it is unknown —
  *  telling someone they are on Free when they are paying is worse than saying nothing. */
+/** The signed-in account's email, from the billing payload this sidebar already loads —
+ *  so it costs no extra request and, unlike a profile, exists for every signed-in user. */
+const userEmail = computed(() => (isSignedIn.value ? (billing.value?.email ?? '') : ''))
+
 const planLabel = computed(() => {
   const tier = billing.value?.tierLabel
   return tier ? `${tier} plan` : ''
 })
 
-const userInitials = computed(() => {
-  const name = (userDisplayName.value || '').trim()
-  if (!name) return 'U'
-  const parts = name.split(/\s+/).filter(Boolean)
-  const first = parts[0]?.[0] ?? 'U'
-  const second = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) ?? ''
-  return (first + second).toUpperCase()
-})
 
 const handleLogout = async () => {
   await authApi.logout()
@@ -224,11 +220,13 @@ onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilli
       </button>
 
       <div class="user-profile">
-        <div class="avatar" aria-label="User avatar">{{ userInitials }}</div>
+        <!-- No initials disc. It was decorative, and derived from a name we often do not
+             have — so it spent most of its life showing a letter from a placeholder. The
+             email identifies the account unambiguously and needs no avatar beside it. -->
         <div v-if="!collapsed" class="user-info">
-          <span class="user-name">{{ userDisplayName }}</span>
-          <!-- The plan, which is what this line was always named for. Repeating "Signed
-               in" under a name that also said "Signed in" told the user nothing twice. -->
+          <span class="user-name" :title="userEmail || userDisplayName">
+            {{ userEmail || userDisplayName }}
+          </span>
           <span class="user-plan" v-if="isSignedIn">{{ planLabel }}</span>
           <span class="user-plan" v-else>Not signed in</span>
         </div>
@@ -528,27 +526,21 @@ onBeforeUnmount(() => window.removeEventListener('billing:changed', refreshBilli
   gap: 0.75rem;
 }
 
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--grad-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.8125rem;
-  color: white;
-}
-
 .user-info {
   display: flex;
   flex-direction: column;
+  /* Takes the space the avatar used to occupy. `min-width: 0` is what actually lets the
+     email ellipsis instead of forcing the row wider than the sidebar. */
+  flex: 1;
+  min-width: 0;
 }
 
 .user-name {
   font-size: 0.8125rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-plan {

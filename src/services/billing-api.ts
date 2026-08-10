@@ -19,6 +19,9 @@ export interface TierSpec {
 export type Tier = 'free' | 'starter' | 'studio' | 'pro' | 'unlimited'
 
 export interface BillingState {
+  /** The signed-in account's own email. Here rather than on the profile endpoint because
+   *  that one 404s until onboarding is finished, while every signed-in user has billing. */
+  email: string | null
   tier: Tier
   tierLabel: string
   maxCreditsPerApp: number | null
