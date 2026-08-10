@@ -158,83 +158,8 @@ async function buyCredits() {
       has been charged.
     </p>
 
-    <section class="renewal glass">
-      <h2>Before you buy</h2>
-      <ul>
-        <li>
-          <strong>Plans renew automatically.</strong> Your card is charged the same
-          amount on the same day each month until you cancel. We email you before each
-          renewal.
-        </li>
-        <li>
-          <strong>Cancel any time</strong> from your billing page or by emailing
-          <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
-          Cancellation takes effect at the end of the current billing period and stops
-          all future charges.
-        </li>
-        <li>
-          <strong>Monthly credits do not roll over.</strong> Each renewal resets that
-          month's allowance; whatever is unused expires at the end of the period. The one
-          exception is an upgrade: unused plan credits move onto your new plan, so you
-          never lose credits by upgrading mid-term. Credits you buy outright are separate
-          and last 12 months.
-        </li>
-        <li v-if="upgradeWarning">
-          <strong>Changing plan.</strong> Upgrading starts a new monthly term today and
-          ends your current plan — your new credits arrive immediately and any unused
-          credits come with them, but the rest of the term you had already paid for is not
-          refunded. Downgrading charges nothing: your current plan and its credits run to
-          the end of the term you paid for.
-        </li>
-        <li>
-          <strong>Purchases are final.</strong> Approving a build charges it, and a run
-          that has started is charged even if you cancel it. If a build fails to
-          deliver we re-run it free. See the
-          <a href="/refunds">Billing &amp; Refund Policy</a>.
-        </li>
-      </ul>
-      <p class="mor">
-        Payments are processed by Stripe, which acts as the merchant of record and
-        appears on your statement. Your purchase receipt comes from them.
-      </p>
-    </section>
 
     <PurchaseConsent v-model="acknowledged" class="consent" />
-
-    <!-- Credits first: you do not need a subscription to start, and saying so up front
-         is more honest than leading with the most expensive option. -->
-    <section class="credits-card glass">
-      <div class="credits-copy">
-        <h2><Coins :size="18" /> Buy credits</h2>
-        <p>
-          No subscription needed. Credits last 12 months from your most recent payment
-          and are spent when you approve a build.
-        </p>
-        <!-- Said BEFORE the purchase. On Free the only buildable size is the minimum, so
-             buying 100 credits without knowing that is money that cannot be spent. -->
-        <p v-if="billing && billing.tier === 'free'" class="ceiling-warn">
-          On Free you can build apps up to
-          <strong>{{ billing.maxCreditsPerApp }} credits</strong>. Credits alone don't
-          raise that — a plan does.
-        </p>
-      </div>
-      <div class="credits-buy">
-        <label class="qty">
-          <span class="qty-label">Credits</span>
-          <input v-model.number="creditQty" type="number" min="1" max="1000" @blur="normalizeQty" />
-        </label>
-        <button
-          class="btn btn-primary"
-          :disabled="buyingCredits || !acknowledged"
-          @click="buyCredits"
-        >
-          <Loader2 v-if="buyingCredits" :size="17" class="spin" />
-          <span>Buy {{ creditQty }} {{ creditQty === 1 ? 'credit' : 'credits' }}</span>
-          <span v-if="creditTotal" class="total">{{ creditTotal }}</span>
-        </button>
-        <p v-if="creditPrice !== null" class="unit">${{ creditPrice }} per credit</p>
-      </div>
-    </section>
 
     <section class="tiers">
       <article
@@ -311,6 +236,82 @@ async function buyCredits() {
         </p>
       </article>
     </section>
+
+    <section class="credits-card glass">
+      <div class="credits-copy">
+        <h2><Coins :size="18" /> Buy credits</h2>
+        <p>
+          No subscription needed. Credits last 12 months from your most recent payment
+          and are spent when you approve a build.
+        </p>
+        <!-- Said BEFORE the purchase. On Free the only buildable size is the minimum, so
+             buying 100 credits without knowing that is money that cannot be spent. -->
+        <p v-if="billing && billing.tier === 'free'" class="ceiling-warn">
+          On Free you can build apps up to
+          <strong>{{ billing.maxCreditsPerApp }} credits</strong>. Credits alone don't
+          raise that — a plan does.
+        </p>
+      </div>
+      <div class="credits-buy">
+        <label class="qty">
+          <span class="qty-label">Credits</span>
+          <input v-model.number="creditQty" type="number" min="1" max="1000" @blur="normalizeQty" />
+        </label>
+        <button
+          class="btn btn-primary"
+          :disabled="buyingCredits || !acknowledged"
+          @click="buyCredits"
+        >
+          <Loader2 v-if="buyingCredits" :size="17" class="spin" />
+          <span>Buy {{ creditQty }} {{ creditQty === 1 ? 'credit' : 'credits' }}</span>
+          <span v-if="creditTotal" class="total">{{ creditTotal }}</span>
+        </button>
+        <p v-if="creditPrice !== null" class="unit">${{ creditPrice }} per credit</p>
+      </div>
+    </section>
+
+    <section class="renewal glass">
+      <h2>Before you buy</h2>
+      <ul>
+        <li>
+          <strong>Plans renew automatically.</strong> Your card is charged the same
+          amount on the same day each month until you cancel. We email you before each
+          renewal.
+        </li>
+        <li>
+          <strong>Cancel any time</strong> from your billing page or by emailing
+          <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          Cancellation takes effect at the end of the current billing period and stops
+          all future charges.
+        </li>
+        <li>
+          <strong>Monthly credits do not roll over.</strong> Each renewal resets that
+          month's allowance; whatever is unused expires at the end of the period. The one
+          exception is an upgrade: unused plan credits move onto your new plan, so you
+          never lose credits by upgrading mid-term. Credits you buy outright are separate
+          and last 12 months.
+        </li>
+        <li v-if="upgradeWarning">
+          <strong>Changing plan.</strong> Upgrading starts a new monthly term today and
+          ends your current plan — your new credits arrive immediately and any unused
+          credits come with them, but the rest of the term you had already paid for is not
+          refunded. Downgrading charges nothing: your current plan and its credits run to
+          the end of the term you paid for.
+        </li>
+        <li>
+          <strong>Purchases are final.</strong> Approving a build charges it, and a run
+          that has started is charged even if you cancel it. If a build fails to
+          deliver we re-run it free. See the
+          <a href="/refunds">Billing &amp; Refund Policy</a>.
+        </li>
+      </ul>
+      <p class="mor">
+        Payments are processed by Stripe, which acts as the merchant of record and
+        appears on your statement. Your purchase receipt comes from them.
+      </p>
+    </section>
+
+
 
     <!-- The acknowledgement Stripe's checkout cannot carry. Sits above the buttons it
          gates, so it is read before anything is bought rather than after. -->
@@ -485,9 +486,7 @@ async function buyCredits() {
   background: color-mix(in srgb, var(--primary) 5%, transparent);
 }
 
-/* 2rem to match every other section; the consent below it keeps a tighter 1.25rem so it
-   reads as attached to the buttons it unlocks rather than as a peer of the terms. */
-.renewal { padding: 1.5rem; margin-bottom: 2rem; }
+.renewal { padding: 1.5rem; }
 .renewal h2 { margin: 0 0 0.875rem; font-size: 1rem; font-weight: 800; }
 .renewal ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.75rem; }
 .renewal li { font-size: 0.875rem; line-height: 1.55; color: var(--text-dim); }
