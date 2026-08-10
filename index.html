@@ -361,7 +361,7 @@ A user gets a notification when someone likes their post, comments on their post
                   <li>Subscribe with the Stripe test card — a locked supporters-only post unlocks</li>
                   <li>On v2, try posting abusive text — it’s blocked with a written reason</li>
                   <li>Open the admin moderation queue: every flagged item with the AI’s rationale</li>
-                  <li>Compare v1 and v2 — the billing machinery is byte-for-byte identical</li>
+                  <li>Compare v1 and v2 — the Subscribing concept and the Stripe utility are byte-for-byte identical</li>
                 </ul>
               </details>
               <p class="dcard-testcard">Test mode — card 4242 4242 4242 4242</p>
@@ -486,8 +486,8 @@ The owner has an orders page listing orders newest-first with their items, quant
           <p class="section-sub">
             The most common complaint about AI app builders is that adding a feature quietly breaks the last one. That
             damage happens in the backend — data, auth, payments, the state everything else depends on — so that is
-            where the rigour goes. Your backend is assembled from pre-tested building blocks and isn't done until its
-            own generated test suite passes against a real database. The interface is generated against that finished
+            where the rigour goes. Your backend is assembled from pre-tested building blocks, and each concept it is built
+            from isn't accepted until its own generated tests pass against a real database. The interface is generated against that finished
             API and reviewed against it, which is the part models are reliably good at. Instead of promises, you get
             receipts where they matter.
           </p>
@@ -509,7 +509,7 @@ The owner has an orders page listing orders newest-first with their items, quant
               <div class="term-row"><span>Emailing › confirmation sent exactly once</span><span class="term-ok">… ok</span></div>
               <div class="term-muted">…</div>
               <div class="term-summary">ok · <span class="term-ok">313 passed</span> · 0 failed</div>
-              <div class="term-muted">same suite, green on MongoDB, Postgres, and Turso — your choice.</div>
+              <div class="term-muted">one data layer, conformance-tested against MongoDB, Postgres, and Turso.</div>
             </div>
           </div>
 
@@ -807,8 +807,8 @@ The owner has an orders page listing orders newest-first with their items, quant
           <div class="agent-card glass">
             <div class="agent-title">"Done" has a definition</div>
             <div class="agent-body">
-              An agent is done when it stops typing. A build here isn't done until its own generated test suite —
-              hundreds of tests — passes against the real database you chose.
+              An agent is done when it stops typing. Here, a concept isn't done until its own generated tests —
+              hundreds of them — pass against a real database.
             </div>
           </div>
           <div class="agent-card glass">
@@ -858,8 +858,8 @@ The owner has an orders page listing orders newest-first with their items, quant
           <details class="faq-item glass">
             <summary class="faq-q">Which databases can it use?</summary>
             <p class="faq-a">
-              MongoDB, Postgres, or Turso — your pick at build time, and the same generated test suite runs green
-              against each. Choosing a database is a dropdown, not a migration project.
+              MongoDB, Postgres, or Turso. Your exported backend runs on any of the three by changing one
+              environment variable — no code changes, because the data layer is written against all three.
             </p>
           </details>
           <details class="faq-item glass">
@@ -880,7 +880,7 @@ The owner has an orders page listing orders newest-first with their items, quant
             <div>
               <div class="kicker">Start with a prompt. Keep the code.</div>
               <h3 class="mt-2 text-2xl font-black tracking-tight md:text-3xl">Open the builder and start your first app.</h3>
-              <p class="mt-2 max-w-xl text-text-dim">Free plan available. No card required to start.</p>
+              <p class="mt-2 max-w-xl text-text-dim">Free to sign up — no card required. Builds start at $9.</p>
             </div>
             <a href="/build" class="btn btn-primary no-underline">Open Builder →</a>
           </div>
