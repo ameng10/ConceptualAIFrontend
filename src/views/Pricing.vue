@@ -152,6 +152,46 @@ async function buyCredits() {
       end of the current billing period, and you won't be charged again.
     </p>
     <p v-if="failed" class="failed">{{ failed }}</p>
+    <p v-if="planChanged" class="cancelled">
+      You're scheduled to move to <strong>{{ tierLabel(planChanged) }}</strong> when your
+      current term ends. Until then you keep your current plan and its credits — nothing
+      has been charged.
+    </p>
+
+    <section class="renewal glass">
+      <h2>Before you subscribe</h2>
+      <ul>
+        <li>
+          <strong>Plans renew automatically.</strong> Your card is charged the same
+          amount on the same day each month until you cancel. We email you before each
+          renewal.
+        </li>
+        <li>
+          <strong>Cancel any time</strong> from your billing page or by emailing
+          <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
+          Cancellation takes effect at the end of the current billing period and stops
+          all future charges.
+        </li>
+        <li>
+          <strong>Monthly credits do not roll over.</strong> Each renewal resets that
+          month's allowance; whatever is unused expires at the end of the period. The one
+          exception is an upgrade: unused plan credits move onto your new plan, so you
+          never lose credits by upgrading mid-term. Credits you buy outright are separate
+          and last 12 months.
+        </li>
+        <li>
+          <strong>Purchases are final.</strong> Approving a build charges it, and a run
+          that has started is charged even if you cancel it. If a build fails to
+          deliver we re-run it free. See the
+          <a href="/refunds">Billing &amp; Refund Policy</a>.
+        </li>
+      </ul>
+      <p class="mor">
+        Payments are processed by Stripe, which acts as the merchant of record and
+        appears on your statement. Your purchase receipt comes from them.
+      </p>
+    </section>
+
     <p v-if="upgradeWarning" class="renewal-inline">
       <strong>Upgrading</strong> starts a new monthly term today and ends your current
       plan. Your new credits arrive immediately, and any unused credits from your old plan
@@ -159,11 +199,6 @@ async function buyCredits() {
       credits are what you keep instead.
       <strong>Downgrading</strong> charges nothing: your current plan and its credits run
       to the end of the term you paid for, and your credits change to the new amount then.
-    </p>
-    <p v-if="planChanged" class="cancelled">
-      You're scheduled to move to <strong>{{ tierLabel(planChanged) }}</strong> when your
-      current term ends. Until then you keep your current plan and its credits — nothing
-      has been charged.
     </p>
 
     <PurchaseConsent v-model="acknowledged" class="consent glass" />
@@ -286,39 +321,6 @@ async function buyCredits() {
          details are taken — ROSCA and a number of US state statutes require it, and
          burying it in the Terms does not satisfy that. It sits directly under the
          buttons that start a subscription. -->
-    <section class="renewal glass">
-      <h2>Before you subscribe</h2>
-      <ul>
-        <li>
-          <strong>Plans renew automatically.</strong> Your card is charged the same
-          amount on the same day each month until you cancel. We email you before each
-          renewal.
-        </li>
-        <li>
-          <strong>Cancel any time</strong> from your billing page or by emailing
-          <a href="mailto:admin@conceptual-ai.app">admin@conceptual-ai.app</a>.
-          Cancellation takes effect at the end of the current billing period and stops
-          all future charges.
-        </li>
-        <li>
-          <strong>Monthly credits do not roll over.</strong> Each renewal resets that
-          month's allowance; whatever is unused expires at the end of the period. The one
-          exception is an upgrade: unused plan credits move onto your new plan, so you
-          never lose credits by upgrading mid-term. Credits you buy outright are separate
-          and last 12 months.
-        </li>
-        <li>
-          <strong>Purchases are final.</strong> Approving a build charges it, and a run
-          that has started is charged even if you cancel it. If a build fails to
-          deliver we re-run it free. See the
-          <a href="/refunds">Billing &amp; Refund Policy</a>.
-        </li>
-      </ul>
-      <p class="mor">
-        Payments are processed by Stripe, which acts as the merchant of record and
-        appears on your statement. Your purchase receipt comes from them.
-      </p>
-    </section>
   </div>
 </template>
 
